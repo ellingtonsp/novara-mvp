@@ -6,7 +6,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Heart, Users, Calendar, MessageCircle } from 'lucide-react';
+import { Heart, Users, Calendar, MessageCircle, ArrowRight, CheckCircle } from 'lucide-react';
+import DailyCheckinForm from './DailyCheckinForm';
 
 const NovaraLanding = () => {
   // Load DM Sans font
@@ -23,8 +24,11 @@ const NovaraLanding = () => {
       document.head.removeChild(link);
     };
   }, []);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [userSignedUp, setUserSignedUp] = useState(false);
+  const [userName, setUserName] = useState('');
   const [formData, setFormData] = useState({
     email: '',
     nickname: '',
@@ -34,60 +38,58 @@ const NovaraLanding = () => {
     primary_need: '',
     cycle_stage: '',
     top_concern: '',
-    //timezone: 'PST',
     email_opt_in: true,
   });
 
   const handleSubmit = async () => {
-  setIsSubmitting(true);
-  
-  // Clean the form data - remove empty strings and null values
-  const cleanFormData = {
-    email: formData.email,
-    nickname: formData.nickname || '',
-    confidence_meds: formData.confidence_meds,
-    confidence_costs: formData.confidence_costs,
-    confidence_overall: formData.confidence_overall,
-    primary_need: formData.primary_need || '',
-    cycle_stage: formData.cycle_stage || '',
-    top_concern: formData.top_concern || '',
-    //timezone: formData.timezone,
-    email_opt_in: formData.email_opt_in,
-  };
+    setIsSubmitting(true);
+    
+    // Clean the form data - remove empty strings and null values
+    const cleanFormData = {
+      email: formData.email,
+      nickname: formData.nickname || '',
+      confidence_meds: formData.confidence_meds,
+      confidence_costs: formData.confidence_costs,
+      confidence_overall: formData.confidence_overall,
+      primary_need: formData.primary_need || '',
+      cycle_stage: formData.cycle_stage || '',
+      top_concern: formData.top_concern || '',
+      email_opt_in: formData.email_opt_in,
+    };
 
-  console.log('Form data types check:');
-console.log('email:', typeof cleanFormData.email, cleanFormData.email);
-console.log('nickname:', typeof cleanFormData.nickname, cleanFormData.nickname);
-console.log('confidence_meds:', typeof cleanFormData.confidence_meds, cleanFormData.confidence_meds);
-console.log('email_opt_in:', typeof cleanFormData.email_opt_in, cleanFormData.email_opt_in);
-//console.log('timezone:', typeof cleanFormData.timezone, cleanFormData.timezone);
-console.log('Full clean data:', cleanFormData);
-  
-  try {
-    const response = await fetch('https://novara-mvp-production.up.railway.app/api/users', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(cleanFormData),
-    });
+    console.log('Form data types check:');
+    console.log('email:', typeof cleanFormData.email, cleanFormData.email);
+    console.log('nickname:', typeof cleanFormData.nickname, cleanFormData.nickname);
+    console.log('confidence_meds:', typeof cleanFormData.confidence_meds, cleanFormData.confidence_meds);
+    console.log('email_opt_in:', typeof cleanFormData.email_opt_in, cleanFormData.email_opt_in);
+    console.log('Full clean data:', cleanFormData);
     
-    const result = await response.json();
-    console.log('API Response:', result);
-    
-    if (result.success) {
-      alert('Welcome to Novara! Your journey starts now. 💜');
-      setShowForm(false);
-    } else {
-      alert(`Error: ${result.error || 'Something went wrong'}`);
+    try {
+      const response = await fetch('https://novara-mvp-production.up.railway.app/api/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(cleanFormData),
+      });
+      
+      const result = await response.json();
+      console.log('API Response:', result);
+      
+      if (result.success) {
+        setUserName(formData.nickname || formData.email.split('@')[0]);
+        setUserSignedUp(true);
+        setShowForm(false);
+      } else {
+        alert(`Error: ${result.error || 'Something went wrong'}`);
+      }
+    } catch (error) {
+      console.error('Network error:', error);
+      alert('Connection error. Please check your internet and try again.');
+    } finally {
+      setIsSubmitting(false);
     }
-  } catch (error) {
-    console.error('Network error:', error);
-    alert('Connection error. Please check your internet and try again.');
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+  };
 
   const handleInputChange = (field: string, value: string | number | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -112,78 +114,141 @@ console.log('Full clean data:', cleanFormData);
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="max-w-6xl mx-auto px-6 py-16">
-        <div className="text-center mb-12">
-          <h2 className="text-5xl font-bold mb-6 leading-tight">
-            You don't have to navigate
-            <br />
-            <span className="bg-gradient-to-r from-novara-coral to-novara-lavender bg-clip-text text-transparent">
-              IVF alone
-            </span>
-          </h2>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
-            Novara provides personalized support, insights, and community for every step of your fertility journey. 
-            From medication guidance to emotional wellness—we're here for you.
-          </p>
-          <div className="flex gap-4 justify-center">
-            <Button 
-              onClick={() => setShowForm(true)}
-              className="bg-novara-coral hover:bg-novara-coral/90 text-white px-8 py-3 text-lg"
-            >
-              Start Your Journey
-            </Button>
-            <Button variant="outline" className="border-novara-coral text-novara-coral hover:bg-novara-coral/5 px-8 py-3 text-lg">
-              Learn More
-            </Button>
+      {/* Welcome Back Section (After Signup) */}
+      {userSignedUp && (
+        <section className="max-w-4xl mx-auto px-6 py-12">
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 rounded-full bg-gradient-to-r from-novara-coral to-novara-lavender flex items-center justify-center mx-auto mb-4">
+              <CheckCircle className="w-8 h-8 text-white" />
+            </div>
+            <h2 className="text-3xl font-bold mb-4">
+              Welcome to Novara, {userName}! 🌟
+            </h2>
+            <p className="text-lg text-gray-600 mb-6">
+              Your journey has officially begun. Let's start with your first daily check-in to help us understand how you're feeling today.
+            </p>
+            
+            {/* Progression Indicator */}
+            <div className="flex items-center justify-center space-x-4 mb-8 text-sm text-gray-500">
+              <div className="flex items-center space-x-2">
+                <CheckCircle className="w-4 h-4 text-green-500" />
+                <span>Account Created</span>
+              </div>
+              <ArrowRight className="w-4 h-4" />
+              <div className="flex items-center space-x-2">
+                <div className="w-4 h-4 rounded-full bg-novara-coral animate-pulse" />
+                <span className="font-medium text-novara-coral">First Check-in</span>
+              </div>
+              <ArrowRight className="w-4 h-4" />
+              <div className="flex items-center space-x-2">
+                <div className="w-4 h-4 rounded-full bg-gray-300" />
+                <span>Daily Insights</span>
+              </div>
+            </div>
           </div>
-        </div>
-
-        {/* Features Grid */}
-        <div className="grid md:grid-cols-3 gap-8 mb-16">
-          <Card className="border-novara-coral/20 hover:shadow-lg transition-all duration-300 hover:border-novara-coral/40">
-            <CardHeader className="text-center">
-              <div className="w-12 h-12 rounded-lg bg-novara-coral/10 flex items-center justify-center mb-4 mx-auto">
-                <Calendar className="w-6 h-6 text-novara-coral" />
+          
+          {/* Daily Check-in Form */}
+          <div className="flex justify-center">
+            <DailyCheckinForm />
+          </div>
+          
+          {/* Next Steps Preview */}
+          <div className="mt-12 text-center">
+            <h3 className="text-xl font-semibold mb-4 text-gray-800">What happens next?</h3>
+            <div className="grid md:grid-cols-3 gap-6 max-w-3xl mx-auto">
+              <div className="p-4 bg-white/50 rounded-lg border border-novara-coral/20">
+                <MessageCircle className="w-6 h-6 text-novara-coral mx-auto mb-2" />
+                <p className="text-sm text-gray-600">Get personalized insights based on your daily check-ins</p>
               </div>
-              <CardTitle className="text-xl">Personalized Timeline</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-600 text-center">
-                Track your cycle, appointments, and milestones with intelligent insights tailored to your unique journey.
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-novara-lavender/20 hover:shadow-lg transition-all duration-300 hover:border-novara-lavender/40">
-            <CardHeader className="text-center">
-              <div className="w-12 h-12 rounded-lg bg-novara-lavender/10 flex items-center justify-center mb-4 mx-auto">
-                <MessageCircle className="w-6 h-6 text-novara-lavender" />
+              <div className="p-4 bg-white/50 rounded-lg border border-novara-lavender/20">
+                <Calendar className="w-6 h-6 text-novara-lavender mx-auto mb-2" />
+                <p className="text-sm text-gray-600">Track your journey timeline and milestones</p>
               </div>
-              <CardTitle className="text-xl">Daily Check-ins</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-600 text-center">
-                Share how you're feeling and receive personalized micro-insights that acknowledge your experience.
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-novara-coral/20 hover:shadow-lg transition-all duration-300 hover:border-novara-coral/40">
-            <CardHeader className="text-center">
-              <div className="w-12 h-12 rounded-lg bg-novara-coral/10 flex items-center justify-center mb-4 mx-auto">
-                <Users className="w-6 h-6 text-novara-coral" />
+              <div className="p-4 bg-white/50 rounded-lg border border-novara-coral/20">
+                <Users className="w-6 h-6 text-novara-coral mx-auto mb-2" />
+                <p className="text-sm text-gray-600">Access expert guidance when you need it</p>
               </div>
-              <CardTitle className="text-xl">Expert Guidance</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-600 text-center">
-                Access evidence-based information about medications, procedures, and what to expect at each stage.
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Original Hero Section (Before Signup) */}
+      {!userSignedUp && (
+        <>
+          <section className="max-w-6xl mx-auto px-6 py-16">
+            <div className="text-center mb-12">
+              <h2 className="text-5xl font-bold mb-6 leading-tight">
+                You don't have to navigate
+                <br />
+                <span className="bg-gradient-to-r from-novara-coral to-novara-lavender bg-clip-text text-transparent">
+                  IVF alone
+                </span>
+              </h2>
+              <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
+                Novara provides personalized support, insights, and community for every step of your fertility journey. 
+                From medication guidance to emotional wellness—we're here for you.
               </p>
-            </CardContent>
-          </Card>
-        </div>
-      </section>
+              <div className="flex gap-4 justify-center">
+                <Button 
+                  onClick={() => setShowForm(true)}
+                  className="bg-novara-coral hover:bg-novara-coral/90 text-white px-8 py-3 text-lg"
+                >
+                  Start Your Journey
+                </Button>
+                <Button variant="outline" className="border-novara-coral text-novara-coral hover:bg-novara-coral/5 px-8 py-3 text-lg">
+                  Learn More
+                </Button>
+              </div>
+            </div>
+
+            {/* Features Grid */}
+            <div className="grid md:grid-cols-3 gap-8 mb-16">
+              <Card className="border-novara-coral/20 hover:shadow-lg transition-all duration-300 hover:border-novara-coral/40">
+                <CardHeader className="text-center">
+                  <div className="w-12 h-12 rounded-lg bg-novara-coral/10 flex items-center justify-center mb-4 mx-auto">
+                    <Calendar className="w-6 h-6 text-novara-coral" />
+                  </div>
+                  <CardTitle className="text-xl">Personalized Timeline</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-gray-600 text-center">
+                    Track your cycle, appointments, and milestones with intelligent insights tailored to your unique journey.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="border-novara-lavender/20 hover:shadow-lg transition-all duration-300 hover:border-novara-lavender/40">
+                <CardHeader className="text-center">
+                  <div className="w-12 h-12 rounded-lg bg-novara-lavender/10 flex items-center justify-center mb-4 mx-auto">
+                    <MessageCircle className="w-6 h-6 text-novara-lavender" />
+                  </div>
+                  <CardTitle className="text-xl">Daily Check-ins</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-gray-600 text-center">
+                    Share how you're feeling and receive personalized micro-insights that acknowledge your experience.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="border-novara-coral/20 hover:shadow-lg transition-all duration-300 hover:border-novara-coral/40">
+                <CardHeader className="text-center">
+                  <div className="w-12 h-12 rounded-lg bg-novara-coral/10 flex items-center justify-center mb-4 mx-auto">
+                    <Users className="w-6 h-6 text-novara-coral" />
+                  </div>
+                  <CardTitle className="text-xl">Expert Guidance</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-gray-600 text-center">
+                    Access evidence-based information about medications, procedures, and what to expect at each stage.
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          </section>
+        </>
+      )}
 
       {/* Onboarding Form Modal */}
       {showForm && (
