@@ -55,6 +55,8 @@ const DailyInsightsDisplay: React.FC = () => {
 
     try {
       const token = localStorage.getItem('token');
+      console.log('🧠 Fetching insights with token:', !!token);
+      
       const response = await fetch('https://novara-mvp-production.up.railway.app/api/insights/daily', {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -62,7 +64,9 @@ const DailyInsightsDisplay: React.FC = () => {
         }
       });
 
+      console.log('📡 Insights response status:', response.status);
       const data: InsightResponse = await response.json();
+      console.log('📊 Insights response data:', data);
 
       if (data.success) {
         setInsight(data.insight);
