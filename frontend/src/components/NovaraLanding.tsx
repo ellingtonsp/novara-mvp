@@ -40,31 +40,50 @@ const NovaraLanding = () => {
   });
 
   const handleSubmit = async () => {
-    setIsSubmitting(true);
-    
-    try {
-      const response = await fetch('https://novara-mvp-production.up.railway.app/api/users', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        alert('Welcome to Novara! Your journey starts now. 💜');
-        setShowForm(false);
-      } else {
-        alert('Something went wrong. Please try again.');
-      }
-    } catch (error) {
-      alert('Connection error. Please check your internet and try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
+  setIsSubmitting(true);
+  
+  // Clean the form data - remove empty strings and null values
+  const cleanFormData = {
+    email: formData.email,
+    nickname: formData.nickname || '',
+    confidence_meds: formData.confidence_meds,
+    confidence_costs: formData.confidence_costs,
+    confidence_overall: formData.confidence_overall,
+    primary_need: formData.primary_need || '',
+    cycle_stage: formData.cycle_stage || '',
+    top_concern: formData.top_concern || '',
+    timezone: formData.timezone,
+    email_opt_in: formData.email_opt_in,
+    status: formData.status
   };
+
+  console.log('Sending clean data:', cleanFormData);
+  
+  try {
+    const response = await fetch('https://novara-mvp-production.up.railway.app/api/users', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(cleanFormData),
+    });
+    
+    const result = await response.json();
+    console.log('API Response:', result);
+    
+    if (result.success) {
+      alert('Welcome to Novara! Your journey starts now. 💜');
+      setShowForm(false);
+    } else {
+      alert(`Error: ${result.error || 'Something went wrong'}`);
+    }
+  } catch (error) {
+    console.error('Network error:', error);
+    alert('Connection error. Please check your internet and try again.');
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   const handleInputChange = (field: string, value: string | number | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
