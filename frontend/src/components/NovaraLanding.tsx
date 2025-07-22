@@ -251,8 +251,8 @@ const NovaraLanding = () => {
       {/* Daily Insights Display */}
       <DailyInsightsDisplay />
 
-      {/* Quick Action Cards */}
-      <div className="space-y-4">
+      {/* Quick Action Cards - Mobile Stacked */}
+      <div className="space-y-4 max-w-sm mx-auto">
         <button
           onClick={() => setCurrentView('checkin')}
           className="w-full bg-[#FF6F61] text-white p-6 rounded-2xl shadow-sm hover:shadow-md transition-all active:scale-95"
@@ -262,7 +262,7 @@ const NovaraLanding = () => {
               <h3 className="text-xl font-semibold mb-2">Daily Check-in</h3>
               <p className="text-white/90 text-sm">Share how you're feeling and get personalized insights</p>
             </div>
-            <ArrowRight className="w-6 h-6 text-white/80" />
+            <ArrowRight className="w-6 h-6 text-white/80 flex-shrink-0 ml-4" />
           </div>
         </button>
 
@@ -275,7 +275,7 @@ const NovaraLanding = () => {
               <h3 className="text-xl font-semibold mb-2">View Insights</h3>
               <p className="text-white/90 text-sm">See your patterns and personalized recommendations</p>
             </div>
-            <ArrowRight className="w-6 h-6 text-white/80" />
+            <ArrowRight className="w-6 h-6 text-white/80 flex-shrink-0 ml-4" />
           </div>
         </button>
       </div>
@@ -356,130 +356,6 @@ const NovaraLanding = () => {
           </p>
         </div>
       </div>
-    </div>
-  );
-
-  // Mobile Landing for Non-Authenticated Users
-  const MobileLanding = () => (
-    <div className="min-h-screen bg-gradient-to-br from-[#FFF5F0] via-white to-[#FFF5F0] pb-8">
-      <MobileHeader />
-      
-      {/* Hero Section */}
-      <section className="px-4 py-8">
-        <div className="text-center mb-8">
-          <h2 className="text-3xl font-bold mb-4 leading-tight">
-            You don't have to navigate
-            <br />
-            <span className="bg-gradient-to-r from-[#FF6F61] to-[#CBA7FF] bg-clip-text text-transparent">
-              IVF alone
-            </span>
-          </h2>
-          <p className="text-lg text-gray-600 mb-6">
-            Novara provides personalized support, insights, and community for every step of your fertility journey.
-          </p>
-          
-          <div className="space-y-3">
-            <Button 
-              onClick={() => setShowForm(true)}
-              className="w-full bg-[#FF6F61] hover:bg-[#FF6F61]/90 text-white py-4 text-lg"
-            >
-              Start Your Journey
-            </Button>
-            <Button 
-              onClick={() => setShowLogin(true)}
-              variant="outline" 
-              className="w-full border-[#FF6F61] text-[#FF6F61] hover:bg-[#FF6F61]/5 py-4 text-lg"
-            >
-              Already have an account?
-            </Button>
-          </div>
-        </div>
-
-      {/* Hero Section */}
-      <section className="px-4 py-8">
-        <div className="text-center mb-8">
-          <h2 className="text-3xl md:text-5xl font-bold mb-4 leading-tight">
-            You don't have to navigate
-            <br />
-            <span className="bg-gradient-to-r from-[#FF6F61] to-[#CBA7FF] bg-clip-text text-transparent">
-              IVF alone
-            </span>
-          </h2>
-          <p className="text-lg text-gray-600 mb-6 px-2">
-            Novara provides personalized support, insights, and community for every step of your fertility journey.
-          </p>
-          
-          <div className="space-y-3 max-w-sm mx-auto">
-            <Button 
-              onClick={() => setShowForm(true)}
-              className="w-full bg-[#FF6F61] hover:bg-[#FF6F61]/90 text-white py-4 text-lg h-auto"
-            >
-              Start Your Journey
-            </Button>
-            <Button 
-              onClick={() => setShowLogin(true)}
-              variant="outline" 
-              className="w-full border-[#FF6F61] text-[#FF6F61] hover:bg-[#FF6F61]/5 py-4 text-lg h-auto"
-            >
-              Already have an account?
-            </Button>
-          </div>
-        </div>
-
-        {/* Features Grid - Mobile Stacked */}
-        <div className="space-y-4 max-w-sm mx-auto md:max-w-4xl md:grid md:grid-cols-3 md:gap-8 md:space-y-0">
-          <Card className="border-[#FF6F61]/20 hover:shadow-lg transition-all duration-300">
-            <CardHeader className="text-center pb-3">
-              <div className="w-12 h-12 rounded-lg bg-[#FF6F61]/10 flex items-center justify-center mb-3 mx-auto">
-                <Calendar className="w-6 h-6 text-[#FF6F61]" />
-              </div>
-              <CardTitle className="text-lg">Personalized Timeline</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <p className="text-gray-600 text-center text-sm">
-                Track your cycle, appointments, and milestones with intelligent insights tailored to your unique journey.
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-[#CBA7FF]/20 hover:shadow-lg transition-all duration-300">
-            <CardHeader className="text-center pb-3">
-              <div className="w-12 h-12 rounded-lg bg-[#CBA7FF]/10 flex items-center justify-center mb-3 mx-auto">
-                <MessageCircle className="w-6 h-6 text-[#CBA7FF]" />
-              </div>
-              <CardTitle className="text-lg">Daily Check-ins</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <p className="text-gray-600 text-center text-sm">
-                Share how you're feeling and receive personalized micro-insights that acknowledge your experience.
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-[#FF6F61]/20 hover:shadow-lg transition-all duration-300">
-            <CardHeader className="text-center pb-3">
-              <div className="w-12 h-12 rounded-lg bg-[#FF6F61]/10 flex items-center justify-center mb-3 mx-auto">
-                <Users className="w-6 h-6 text-[#FF6F61]" />
-              </div>
-              <CardTitle className="text-lg">Expert Guidance</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <p className="text-gray-600 text-center text-sm">
-                Access evidence-based information about medications, procedures, and what to expect at each stage.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      </section>
-      </section>
-
-      {/* Footer */}
-      <footer className="px-4 py-6 text-center">
-        <p className="text-gray-600 text-sm">
-          Built with care for those navigating fertility treatment. 
-          <span className="text-[#FF6F61]"> Your journey matters.</span>
-        </p>
-      </footer>
     </div>
   );
 
@@ -599,7 +475,7 @@ const NovaraLanding = () => {
             </p>
           </div>
         </footer>
-        
+
         {/* Login Modal - Responsive */}
         {showLogin && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
