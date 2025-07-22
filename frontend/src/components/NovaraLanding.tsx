@@ -34,7 +34,7 @@ const NovaraLanding = () => {
     primary_need: '',
     cycle_stage: '',
     top_concern: '',
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    timezone: 'PST'
     email_opt_in: true,
     status: 'active'
   });
