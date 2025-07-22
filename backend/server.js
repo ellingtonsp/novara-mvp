@@ -1,10 +1,14 @@
-// Novara Complete API Server
+// Novara Complete API Server with JWT Authentication
 const express = require('express');
 const cors = require('cors');
+const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
 const app = express();
 const port = process.env.PORT || 3000;
+
+// JWT Secret - make sure to set this in your Railway environment variables
+const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production';
 
 // Trust Railway proxy
 app.set('trust proxy', true);
@@ -67,13 +71,53 @@ async function findUserByEmail(email) {
     const result = await response.json();
     
     if (result.records && result.records.length > 0) {
-      return result.records[0].id; // Return Airtable record ID
+      return {
+        id: result.records[0].id,
+        ...result.records[0].fields
+      };
     }
     return null;
   } catch (error) {
     console.error('User lookup error:', error);
     return null;
   }
+}
+
+// JWT Middleware
+function authenticateToken(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+
+  if (!token) {
+    return res.status(401).json({ 
+      success: false, 
+      error: 'Access token required' 
+    });
+  }
+
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) {
+      return res.status(403).json({ 
+        success: false, 
+        error: 'Invalid or expired token' 
+      });
+    }
+    req.user = user;
+    next();
+  });
+}
+
+// Generate JWT Token
+function generateToken(user) {
+  return jwt.sign(
+    { 
+      userId: user.id, 
+      email: user.email,
+      nickname: user.nickname 
+    },
+    JWT_SECRET,
+    { expiresIn: '30d' } // Token expires in 30 days
+  );
 }
 
 // Micro-Insight Engine
@@ -113,10 +157,10 @@ app.get('/', (req, res) => {
     message: 'Novara API is running',
     endpoints: {
       health: '/api/health',
+      auth: '/api/auth/login',
       users: '/api/users',
       checkins: '/api/checkins',
-      insights: '/api/users/:id/insight',
-      debug: '/api/debug-user/:email'
+      insights: '/api/users/:id/insight'
     },
     docs: 'https://github.com/ellingtonsp/novara-mvp'
   });
@@ -128,34 +172,63 @@ app.get('/api/health', (req, res) => {
     timestamp: new Date().toISOString(),
     service: 'Novara API',
     environment: process.env.NODE_ENV || 'production',
-    airtable: config.airtable.apiKey ? 'connected' : 'not configured'
+    airtable: config.airtable.apiKey ? 'connected' : 'not configured',
+    jwt: JWT_SECRET ? 'configured' : 'not configured'
   });
 });
 
-// Debug User Lookup
-app.get('/api/debug-user/:email', async (req, res) => {
+// Authentication Routes
+
+// Login (for existing users)
+app.post('/api/auth/login', async (req, res) => {
   try {
-    const { email } = req.params;
-    console.log(`🔍 Debug: Looking up user: ${email}`);
+    const { email } = req.body;
     
-    const userRecordId = await findUserByEmail(email);
+    if (!email) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Email is required' 
+      });
+    }
+
+    // Find user in Airtable
+    const user = await findUserByEmail(email);
     
+    if (!user) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'User not found. Please sign up first.' 
+      });
+    }
+
+    // Generate JWT token
+    const token = generateToken(user);
+
     res.json({
       success: true,
-      email: email,
-      found: userRecordId !== null,
-      recordId: userRecordId
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        nickname: user.nickname,
+        confidence_meds: user.confidence_meds,
+        confidence_costs: user.confidence_costs,
+        confidence_overall: user.confidence_overall,
+        created_at: user.created_at
+      },
+      message: 'Login successful'
     });
-    
+
   } catch (error) {
-    res.json({
-      success: false,
-      error: error.message
+    console.error('Login error:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Internal server error' 
     });
   }
 });
 
-// Create User
+// Create User (Signup + Auto-login)
 app.post('/api/users', async (req, res) => {
   try {
     const userData = {
@@ -180,13 +253,40 @@ app.post('/api/users', async (req, res) => {
       userData.top_concern = req.body.top_concern;
     }
 
+    // Check if user already exists
+    const existingUser = await findUserByEmail(userData.email);
+    if (existingUser) {
+      return res.status(409).json({ 
+        success: false, 
+        error: 'User already exists. Please log in instead.' 
+      });
+    }
+
+    // Create user in Airtable
     const result = await airtableRequest('Users', 'POST', {
       fields: userData
     });
 
+    const newUser = {
+      id: result.id,
+      ...result.fields
+    };
+
+    // Generate JWT token for immediate login
+    const token = generateToken(newUser);
+
     res.status(201).json({ 
       success: true, 
-      user: { id: result.id, ...result.fields },
+      token,
+      user: {
+        id: newUser.id,
+        email: newUser.email,
+        nickname: newUser.nickname,
+        confidence_meds: newUser.confidence_meds,
+        confidence_costs: newUser.confidence_costs,
+        confidence_overall: newUser.confidence_overall,
+        created_at: newUser.created_at
+      },
       message: 'User created successfully'
     });
   } catch (error) {
@@ -198,25 +298,41 @@ app.post('/api/users', async (req, res) => {
   }
 });
 
-// Get User
-app.get('/api/users/:id', async (req, res) => {
+// Get Current User (Protected Route)
+app.get('/api/users/me', authenticateToken, async (req, res) => {
   try {
-    const result = await airtableRequest(`Users/${req.params.id}`);
+    const user = await findUserByEmail(req.user.email);
+    
+    if (!user) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'User not found' 
+      });
+    }
+
     res.json({ 
       success: true, 
-      user: { id: result.id, ...result.fields }
+      user: {
+        id: user.id,
+        email: user.email,
+        nickname: user.nickname,
+        confidence_meds: user.confidence_meds,
+        confidence_costs: user.confidence_costs,
+        confidence_overall: user.confidence_overall,
+        created_at: user.created_at
+      }
     });
   } catch (error) {
-    console.error('Get user error:', error);
-    res.status(404).json({ 
+    console.error('Get current user error:', error);
+    res.status(500).json({ 
       success: false, 
-      error: 'User not found' 
+      error: 'Internal server error' 
     });
   }
 });
 
-// Daily Check-ins - UNIFIED ENDPOINT
-app.post('/api/checkins', async (req, res) => {
+// Daily Check-ins (Protected Route)
+app.post('/api/checkins', authenticateToken, async (req, res) => {
   try {
     console.log('📝 Daily check-in submission received:', req.body);
 
@@ -224,16 +340,15 @@ app.post('/api/checkins', async (req, res) => {
       mood_today, 
       primary_concern_today, 
       confidence_today, 
-      user_note, 
-      user_id 
+      user_note 
     } = req.body;
 
     // Validation - ensure required fields are present
-    if (!mood_today || !confidence_today || !user_id) {
+    if (!mood_today || !confidence_today) {
       console.error('❌ Missing required fields');
       return res.status(400).json({ 
         success: false, 
-        error: 'Missing required fields: mood_today, confidence_today, and user_id are required' 
+        error: 'Missing required fields: mood_today and confidence_today are required' 
       });
     }
 
@@ -246,22 +361,22 @@ app.post('/api/checkins', async (req, res) => {
       });
     }
 
-    // Find user record in Airtable
-    const userRecordId = await findUserByEmail(user_id);
+    // Find user record in Airtable using JWT payload
+    const userRecordId = await findUserByEmail(req.user.email);
     
     if (!userRecordId) {
-      console.error('❌ User not found:', user_id);
+      console.error('❌ User not found:', req.user.email);
       return res.status(404).json({ 
         success: false, 
-        error: 'User not found. Please sign up first.' 
+        error: 'User not found' 
       });
     }
 
-    console.log('✅ Found user record:', userRecordId);
+    console.log('✅ Found user record:', userRecordId.id);
 
     // Prepare data for Airtable DailyCheckins table
     const checkinData = {
-      user_id: [userRecordId], // Array format for linked records
+      user_id: [userRecordId.id], // Array format for linked records
       mood_today,
       confidence_today: parseInt(confidence_today),
       date_submitted: new Date().toISOString().split('T')[0], // YYYY-MM-DD format
@@ -308,18 +423,17 @@ app.post('/api/checkins', async (req, res) => {
   }
 });
 
-// Get User's Recent Check-ins
-app.get('/api/checkins/:userId', async (req, res) => {
+// Get User's Recent Check-ins (Protected Route)
+app.get('/api/checkins', authenticateToken, async (req, res) => {
   try {
-    const { userId } = req.params;
-    const { limit = 7 } = req.query; // Default to last 7 days
+    const { limit = 7 } = req.query;
 
-    console.log(`📈 Fetching recent check-ins for user: ${userId}`);
+    console.log(`📈 Fetching recent check-ins for user: ${req.user.email}`);
 
     // Find user first
-    const userRecordId = await findUserByEmail(userId);
+    const user = await findUserByEmail(req.user.email);
     
-    if (!userRecordId) {
+    if (!user) {
       return res.status(404).json({ 
         success: false, 
         error: 'User not found' 
@@ -328,7 +442,7 @@ app.get('/api/checkins/:userId', async (req, res) => {
 
     // Fetch user's recent check-ins from Airtable using record ID
     const response = await fetch(
-      `${config.airtable.baseUrl}/DailyCheckins?filterByFormula=SEARCH('${userRecordId}',ARRAYJOIN({user_id}))&sort[0][field]=date_submitted&sort[0][direction]=desc&maxRecords=${limit}`,
+      `${config.airtable.baseUrl}/DailyCheckins?filterByFormula=SEARCH('${user.id}',ARRAYJOIN({user_id}))&sort[0][field]=date_submitted&sort[0][direction]=desc&maxRecords=${limit}`,
       {
         headers: {
           'Authorization': `Bearer ${config.airtable.apiKey}`,
@@ -357,7 +471,7 @@ app.get('/api/checkins/:userId', async (req, res) => {
       created_at: record.fields.created_at
     }));
 
-    console.log(`✅ Retrieved ${checkins.length} check-ins for user: ${userId}`);
+    console.log(`✅ Retrieved ${checkins.length} check-ins for user: ${req.user.email}`);
 
     res.json({
       success: true,
@@ -374,16 +488,24 @@ app.get('/api/checkins/:userId', async (req, res) => {
   }
 });
 
-// Get User Insight
-app.get('/api/users/:id/insight', async (req, res) => {
+// Get User Insight (Protected Route)
+app.get('/api/users/insight', authenticateToken, async (req, res) => {
   try {
-    const user = await airtableRequest(`Users/${req.params.id}`);
-    const insight = generateMicroInsight(user.fields);
+    const user = await findUserByEmail(req.user.email);
+    
+    if (!user) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'User not found' 
+      });
+    }
+
+    const insight = generateMicroInsight(user);
     
     res.json({ 
       success: true, 
       insight,
-      user_id: req.params.id
+      user_id: user.id
     });
   } catch (error) {
     console.error('Generate insight error:', error);
@@ -400,11 +522,15 @@ app.get('/api/checkins-test', (req, res) => {
     success: true,
     message: 'Daily Check-ins API is working! 🎯',
     endpoints: {
-      'POST /api/checkins': 'Submit daily check-in',
-      'GET /api/checkins/:userId': 'Get user check-in history',
-      'GET /api/debug-user/:email': 'Debug user lookup',
+      'POST /api/auth/login': 'Login existing user',
+      'POST /api/users': 'Signup new user (auto-login)',
+      'GET /api/users/me': 'Get current user (protected)',
+      'POST /api/checkins': 'Submit daily check-in (protected)',
+      'GET /api/checkins': 'Get user check-in history (protected)',
+      'GET /api/users/insight': 'Get user insight (protected)',
       'GET /api/checkins-test': 'This test endpoint'
     },
+    authentication: 'JWT Bearer Token required for protected routes',
     timestamp: new Date().toISOString()
   });
 });
@@ -413,6 +539,7 @@ app.get('/api/checkins-test', (req, res) => {
 app.listen(port, () => {
   console.log(`🚀 Novara API running on port ${port}`);
   console.log(`📊 Health check: http://localhost:${port}/api/health`);
+  console.log(`🔐 JWT Authentication enabled`);
 });
 
 module.exports = app;
