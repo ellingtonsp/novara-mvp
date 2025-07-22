@@ -237,7 +237,7 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
   // Desktop Form (Original Style) - Hidden on Mobile
   return (
     <>
-      <div className="hidden md:block">
+      <div className="hidden md:block desktop-only">
         <Card className="w-full max-w-md mx-auto border border-gray-200 shadow-sm">
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-2 text-lg text-gray-800">
@@ -384,7 +384,7 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
       </div>
 
       {/* Mobile Form - Only show on mobile */}
-      <div className="block md:hidden min-h-screen bg-[#FFF5F0]">
+      <div className="block md:hidden mobile-only min-h-screen bg-[#FFF5F0]">
         {/* Mobile Header */}
         <div className="bg-white shadow-sm px-4 py-6">
           <div className="flex items-center justify-between">
@@ -402,7 +402,7 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
         </div>
 
         <div className="px-4 py-6 space-y-8 pb-40">
-          {/* Mobile Mood Selection */}
+          {/* Mobile Mood Selection - FIXED LAYOUT */}
           <div>
             <h2 className="text-lg font-semibold text-gray-900 mb-4">
               How are you feeling today?
@@ -416,24 +416,29 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
                   key={mood}
                   type="button"
                   onClick={() => toggleMood(mood)}
-                  className={`p-4 rounded-xl border-2 transition-all text-left active:scale-95 min-h-[100px] flex flex-col justify-between ${
+                  className={`p-4 rounded-xl border-2 transition-all text-left active:scale-95 min-h-[100px] flex flex-col justify-between relative ${
                     selectedMoods.includes(mood)
                       ? 'border-[#FF6F61] bg-[#FF6F61]/10 ring-2 ring-[#FF6F61]/20 scale-95' 
                       : color
                   }`}
                 >
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xl">{icon}</span>
-                      <span className="font-medium text-sm">{label}</span>
+                  {/* Checkmark positioned absolutely in top-right corner */}
+                  {selectedMoods.includes(mood) && (
+                    <div className="absolute top-2 right-2">
+                      <CheckCircle className="w-5 h-5 text-[#FF6F61]" />
                     </div>
-                    {selectedMoods.includes(mood) && (
-                      <CheckCircle className="w-4 h-4 text-[#FF6F61] flex-shrink-0" />
-                    )}
+                  )}
+                  
+                  {/* Content area with proper spacing */}
+                  <div className="flex flex-col justify-between h-full pr-6">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xl flex-shrink-0">{icon}</span>
+                      <span className="font-medium text-sm leading-tight">{label}</span>
+                    </div>
+                    <p className="text-xs opacity-75 leading-tight">
+                      {description}
+                    </p>
                   </div>
-                  <p className="text-xs opacity-75 leading-tight">
-                    {description}
-                  </p>
                 </button>
               ))}
             </div>
@@ -539,7 +544,7 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
           </div>
         </div>
 
-        {/* Mobile Fixed Submit Button - IMPORTANT: This must be included! */}
+        {/* Mobile Fixed Submit Button */}
         <div className="fixed bottom-20 left-0 right-0 bg-white border-t border-gray-200 p-4 z-50">
           <button
             type="button"
