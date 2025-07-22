@@ -9,8 +9,16 @@ const port = process.env.PORT || 3000;
 // Trust Railway proxy
 app.set('trust proxy', true);
 
-// Middleware
-app.use(cors());
+// CORS - Allow GitHub Pages and localhost
+app.use(cors({
+  origin: [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'https://ellingtonsp.github.io'
+  ],
+  credentials: true
+}));
+
 app.use(express.json());
 
 // Environment Configuration
@@ -39,8 +47,7 @@ async function airtableRequest(endpoint, method = 'GET', data = null) {
   
   const response = await fetch(url, options);
   if (!response.ok) {
-    const responseText = await response.text();
-    throw new Error(`Airtable ${method} failed: ${response.status} - ${responseText}`);
+    throw new Error(`Airtable ${method} failed: ${response.statusText}`);
   }
   return response.json();
 }
@@ -100,20 +107,20 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Create User - Clean version without created_at
+// Create User
 app.post('/api/users', async (req, res) => {
   try {
     const userData = {
       email: req.body.email,
       nickname: req.body.nickname,
-      confidence_meds: parseInt(req.body.confidence_meds) || 5,
-      confidence_costs: parseInt(req.body.confidence_costs) || 5,
-      confidence_overall: parseInt(req.body.confidence_overall) || 5,
+      confidence_meds: req.body.confidence_meds || 5,
+      confidence_costs: req.body.confidence_costs || 5,
+      confidence_overall: req.body.confidence_overall || 5,
       primary_need: req.body.primary_need,
       cycle_stage: req.body.cycle_stage,
       top_concern: req.body.top_concern,
       timezone: req.body.timezone,
-      email_opt_in: true,
+      email_opt_in: req.body.email_opt_in || true,
       status: 'active'
     };
 
@@ -148,6 +155,36 @@ app.get('/api/users/:id', async (req, res) => {
     res.status(404).json({ 
       success: false, 
       error: 'User not found' 
+    });
+  }
+});
+
+// Create Daily Check-in
+app.post('/api/checkins/daily', async (req, res) => {
+  try {
+    const checkinData = {
+      user_id: [req.body.user_id],
+      mood_today: req.body.mood_today,
+      primary_concern_today: req.body.primary_concern_today || [],
+      confidence_today: req.body.confidence_today || 5,
+      user_note: req.body.user_note || '',
+      date_submitted: new Date().toISOString().split('T')[0]
+    };
+
+    const result = await airtableRequest('DailyCheckins', 'POST', {
+      fields: checkinData
+    });
+
+    res.status(201).json({ 
+      success: true, 
+      checkin: { id: result.id, ...result.fields },
+      message: 'Daily check-in saved successfully'
+    });
+  } catch (error) {
+    console.error('Create daily check-in error:', error);
+    res.status(400).json({ 
+      success: false, 
+      error: error.message 
     });
   }
 });
