@@ -313,11 +313,35 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
                   max="10"
                   value={confidenceToday}
                   onChange={(e) => setConfidenceToday(Number(e.target.value))}
-                  className="w-full h-3 cursor-pointer rounded-lg slider-coral"
+                  className="w-full h-3 cursor-pointer rounded-lg appearance-none outline-none"
                   style={{
                     background: `linear-gradient(to right, #FF6F61 0%, #FF6F61 ${((confidenceToday - 1) / 9) * 100}%, #e5e7eb ${((confidenceToday - 1) / 9) * 100}%, #e5e7eb 100%)`
                   }}
                 />
+                <style dangerouslySetInnerHTML={{
+                  __html: `
+                    input[type="range"]::-webkit-slider-thumb {
+                      -webkit-appearance: none;
+                      width: 20px;
+                      height: 20px;
+                      border-radius: 50%;
+                      background: #FF6F61;
+                      cursor: pointer;
+                      border: 2px solid white;
+                      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                    }
+                    input[type="range"]::-moz-range-thumb {
+                      width: 20px;
+                      height: 20px;
+                      border-radius: 50%;
+                      background: #FF6F61;
+                      cursor: pointer;
+                      border: 2px solid white;
+                      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                      border: none;
+                    }
+                  `
+                }} />
                 <div className="flex justify-between text-xs text-gray-500 mt-1">
                   <span>Not confident</span>
                   <span className="font-medium text-[#FF6F61]">{confidenceToday}/10</span>
@@ -362,7 +386,7 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
       {/* Mobile Form - Only show on mobile */}
       <div className="block md:hidden min-h-screen bg-[#FFF5F0]">
         {/* Mobile Header */}
-        <div className="bg-white shadow-sm px-4 py-6 safe-area-pt">
+        <div className="bg-white shadow-sm px-4 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <Heart className="w-6 h-6 text-[#FF6F61]" />
@@ -377,7 +401,7 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
           </div>
         </div>
 
-        <div className="px-4 py-6 space-y-8 pb-32">
+        <div className="px-4 py-6 space-y-8 pb-40">
           {/* Mobile Mood Selection */}
           <div>
             <h2 className="text-lg font-semibold text-gray-900 mb-4">
@@ -443,11 +467,34 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
               max="10"
               value={confidenceToday}
               onChange={(e) => setConfidenceToday(Number(e.target.value))}
-              className="w-full h-4 bg-gray-200 rounded-lg appearance-none cursor-pointer slider-coral"
+              className="w-full h-4 bg-gray-200 rounded-lg appearance-none cursor-pointer outline-none"
               style={{
                 background: `linear-gradient(to right, #FF6F61 0%, #FF6F61 ${((confidenceToday - 1) / 9) * 100}%, #e5e7eb ${((confidenceToday - 1) / 9) * 100}%, #e5e7eb 100%)`
               }}
             />
+            <style dangerouslySetInnerHTML={{
+              __html: `
+                input[type="range"]::-webkit-slider-thumb {
+                  -webkit-appearance: none;
+                  width: 24px;
+                  height: 24px;
+                  border-radius: 50%;
+                  background: #FF6F61;
+                  cursor: pointer;
+                  border: 3px solid white;
+                  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+                }
+                input[type="range"]::-moz-range-thumb {
+                  width: 24px;
+                  height: 24px;
+                  border-radius: 50%;
+                  background: #FF6F61;
+                  cursor: pointer;
+                  border: 3px solid white;
+                  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+                }
+              `
+            }} />
             <div className="flex justify-between text-xs text-gray-500 mt-3">
               <span>Not confident</span>
               <span>Very confident</span>
@@ -492,8 +539,8 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
           </div>
         </div>
 
-        {/* Mobile Fixed Submit Button */}
-        <div className="fixed bottom-20 left-0 right-0 bg-white border-t border-gray-200 p-4 safe-area-pb z-40">
+        {/* Mobile Fixed Submit Button - IMPORTANT: This must be included! */}
+        <div className="fixed bottom-20 left-0 right-0 bg-white border-t border-gray-200 p-4 z-50">
           <button
             type="button"
             onClick={handleSubmit}
@@ -501,7 +548,7 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
             className={`w-full py-4 px-6 rounded-xl font-semibold text-lg transition-all active:scale-95 ${
               selectedMoods.length === 0 || isSubmitting
                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                : 'bg-[#FF6F61] text-white hover:bg-[#e55a4d] shadow-sm'
+                : 'bg-[#FF6F61] text-white hover:bg-[#e55a4d] shadow-lg'
             }`}
           >
             {isSubmitting ? (
