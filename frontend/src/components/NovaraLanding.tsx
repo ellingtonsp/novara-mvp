@@ -34,7 +34,7 @@ const NovaraLanding = () => {
     primary_need: '',
     cycle_stage: '',
     top_concern: '',
-    timezone: 'PST',
+    //timezone: 'PST',
     email_opt_in: true,
   });
 
@@ -51,7 +51,7 @@ const NovaraLanding = () => {
     primary_need: formData.primary_need || '',
     cycle_stage: formData.cycle_stage || '',
     top_concern: formData.top_concern || '',
-    timezone: formData.timezone,
+    //timezone: formData.timezone,
     email_opt_in: formData.email_opt_in,
   };
 
@@ -60,7 +60,7 @@ console.log('email:', typeof cleanFormData.email, cleanFormData.email);
 console.log('nickname:', typeof cleanFormData.nickname, cleanFormData.nickname);
 console.log('confidence_meds:', typeof cleanFormData.confidence_meds, cleanFormData.confidence_meds);
 console.log('email_opt_in:', typeof cleanFormData.email_opt_in, cleanFormData.email_opt_in);
-console.log('timezone:', typeof cleanFormData.timezone, cleanFormData.timezone);
+//console.log('timezone:', typeof cleanFormData.timezone, cleanFormData.timezone);
 console.log('Full clean data:', cleanFormData);
   
   try {
