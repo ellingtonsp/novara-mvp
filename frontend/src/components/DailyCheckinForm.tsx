@@ -313,38 +313,11 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
                   max="10"
                   value={confidenceToday}
                   onChange={(e) => setConfidenceToday(Number(e.target.value))}
-                  className="w-full h-3 cursor-pointer rounded-lg"
+                  className="w-full h-3 cursor-pointer rounded-lg slider-coral"
                   style={{
-                    background: `linear-gradient(to right, #FF6F61 0%, #FF6F61 ${((confidenceToday - 1) / 9) * 100}%, #e5e7eb ${((confidenceToday - 1) / 9) * 100}%, #e5e7eb 100%)`,
-                    WebkitAppearance: 'none',
-                    appearance: 'none',
-                    outline: 'none'
+                    background: `linear-gradient(to right, #FF6F61 0%, #FF6F61 ${((confidenceToday - 1) / 9) * 100}%, #e5e7eb ${((confidenceToday - 1) / 9) * 100}%, #e5e7eb 100%)`
                   }}
                 />
-                <style dangerouslySetInnerHTML={{
-                  __html: `
-                    input[type="range"]::-webkit-slider-thumb {
-                      -webkit-appearance: none;
-                      width: 20px;
-                      height: 20px;
-                      border-radius: 50%;
-                      background: #FF6F61;
-                      cursor: pointer;
-                      border: 2px solid white;
-                      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                    }
-                    input[type="range"]::-moz-range-thumb {
-                      width: 20px;
-                      height: 20px;
-                      border-radius: 50%;
-                      background: #FF6F61;
-                      cursor: pointer;
-                      border: 2px solid white;
-                      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                      border: none;
-                    }
-                  `
-                }} />
                 <div className="flex justify-between text-xs text-gray-500 mt-1">
                   <span>Not confident</span>
                   <span className="font-medium text-[#FF6F61]">{confidenceToday}/10</span>
@@ -471,6 +444,9 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
               value={confidenceToday}
               onChange={(e) => setConfidenceToday(Number(e.target.value))}
               className="w-full h-4 bg-gray-200 rounded-lg appearance-none cursor-pointer slider-coral"
+              style={{
+                background: `linear-gradient(to right, #FF6F61 0%, #FF6F61 ${((confidenceToday - 1) / 9) * 100}%, #e5e7eb ${((confidenceToday - 1) / 9) * 100}%, #e5e7eb 100%)`
+              }}
             />
             <div className="flex justify-between text-xs text-gray-500 mt-3">
               <span>Not confident</span>
@@ -517,7 +493,7 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
         </div>
 
         {/* Mobile Fixed Submit Button */}
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 safe-area-pb z-40">
+        <div className="fixed bottom-20 left-0 right-0 bg-white border-t border-gray-200 p-4 safe-area-pb z-40">
           <button
             type="button"
             onClick={handleSubmit}

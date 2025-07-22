@@ -110,7 +110,6 @@
 
 /* Mobile-optimized range slider styles */
 .slider-coral {
-  background: linear-gradient(to right, #FF6F61 0%, #FF6F61 50%, #e5e7eb 50%, #e5e7eb 100%);
   height: 12px;
   border-radius: 6px;
   outline: none;
