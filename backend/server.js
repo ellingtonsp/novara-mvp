@@ -1,4 +1,4 @@
-// Novara Complete API Server with JWT Authentication
+// Novara Complete API Server with JWT Authentication + Daily Insight Engine v1
 const express = require('express');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
@@ -120,7 +120,310 @@ function generateToken(user) {
   );
 }
 
-// Micro-Insight Engine
+// ============================================================================
+// DAILY INSIGHT ENGINE v1 - PATTERN ANALYSIS & INSIGHT GENERATION
+// ============================================================================
+
+// Helper Functions for Pattern Analysis
+function countConsecutivePattern(moodHistory, type) {
+  let count = 0;
+  for (const day of moodHistory) {
+    if ((type === 'positive' && day.positive > day.challenging) ||
+        (type === 'challenging' && day.challenging > day.positive)) {
+      count++;
+    } else {
+      break;
+    }
+  }
+  return count;
+}
+
+function countConfidenceStreak(checkins) {
+  let streak = 0;
+  let previousConfidence = null;
+  
+  for (const checkin of checkins) {
+    if (previousConfidence === null || checkin.confidence_today >= previousConfidence) {
+      streak++;
+      previousConfidence = checkin.confidence_today;
+    } else {
+      break;
+    }
+  }
+  return streak;
+}
+
+function calculateVolatility(scores) {
+  if (scores.length < 2) return 0;
+  
+  const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+  const variance = scores.reduce((sum, score) => sum + Math.pow(score - avg, 2), 0) / scores.length;
+  return Math.sqrt(variance);
+}
+
+// Mood Trend Analysis
+function analyzeMoodTrend(checkins) {
+  const moodCategories = {
+    positive: ['hopeful', 'excited', 'grateful'],
+    challenging: ['anxious', 'worried', 'overwhelmed', 'frustrated'],
+    neutral: ['tired']
+  };
+
+  const moodHistory = checkins.map(checkin => {
+    const moods = checkin.mood_today.split(', ').map(m => m.trim().toLowerCase());
+    const positiveCount = moods.filter(m => moodCategories.positive.includes(m)).length;
+    const challengingCount = moods.filter(m => moodCategories.challenging.includes(m)).length;
+    
+    return {
+      date: checkin.date_submitted,
+      positive: positiveCount,
+      challenging: challengingCount,
+      total: moods.length
+    };
+  });
+
+  // Calculate trend direction
+  const recent3 = moodHistory.slice(0, 3);
+  const older3 = moodHistory.slice(3, 6);
+
+  const recentPositive = recent3.reduce((sum, day) => sum + day.positive, 0);
+  const olderPositive = older3.reduce((sum, day) => sum + day.positive, 0);
+  const recentChallenging = recent3.reduce((sum, day) => sum + day.challenging, 0);
+  const olderChallenging = older3.reduce((sum, day) => sum + day.challenging, 0);
+
+  return {
+    direction: recentPositive > olderPositive ? 'improving' : 
+               recentChallenging > olderChallenging ? 'challenging' : 'stable',
+    recent_positive_ratio: recent3.length > 0 ? recentPositive / (recent3.length * 2) : 0,
+    recent_challenging_ratio: recent3.length > 0 ? recentChallenging / (recent3.length * 2) : 0,
+    consecutive_positive: countConsecutivePattern(moodHistory, 'positive'),
+    consecutive_challenging: countConsecutivePattern(moodHistory, 'challenging'),
+    emotional_range: moodHistory[0]?.total || 1
+  };
+}
+
+// Confidence Trend Analysis
+function analyzeConfidenceTrend(checkins) {
+  const confidenceScores = checkins.map(c => c.confidence_today);
+  const recentAvg = confidenceScores.slice(0, 3).reduce((a, b) => a + b, 0) / Math.min(3, confidenceScores.length);
+  const overallAvg = confidenceScores.reduce((a, b) => a + b, 0) / confidenceScores.length;
+  
+  const trend = recentAvg > overallAvg + 1 ? 'rising' : 
+                recentAvg < overallAvg - 1 ? 'declining' : 'stable';
+
+  return {
+    trend,
+    recent_average: Math.round(recentAvg * 10) / 10,
+    overall_average: Math.round(overallAvg * 10) / 10,
+    current_level: confidenceScores[0],
+    lowest_point: Math.min(...confidenceScores),
+    highest_point: Math.max(...confidenceScores),
+    volatility: calculateVolatility(confidenceScores)
+  };
+}
+
+// Concern Pattern Analysis
+function analyzeConcernPatterns(checkins) {
+  const concerns = checkins
+    .map(c => c.primary_concern_today)
+    .filter(c => c && c.trim() !== '');
+
+  const concernCounts = {};
+  concerns.forEach(concern => {
+    concernCounts[concern] = (concernCounts[concern] || 0) + 1;
+  });
+
+  const topConcern = Object.entries(concernCounts)
+    .sort(([,a], [,b]) => b - a)[0];
+
+  return {
+    has_concerns: concerns.length > 0,
+    concern_frequency: concerns.length / checkins.length,
+    top_concern: topConcern?.[0],
+    top_concern_count: topConcern?.[1] || 0,
+    unique_concerns: Object.keys(concernCounts).length,
+    recent_concern: checkins[0]?.primary_concern_today
+  };
+}
+
+// Streak Pattern Analysis
+function analyzeStreakPatterns(checkins) {
+  const confidenceStreak = countConfidenceStreak(checkins);
+  const checkInStreak = checkins.length; // Simple: they have this many days checked in
+  
+  return {
+    confidence_streak: confidenceStreak,
+    checkin_streak: checkInStreak,
+    consistency: checkInStreak >= 3 ? 'high' : checkInStreak >= 2 ? 'medium' : 'new'
+  };
+}
+
+// Emotional Range Analysis
+function analyzeEmotionalRange(checkins) {
+  const allMoods = checkins
+    .map(c => c.mood_today.split(', ').map(m => m.trim().toLowerCase()))
+    .flat();
+  
+  const uniqueMoods = [...new Set(allMoods)];
+  const avgMoodsPerDay = allMoods.length / checkins.length;
+
+  return {
+    emotional_vocabulary: uniqueMoods.length,
+    average_moods_per_day: Math.round(avgMoodsPerDay * 10) / 10,
+    complexity: avgMoodsPerDay > 2 ? 'complex' : avgMoodsPerDay > 1.5 ? 'moderate' : 'simple'
+  };
+}
+
+// Pattern Analysis Engine
+function analyzeUserPatterns(checkins, user) {
+  const patterns = {
+    mood_trend: analyzeMoodTrend(checkins),
+    confidence_trend: analyzeConfidenceTrend(checkins),
+    concern_frequency: analyzeConcernPatterns(checkins),
+    streak_patterns: analyzeStreakPatterns(checkins),
+    emotional_complexity: analyzeEmotionalRange(checkins)
+  };
+
+  return patterns;
+}
+
+// Smart Insight Selection Engine
+function selectBestInsight(patterns, checkins, user) {
+  const insights = [];
+
+  // Confidence Insights (High Priority)
+  if (patterns.confidence_trend.trend === 'rising' && patterns.confidence_trend.recent_average >= 7) {
+    insights.push({
+      type: 'confidence_rising',
+      title: 'Your confidence is growing!',
+      message: `Your confidence has been steadily rising - you've gone from an average of ${patterns.confidence_trend.overall_average} to ${patterns.confidence_trend.recent_average} recently. That growth is real and meaningful.`,
+      confidence: 0.95,
+      priority: 9
+    });
+  }
+
+  if (patterns.confidence_trend.trend === 'declining' && patterns.confidence_trend.recent_average <= 4) {
+    insights.push({
+      type: 'confidence_support',
+      title: 'You\'re navigating a tough patch',
+      message: `Your confidence has dipped recently, and that's completely understandable on this journey. Remember, low confidence days don't define your outcome.`,
+      confidence: 0.9,
+      priority: 8
+    });
+  }
+
+  // Mood Pattern Insights
+  if (patterns.mood_trend.consecutive_positive >= 3) {
+    insights.push({
+      type: 'positive_streak',
+      title: 'What a beautiful streak!',
+      message: `You've had ${patterns.mood_trend.consecutive_positive} consecutive days with positive feelings. Your resilience and hope are shining through.`,
+      confidence: 0.92,
+      priority: 8
+    });
+  }
+
+  if (patterns.mood_trend.consecutive_challenging >= 3) {
+    insights.push({
+      type: 'challenging_support',
+      title: 'You\'re not alone in this',
+      message: `The past few days have felt heavy - anxiety, overwhelm, and worry are all normal parts of this process. These feelings will shift.`,
+      confidence: 0.88,
+      priority: 9
+    });
+  }
+
+  // Emotional Complexity Insights
+  if (patterns.emotional_complexity.complexity === 'complex' && patterns.emotional_complexity.average_moods_per_day > 2.5) {
+    insights.push({
+      type: 'emotional_awareness',
+      title: 'Your emotional awareness is remarkable',
+      message: `You're experiencing an average of ${patterns.emotional_complexity.average_moods_per_day} different feelings each day. This emotional richness shows incredible self-awareness.`,
+      confidence: 0.85,
+      priority: 6
+    });
+  }
+
+  // Concern Pattern Insights
+  if (patterns.concern_frequency.top_concern && patterns.concern_frequency.top_concern_count >= 3) {
+    const concernInsights = {
+      'Financial stress': 'The financial aspect weighs heavily on many people in this journey. You\'re not alone in this worry.',
+      'Medication side effects': 'Medication concerns are so common - your body is doing remarkable work right now.',
+      'Appointment outcomes': 'The waiting and uncertainty around appointments can feel overwhelming. Each appointment is one step forward.',
+      'Family pressure': 'Family dynamics during IVF can be complex. Setting boundaries for your emotional wellbeing is important.'
+    };
+
+    const concernMessage = concernInsights[patterns.concern_frequency.top_concern] || 
+                          `${patterns.concern_frequency.top_concern} has been on your mind lately. It's natural to focus on what matters most to you.`;
+
+    insights.push({
+      type: 'concern_pattern',
+      title: 'Acknowledging your concerns',
+      message: concernMessage,
+      confidence: 0.87,
+      priority: 7
+    });
+  }
+
+  // Consistency Insights
+  if (patterns.streak_patterns.checkin_streak >= 5) {
+    insights.push({
+      type: 'consistency_celebration',
+      title: 'Your consistency is powerful',
+      message: `${patterns.streak_patterns.checkin_streak} days of checking in with yourself! This daily practice of self-awareness is building something beautiful.`,
+      confidence: 0.83,
+      priority: 5
+    });
+  }
+
+  // Stability Insights
+  if (patterns.confidence_trend.volatility < 1.5 && patterns.confidence_trend.overall_average >= 6) {
+    insights.push({
+      type: 'steady_strength',
+      title: 'Your steady strength is remarkable',
+      message: `Your confidence has remained steady around ${patterns.confidence_trend.overall_average}/10. This emotional stability is a real strength during IVF.`,
+      confidence: 0.8,
+      priority: 4
+    });
+  }
+
+  // Fallback insights for edge cases
+  if (insights.length === 0) {
+    insights.push({
+      type: 'general_support',
+      title: 'Thank you for checking in',
+      message: 'Every day you show up for yourself on this journey matters. We see your courage and commitment.',
+      confidence: 0.75,
+      priority: 3
+    });
+  }
+
+  // Return highest priority insight
+  return insights.sort((a, b) => b.priority - a.priority)[0];
+}
+
+// Advanced Insight Generation Engine
+function generateDailyInsights(checkins, user) {
+  if (!checkins || checkins.length === 0) {
+    return {
+      type: 'welcome',
+      title: 'Welcome back!',
+      message: "We're here to support you on this journey. Consider sharing how you're feeling today.",
+      confidence: 0.9
+    };
+  }
+
+  // Analyze patterns from recent check-ins
+  const analysis = analyzeUserPatterns(checkins, user);
+  
+  // Generate insight based on strongest pattern
+  return selectBestInsight(analysis, checkins, user);
+}
+
+// ============================================================================
+// ORIGINAL MICRO-INSIGHT ENGINE (for immediate feedback after check-ins)
+// ============================================================================
+
 function generateMicroInsight(userData) {
   const { confidence_meds, confidence_costs, confidence_overall, primary_need } = userData;
   
@@ -151,7 +454,11 @@ function generateMicroInsight(userData) {
   };
 }
 
-// Routes
+// ============================================================================
+// API ROUTES
+// ============================================================================
+
+// Root Route
 app.get('/', (req, res) => {
   res.json({
     message: 'Novara API is running',
@@ -160,12 +467,14 @@ app.get('/', (req, res) => {
       auth: '/api/auth/login',
       users: '/api/users',
       checkins: '/api/checkins',
-      insights: '/api/users/:id/insight'
+      insights: '/api/insights/daily',
+      engagement: '/api/insights/engagement'
     },
     docs: 'https://github.com/ellingtonsp/novara-mvp'
   });
 });
 
+// Health Check
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'ok', 
@@ -177,7 +486,9 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Authentication Routes
+// ============================================================================
+// AUTHENTICATION ROUTES
+// ============================================================================
 
 // Login (for existing users)
 app.post('/api/auth/login', async (req, res) => {
@@ -331,7 +642,11 @@ app.get('/api/users/me', authenticateToken, async (req, res) => {
   }
 });
 
-// Daily Check-ins (Protected Route)
+// ============================================================================
+// DAILY CHECK-INS ROUTES
+// ============================================================================
+
+// Submit Daily Check-in (Protected Route)
 app.post('/api/checkins', authenticateToken, async (req, res) => {
   try {
     console.log('📝 Daily check-in submission received:', req.body);
@@ -488,7 +803,135 @@ app.get('/api/checkins', authenticateToken, async (req, res) => {
   }
 });
 
-// Get User Insight (Protected Route)
+// ============================================================================
+// DAILY INSIGHT ENGINE ROUTES (NEW!)
+// ============================================================================
+
+// Get Daily Insights (Protected Route)
+app.get('/api/insights/daily', authenticateToken, async (req, res) => {
+  try {
+    console.log(`🧠 Generating daily insights for user: ${req.user.email}`);
+
+    // Find user
+    const user = await findUserByEmail(req.user.email);
+    if (!user) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'User not found' 
+      });
+    }
+
+    // Get recent check-ins (last 7 days)
+    const response = await fetch(
+      `${config.airtable.baseUrl}/DailyCheckins?filterByFormula=SEARCH('${user.id}',ARRAYJOIN({user_id}))&sort[0][field]=date_submitted&sort[0][direction]=desc&maxRecords=7`,
+      {
+        headers: {
+          'Authorization': `Bearer ${config.airtable.apiKey}`,
+        }
+      }
+    );
+
+    const result = await response.json();
+    
+    if (!response.ok) {
+      console.error('❌ Airtable error fetching check-ins for insights:', result);
+      return res.status(422).json({ 
+        success: false, 
+        error: 'Failed to retrieve check-ins for analysis' 
+      });
+    }
+
+    const checkins = result.records.map(record => ({
+      id: record.id,
+      mood_today: record.fields.mood_today,
+      primary_concern_today: record.fields.primary_concern_today,
+      confidence_today: record.fields.confidence_today,
+      user_note: record.fields.user_note,
+      date_submitted: record.fields.date_submitted,
+      created_at: record.fields.created_at
+    }));
+
+    // Generate insights using the new engine
+    const insight = generateDailyInsights(checkins, user);
+    
+    console.log(`✅ Generated insight type: ${insight.type} for user: ${req.user.email}`);
+
+    res.json({
+      success: true,
+      insight,
+      analysis_data: {
+        checkins_analyzed: checkins.length,
+        date_range: checkins.length > 0 ? 
+          `${checkins[checkins.length - 1].date_submitted} to ${checkins[0].date_submitted}` : 
+          'No recent check-ins',
+        user_id: user.id
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error generating daily insights:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Internal server error' 
+    });
+  }
+});
+
+// Track Insight Engagement (Protected Route)
+app.post('/api/insights/engagement', authenticateToken, async (req, res) => {
+  try {
+    const { insight_type, action, insight_id } = req.body;
+    
+    console.log(`📊 Tracking engagement: ${action} for insight type: ${insight_type}`);
+
+    // Find user
+    const user = await findUserByEmail(req.user.email);
+    if (!user) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'User not found' 
+      });
+    }
+
+    // Create engagement record
+    // Note: You can create an "InsightEngagement" table in Airtable later for full tracking
+    const engagementData = {
+      user_id: [user.id],
+      insight_type,
+      action, // 'viewed', 'clicked', 'dismissed', 'refreshed'
+      insight_id: insight_id || '',
+      timestamp: new Date().toISOString(),
+      date_submitted: new Date().toISOString().split('T')[0]
+    };
+
+    // For now, just log engagement - you can create InsightEngagement table later
+    console.log('📈 Insight engagement tracked:', engagementData);
+
+    res.json({
+      success: true,
+      message: 'Engagement tracked successfully',
+      engagement: {
+        user_id: user.id,
+        insight_type,
+        action,
+        timestamp: engagementData.timestamp
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error tracking insight engagement:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Internal server error' 
+    });
+  }
+});
+
+// ============================================================================
+// LEGACY ROUTES (maintained for compatibility)
+// ============================================================================
+
+// Get User Insight (Protected Route) - Original micro-insight engine
 app.get('/api/users/insight', authenticateToken, async (req, res) => {
   try {
     const user = await findUserByEmail(req.user.email);
@@ -527,7 +970,9 @@ app.get('/api/checkins-test', (req, res) => {
       'GET /api/users/me': 'Get current user (protected)',
       'POST /api/checkins': 'Submit daily check-in (protected)',
       'GET /api/checkins': 'Get user check-in history (protected)',
-      'GET /api/users/insight': 'Get user insight (protected)',
+      'GET /api/insights/daily': 'Get personalized daily insights (protected)', // NEW!
+      'POST /api/insights/engagement': 'Track insight engagement (protected)', // NEW!
+      'GET /api/users/insight': 'Get user micro-insight (protected)',
       'GET /api/checkins-test': 'This test endpoint'
     },
     authentication: 'JWT Bearer Token required for protected routes',
@@ -535,11 +980,15 @@ app.get('/api/checkins-test', (req, res) => {
   });
 });
 
-// Start server
+// ============================================================================
+// START SERVER
+// ============================================================================
+
 app.listen(port, () => {
   console.log(`🚀 Novara API running on port ${port}`);
   console.log(`📊 Health check: http://localhost:${port}/api/health`);
   console.log(`🔐 JWT Authentication enabled`);
+  console.log(`🧠 Daily Insight Engine v1 enabled`);
 });
 
 module.exports = app;
