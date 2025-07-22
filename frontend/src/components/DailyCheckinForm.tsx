@@ -2,15 +2,13 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
 import { Heart, Clock, CheckCircle } from 'lucide-react';
 
 interface DailyCheckinData {
-  mood_today: string;
-  primary_concern_today: string;
-  confidence_today: number;
-  user_note: string;
-  user_id: string; // Will be passed from parent or auth context
+  mood_tags: string[];
+  concerns: string;
+  energy_level: number;
+  user_email: string; // Will be passed from parent or auth context
 }
 
 const DailyCheckinForm: React.FC = () => {
@@ -122,9 +120,9 @@ const DailyCheckinForm: React.FC = () => {
     setIsSubmitting(true);
 
     const checkinData: DailyCheckinData = {
-      mood_tags: selectedMoods,
-      concerns: concerns.trim(),
-      energy_level: energyLevel,
+      mood_tags: selectedMood ? [selectedMood] : [],
+      concerns: primaryConcern.trim(),
+      energy_level: confidenceToday,
       user_email: 'current-user@example.com' // TODO: Get from auth context
     };
 
@@ -139,14 +137,15 @@ const DailyCheckinForm: React.FC = () => {
       });
 
       if (response.ok) {
-        const insight = generateImmediateInsight(selectedMoods, energyLevel);
+        const insight = generateImmediateInsight(selectedMood, confidenceToday);
         setImmediateInsight(insight);
         setShowSuccess(true);
         
         // Reset form
-        setSelectedMoods([]);
-        setConcerns('');
-        setEnergyLevel(5);
+        setSelectedMood('');
+        setPrimaryConcern('');
+        setConfidenceToday(5);
+        setUserNote('');
       } else {
         console.error('Failed to submit check-in');
         // TODO: Add error handling UI

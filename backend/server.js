@@ -255,15 +255,23 @@ app.post('/api/checkins', async (req, res) => {
     }
 
     // Prepare data for Airtable DailyCheckins table
+    // Only include fields that have values to avoid Airtable parsing errors
     const checkinData = {
       mood_today,
-      primary_concern_today: primary_concern_today || '', // Optional field
       confidence_today: parseInt(confidence_today),
-      user_note: user_note || '', // Optional field
       user_id,
       date_submitted: new Date().toISOString().split('T')[0], // YYYY-MM-DD format
       // created_at will be auto-populated by Airtable
     };
+
+    // Only add optional fields if they have actual values
+    if (primary_concern_today && primary_concern_today.trim() !== '') {
+      checkinData.primary_concern_today = primary_concern_today.trim();
+    }
+    
+    if (user_note && user_note.trim() !== '') {
+      checkinData.user_note = user_note.trim();
+    }
 
     console.log('📊 Sending to Airtable DailyCheckins:', checkinData);
 
