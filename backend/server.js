@@ -254,15 +254,45 @@ app.post('/api/checkins', async (req, res) => {
       });
     }
 
+    // First, let's find the user record in Airtable to get the actual record ID
+    let userRecordId = null;
+    
+    try {
+      const userLookupResponse = await fetch(
+        `https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/Users?filterByFormula=OR({email}='${user_id}',{Id}='${user_id}')`,
+        {
+          headers: {
+            'Authorization': `Bearer ${process.env.AIRTABLE_API_KEY}`,
+          }
+        }
+      );
+      
+      const userLookupResult = await userLookupResponse.json();
+      
+      if (userLookupResult.records && userLookupResult.records.length > 0) {
+        userRecordId = userLookupResult.records[0].id;
+        console.log('✅ Found user record:', userRecordId);
+      } else {
+        console.log('⚠️ User not found, using user_id as string');
+      }
+    } catch (lookupError) {
+      console.log('⚠️ User lookup failed, proceeding with user_id as string:', lookupError.message);
+    }
+
     // Prepare data for Airtable DailyCheckins table
-    // Only include fields that have values to avoid Airtable parsing errors
     const checkinData = {
       mood_today,
       confidence_today: parseInt(confidence_today),
-      user_id,
       date_submitted: new Date().toISOString().split('T')[0], // YYYY-MM-DD format
       // created_at will be auto-populated by Airtable
     };
+
+    // Handle user_id - use record ID if found, otherwise use as string
+    if (userRecordId) {
+      checkinData.user_id = [userRecordId]; // Array format for linked records
+    } else {
+      checkinData.user_id = user_id; // String format if it's a text field
+    }
 
     // Only add optional fields if they have actual values
     if (primary_concern_today && primary_concern_today.trim() !== '') {
