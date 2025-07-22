@@ -1,8 +1,7 @@
-// DailyInsightsDisplay.tsx - Fixed TypeScript errors
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Lightbulb, Heart, TrendingUp, Brain, X, RefreshCw } from 'lucide-react';
+import { Lightbulb, Heart, TrendingUp, Brain, X, RefreshCw, ThumbsUp, Bookmark } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 interface Insight {
@@ -33,6 +32,7 @@ const DailyInsightsDisplay: React.FC = () => {
   const [isVisible, setIsVisible] = useState(true);
   const [hasBeenViewed, setHasBeenViewed] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Fetch insights when component mounts
   useEffect(() => {
@@ -49,8 +49,12 @@ const DailyInsightsDisplay: React.FC = () => {
     }
   }, [insight, isVisible, hasBeenViewed]);
 
-  const fetchDailyInsights = async () => {
-    setIsLoading(true);
+  const fetchDailyInsights = async (isRefresh = false) => {
+    if (isRefresh) {
+      setIsRefreshing(true);
+    } else {
+      setIsLoading(true);
+    }
     setError(null);
 
     try {
@@ -79,10 +83,11 @@ const DailyInsightsDisplay: React.FC = () => {
       setError('Connection error - insights temporarily unavailable');
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
   };
 
-  const trackEngagement = async (action: 'viewed' | 'clicked' | 'dismissed' | 'refreshed') => {
+  const trackEngagement = async (action: 'viewed' | 'clicked' | 'dismissed' | 'refreshed' | 'liked' | 'saved') => {
     if (!insight) return;
 
     try {
@@ -101,7 +106,6 @@ const DailyInsightsDisplay: React.FC = () => {
       });
     } catch (err) {
       console.error('Error tracking engagement:', err);
-      // Don't show error to user for tracking failures
     }
   };
 
@@ -112,13 +116,22 @@ const DailyInsightsDisplay: React.FC = () => {
 
   const handleRefresh = () => {
     trackEngagement('refreshed');
-    setHasBeenViewed(false); // Reset view tracking
-    fetchDailyInsights();
+    setHasBeenViewed(false);
+    fetchDailyInsights(true);
   };
 
   const handleClick = () => {
     trackEngagement('clicked');
-    // You could expand this to show more detailed insights or navigation
+  };
+
+  const handleLike = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    trackEngagement('liked');
+  };
+
+  const handleSave = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    trackEngagement('saved');
   };
 
   // Get icon based on insight type
@@ -137,7 +150,7 @@ const DailyInsightsDisplay: React.FC = () => {
     };
 
     const IconComponent = iconMap[type] || Lightbulb;
-    return <IconComponent className="w-5 h-5" />;
+    return <IconComponent className="w-6 h-6" />;
   };
 
   // Get color scheme based on insight type
@@ -167,6 +180,30 @@ const DailyInsightsDisplay: React.FC = () => {
         icon: 'text-purple-600',
         button: 'bg-purple-100 hover:bg-purple-200 text-purple-800'
       },
+      emotional_awareness: {
+        border: 'border-indigo-200',
+        bg: 'bg-gradient-to-br from-indigo-50 to-white',
+        icon: 'text-indigo-600',
+        button: 'bg-indigo-100 hover:bg-indigo-200 text-indigo-800'
+      },
+      concern_pattern: {
+        border: 'border-orange-200',
+        bg: 'bg-gradient-to-br from-orange-50 to-white',
+        icon: 'text-orange-600',
+        button: 'bg-orange-100 hover:bg-orange-200 text-orange-800'
+      },
+      consistency_celebration: {
+        border: 'border-pink-200',
+        bg: 'bg-gradient-to-br from-pink-50 to-white',
+        icon: 'text-pink-600',
+        button: 'bg-pink-100 hover:bg-pink-200 text-pink-800'
+      },
+      steady_strength: {
+        border: 'border-teal-200',
+        bg: 'bg-gradient-to-br from-teal-50 to-white',
+        icon: 'text-teal-600',
+        button: 'bg-teal-100 hover:bg-teal-200 text-teal-800'
+      },
       default: {
         border: 'border-[#FF6F61]',
         bg: 'bg-gradient-to-br from-[#FFF5F0] to-white',
@@ -183,29 +220,29 @@ const DailyInsightsDisplay: React.FC = () => {
     return null;
   }
 
-  // Loading state
+  // Mobile Loading state
   if (isLoading) {
     return (
-      <Card className="w-full max-w-md mx-auto mb-6 border border-gray-200">
+      <Card className="w-full mx-auto mb-6 border border-gray-200">
         <CardContent className="p-6">
-          <div className="flex items-center justify-center space-x-2">
-            <RefreshCw className="w-5 h-5 animate-spin text-[#FF6F61]" />
-            <span className="text-sm text-gray-600">Analyzing your journey...</span>
+          <div className="flex items-center justify-center space-x-3">
+            <RefreshCw className="w-6 h-6 animate-spin text-[#FF6F61]" />
+            <span className="text-gray-600">Analyzing your journey...</span>
           </div>
         </CardContent>
       </Card>
     );
   }
 
-  // Error state
+  // Mobile Error state
   if (error) {
     return (
-      <Card className="w-full max-w-md mx-auto mb-6 border border-gray-200">
+      <Card className="w-full mx-auto mb-6 border border-gray-200">
         <CardContent className="p-6">
           <div className="text-center">
-            <p className="text-sm text-gray-600 mb-3">{error}</p>
+            <p className="text-gray-600 mb-4">{error}</p>
             <Button 
-              onClick={handleRefresh}
+              onClick={() => fetchDailyInsights()}
               variant="outline"
               size="sm"
               className="text-[#FF6F61] border-[#FF6F61] hover:bg-[#FF6F61]/10"
@@ -221,26 +258,39 @@ const DailyInsightsDisplay: React.FC = () => {
 
   // No insight available
   if (!insight) {
-    return null;
+    return (
+      <div className="text-center py-8">
+        <div className="text-4xl mb-4">🌱</div>
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">Keep checking in!</h3>
+        <p className="text-gray-600 text-sm max-w-sm mx-auto">
+          Complete a few more daily check-ins to start seeing personalized insights about your patterns.
+        </p>
+      </div>
+    );
   }
 
   const colors = getColorScheme(insight.type);
 
   return (
-    <Card className={`w-full max-w-md mx-auto mb-6 border-2 ${colors.border} ${colors.bg} shadow-sm`}>
+    <Card className={`w-full mx-auto mb-6 border-2 ${colors.border} ${colors.bg} shadow-sm`}>
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <span className={colors.icon}>
+        <div className="flex items-start justify-between">
+          <div className="flex items-center space-x-3">
+            <div className={`${colors.icon} p-2 rounded-lg bg-white/60`}>
               {getInsightIcon(insight.type)}
-            </span>
-            <span className="text-gray-800">Daily Insight</span>
-          </CardTitle>
+            </div>
+            <div className="flex-1">
+              <CardTitle className="text-lg text-gray-800">Daily Insight</CardTitle>
+              <div className="text-sm text-gray-500">
+                {Math.round(insight.confidence * 100)}% confidence
+              </div>
+            </div>
+          </div>
           <Button
             variant="ghost"
             size="sm"
             onClick={handleDismiss}
-            className="h-8 w-8 p-0 text-gray-400 hover:text-gray-600"
+            className="h-8 w-8 p-0 text-gray-400 hover:text-gray-600 -mt-1 -mr-1"
           >
             <X className="w-4 h-4" />
           </Button>
@@ -249,48 +299,61 @@ const DailyInsightsDisplay: React.FC = () => {
       
       <CardContent className="pt-0">
         <div className="space-y-4">
-          {/* Insight Content */}
+          {/* Mobile Insight Content */}
           <div 
             className="cursor-pointer"
             onClick={handleClick}
           >
-            <h3 className="font-semibold text-gray-800 mb-2">
+            <h3 className="font-semibold text-gray-800 mb-3 text-lg leading-relaxed">
               {insight.title}
             </h3>
-            <p className="text-sm text-gray-700 leading-relaxed">
+            <p className="text-gray-700 leading-relaxed text-base">
               {insight.message}
             </p>
           </div>
 
-          {/* Analysis Summary */}
+          {/* Mobile Analysis Summary */}
           {analysisData && (
-            <div className="pt-3 border-t border-gray-100">
-              <p className="text-xs text-gray-500">
-                Based on {analysisData.checkins_analyzed} recent check-ins
+            <div className="bg-white/60 rounded-xl p-4">
+              <h4 className="font-medium text-gray-900 text-sm mb-2">Based on your data:</h4>
+              <div className="space-y-1">
+                <div className="flex items-center text-sm text-gray-700">
+                  <span className="mr-2">📊</span>
+                  <span>{analysisData.checkins_analyzed} check-ins analyzed</span>
+                </div>
                 {analysisData.checkins_analyzed > 1 && (
-                  <span className="ml-1">
-                    ({analysisData.date_range})
-                  </span>
+                  <div className="flex items-center text-sm text-gray-700">
+                    <span className="mr-2">📅</span>
+                    <span>{analysisData.date_range}</span>
+                  </div>
                 )}
-              </p>
+              </div>
             </div>
           )}
 
-          {/* Action Buttons */}
-          <div className="flex items-center justify-between pt-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleRefresh}
-              className="text-gray-600 hover:text-gray-800"
+          {/* Mobile Action Buttons */}
+          <div className="flex space-x-3 pt-2">
+            <button
+              onClick={handleLike}
+              className="flex-1 bg-white/80 hover:bg-white text-gray-700 py-3 px-4 rounded-xl font-medium transition-colors active:scale-95 flex items-center justify-center space-x-2"
             >
-              <RefreshCw className="w-4 h-4 mr-1" />
-              Refresh
-            </Button>
-            
-            <div className="text-xs text-gray-400">
-              {Math.round(insight.confidence * 100)}% confidence
-            </div>
+              <ThumbsUp className="w-4 h-4" />
+              <span>Helpful</span>
+            </button>
+            <button
+              onClick={handleSave}
+              className="flex-1 bg-white/80 hover:bg-white text-gray-700 py-3 px-4 rounded-xl font-medium transition-colors active:scale-95 flex items-center justify-center space-x-2"
+            >
+              <Bookmark className="w-4 h-4" />
+              <span>Save</span>
+            </button>
+            <button
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="px-4 py-3 bg-white/80 hover:bg-white text-gray-700 rounded-xl font-medium transition-colors active:scale-95 disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            </button>
           </div>
         </div>
       </CardContent>
