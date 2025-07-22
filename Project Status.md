@@ -1,139 +1,140 @@
 # Novara MVP - Project Status
 
 ## 🎯 Current Objective
-Plan and implement next phase of Novara platform development - form submission working successfully!
+Implement Story 3: Daily Insight Engine v1 - Generate meaningful insights from user check-in patterns
 
-## ✅ What's Working Perfectly
-- **Backend API:** `https://novara-mvp-production.up.railway.app/api/users` (Railway)
-- **Airtable Integration:** ✅ FIXED - Users created successfully
+## ✅ COMPLETED - Story 1 & 2: Daily Check-In → Insight Loop
+- **Backend API:** `https://novara-mvp-production.up.railway.app/api/checkins` ✅ WORKING
+- **JWT Authentication:** Secure user sessions with 30-day tokens ✅ WORKING  
+- **Airtable Integration:** DailyCheckins table saving user data ✅ WORKING
 - **Frontend Deployed:** `https://ellingtonsp.github.io/novara-mvp/` (GitHub Pages)
-- **Beautiful UI:** DM Sans font, Novara brand colors, responsive design
-- **Form Submission:** ✅ WORKING - Creates users in Airtable with all confidence ratings
-- **API Integration:** Frontend → Railway → Airtable pipeline complete
+- **Beautiful UI:** DM Sans font, Novara brand colors, responsive design ✅ PERFECTED
+- **Daily Check-in Form:** Multiple mood selection, confidence slider, concerns ✅ WORKING
+- **User Authentication:** Signup → Auto-login → Daily Check-in flow ✅ WORKING
+- **Immediate Micro-feedback:** Instant insights after form submission ✅ WORKING
 
-## 🎉 Recent Success
-- **RESOLVED:** "Unprocessable Entity" error fixed by removing timezone/status fields
-- **Form Flow:** Email + confidence sliders → successful user creation
-- **UI/UX:** Professional, empathetic design perfect for IVF support
-- **All Systems:** End-to-end integration working beautifully
+## 🎉 Recent Achievements
+- **RESOLVED:** Complete JWT authentication system with user persistence
+- **ENHANCED:** Multiple mood selection (hopeful, anxious, excited, etc.)
+- **IMPROVED:** Clean UI with no redundant text prompts
+- **COMPLETED:** End-to-end user flow: Signup → Welcome → Daily Check-in → Insights
 
-## 🏗️ Tech Stack
-- **Backend:** Node.js/Express on Railway
-- **Frontend:** React/TypeScript/Vite on GitHub Pages
-- **Database:** Airtable (Users, DailyCheckins, WeeklyCheckins tables)
+## 🏗️ Tech Stack (Working Perfectly)
+- **Backend:** Node.js/Express + JWT on Railway
+- **Frontend:** React/TypeScript/Vite on GitHub Pages  
+- **Database:** Airtable (Users, DailyCheckins, WeeklyCheckins, UserFlags tables)
+- **Authentication:** JWT tokens with localStorage persistence
 - **Styling:** Tailwind CSS + Shadcn/ui components
 - **Git:** GitHub repo with automated deployments
 
-## 📁 Key Files & Their Status
+## 📁 Key Files & Status
 ```
-backend/server.js          ✅ Working - has CORS fix for GitHub Pages
-frontend/src/components/NovaraLanding.tsx  🔧 Updated but not deployed
-frontend/vite.config.ts     ✅ Working - correct base: '/novara-mvp/'
-frontend/tailwind.config.js ✅ Working - includes Novara brand colors
+backend/
+├── server.js                    ✅ JWT auth + Daily check-ins API
+├── package.json                 ✅ includes jsonwebtoken dependency
+
+frontend/src/
+├── contexts/AuthContext.tsx     ✅ User authentication & persistence  
+├── lib/api.ts                   ✅ API client with JWT headers
+├── components/
+│   ├── NovaraLanding.tsx        ✅ Full auth-integrated landing page
+│   └── DailyCheckinForm.tsx     ✅ Multiple mood selection form
+├── main.tsx                     ✅ Wrapped with AuthProvider
+└── App.tsx                      ✅ Simple app wrapper
 ```
 
 ## 🔑 Airtable Schema (Confirmed Working)
 **Users Table:**
-- `email` (Single line text) - Required
+- `email` (Single line text) - Required, used for JWT lookup
 - `nickname` (Single line text)  
 - `confidence_meds` (Rating, 1-10)
 - `confidence_costs` (Rating, 1-10)
 - `confidence_overall` (Rating, 1-10)
-- `primary_need` (Single line text) - Changed from select to allow dynamic values
-- `cycle_stage` (Single line text) - Changed from select to allow dynamic values
+- `primary_need` (Single line text)
+- `cycle_stage` (Single line text)
 - `top_concern` (Long text)
-- `timezone` (Single line text) - OPTIONAL, causing issues when sent
 - `email_opt_in` (Checkbox)
-- `status` (Single line text) - OPTIONAL, causing issues when sent
 - `created_at` (Created time) - Auto-populated
 
-## 🐛 Debug Information
+**DailyCheckins Table:**
+- `user_id` (Linked to Users table) - Array of record IDs
+- `mood_today` (Single line text) - Comma-separated moods 
+- `primary_concern_today` (Single line text) - Optional
+- `confidence_today` (Rating, 1-10)
+- `user_note` (Long text) - Optional
+- `date_submitted` (Date) - YYYY-MM-DD format
+- `created_at` (Created time) - Auto-populated
 
-### Working API Test (Successful)
+## 🚀 Working API Endpoints
 ```bash
-curl -X POST https://novara-mvp-production.up.railway.app/api/users \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "minimal-test@example.com",
-    "confidence_meds": 5,
-    "confidence_costs": 5,
-    "confidence_overall": 5,
-    "timezone": "PST"
-  }'
-# Returns: {"success":true,"user":{...}}
+# Authentication
+POST /api/users              # Signup (auto-login with JWT)
+POST /api/auth/login         # Login existing user
+GET  /api/users/me           # Get current user (protected)
+
+# Daily Check-ins  
+POST /api/checkins           # Submit check-in (protected)
+GET  /api/checkins           # Get user's recent check-ins (protected)
+
+# Health & Debug
+GET  /api/health             # API health check
+GET  /api/checkins-test      # API endpoints overview
 ```
 
-### Form Data Being Sent (Problematic)
+## 🎯 SUCCESS METRICS ACHIEVED
+- ✅ **Form submission working flawlessly** 
+- ✅ **Users can signup → auto-login → daily check-in**
+- ✅ **Multiple mood selection with visual feedback**
+- ✅ **Immediate micro-insights after submission**
+- ✅ **Secure JWT authentication with persistence**
+- ✅ **Data saving to DailyCheckins table correctly**
+
+## 🧠 NEXT: Story 3 - Daily Insight Engine v1
+**Goal:** Analyze user's check-in patterns to generate meaningful 1-2 sentence insights
+
+**Requirements:**
+- Analyze last 7 days of user check-ins
+- Identify mood patterns, confidence trends, repeated concerns
+- Generate personalized insights using existing logic + pattern analysis
+- Deliver insights on-screen when user returns (within 24hrs)
+- Track insight engagement for 60% read rate KPI
+
+**Current Insight Logic Foundation:**
 ```javascript
-{
-  email: "test@example.com",
-  nickname: "test",
-  confidence_meds: 5,
-  confidence_costs: 5, 
-  confidence_overall: 5,
-  timezone: "America/Los_Angeles",  // ❌ Should be omitted
-  status: "active",                 // ❌ Should be omitted
-  email_opt_in: true
+// Basic immediate feedback (working)
+generateImmediateInsight(moods, confidence) {
+  if (moods.includes('hopeful')) return "Your positive energy today is beautiful! 💛";
+  if (moods.includes('anxious')) return "It's normal to feel this way during IVF. 🤗";
+  // ... more logic
 }
 ```
 
-## 🚀 Next Phase Development Options
+## 🔧 Environment Variables (Railway)
+- `AIRTABLE_API_KEY` ✅ Set
+- `AIRTABLE_BASE_ID` ✅ Set  
+- `JWT_SECRET` ✅ Set
+- `NODE_ENV=production` ✅ Set
 
-### Option 1: User Experience Enhancement
-- **Welcome flow:** Personalized onboarding based on confidence ratings
-- **Dashboard:** User homepage with journey timeline and next steps
-- **Micro-insights:** Display personalized messages from confidence data
-- **Navigation:** Add menu, user profile, settings
-
-### Option 2: Core IVF Features  
-- **Daily Check-ins:** Mood tracking, concerns, confidence updates
-- **Journey Timeline:** Visual progress through IVF stages
-- **Medication Tracker:** Dosage reminders, side effect logging
-- **Appointment Calendar:** Sync with IVF clinic schedule
-
-### Option 3: Content & Support
-- **Resource Library:** Evidence-based IVF information by stage
-- **Community Features:** Safe space for user connection
-- **Expert Content:** Doctor Q&As, medication guides
-- **Support Chat:** Integration with counseling services
-
-### Option 4: Technical Infrastructure
-- **User Authentication:** Login/logout, secure sessions
-- **Data Analytics:** Track user engagement, popular features  
-- **Mobile Optimization:** Progressive Web App (PWA)
-- **Performance:** Caching, optimization, monitoring
-
-## 🚀 Deployment Commands
+## 🚀 Deployment Commands (Working)
 ```bash
 # Frontend (GitHub Pages)
-cd frontend
-npm run build
-npm run deploy
+cd frontend && npm run build && npm run deploy
 
-# Backend (Railway - auto-deploys on git push)
-git add backend/
-git commit -m "Backend changes"
-git push origin main
+# Backend (Railway - auto-deploys)
+git add . && git commit -m "Update" && git push origin main
 ```
 
-## 🎨 Brand Colors (Working)
+## 🎨 Brand Colors (Working Perfectly)
 - **Cream:** `#FFF5F0`
 - **Coral:** `#FF6F61` 
 - **Lavender:** `#CBA7FF`
 
-## 📞 For New Conversations
-**Share this context:**
+## 📞 For Story 3 Context
+**Share this status:**
 1. **Repo:** `https://github.com/ellingtonsp/novara-mvp`
-2. **Issue:** Frontend deployment cache preventing timezone/status removal
-3. **Need:** Force GitHub Pages to deploy updated code without timezone fields
-4. **Test:** Curl works, form doesn't - deployment problem not code problem
-
-## 🏁 Success Criteria
-- [ ] Form submits without timezone/status fields
-- [ ] Console shows clean data (no timezone/status)
-- [ ] API returns `{"success": true, "user": {...}}`
-- [ ] User created in Airtable with confidence ratings
-- [ ] "Welcome to Novara!" success message displays
+2. **Working APIs:** JWT auth + Daily check-ins fully operational
+3. **Data Available:** Users table + DailyCheckins with mood patterns
+4. **Goal:** Build insight engine to analyze user patterns and generate meaningful support
 
 ---
-*Last Updated: July 22, 2025 - Ready for new conversation context*
+*Last Updated: July 22, 2025 - Ready for Story 3: Daily Insight Engine v1*

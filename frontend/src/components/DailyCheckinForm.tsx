@@ -3,16 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Heart, Clock, CheckCircle } from 'lucide-react';
-
-interface DailyCheckinData {
-  mood_tags: string[];
-  concerns: string;
-  energy_level: number;
-  user_email: string; // Will be passed from parent or auth context
-}
+import { useAuth } from '../contexts/AuthContext';
+import { apiClient } from '../lib/api';
 
 const DailyCheckinForm: React.FC = () => {
-  const [selectedMood, setSelectedMood] = useState<string>('');
+  const { user, isAuthenticated } = useAuth();
+  const [selectedMoods, setSelectedMoods] = useState<string[]>([]);
   const [primaryConcern, setPrimaryConcern] = useState('');
   const [confidenceToday, setConfidenceToday] = useState(5);
   const [userNote, setUserNote] = useState('');
@@ -93,21 +89,30 @@ const DailyCheckinForm: React.FC = () => {
     'Other'
   ];
 
-  const generateImmediateInsight = (mood: string, confidence: number) => {
-    // Simple immediate feedback logic based on schema
-    if (mood === 'hopeful' || mood === 'excited') {
+  // Toggle mood selection for multiple moods
+  const toggleMood = (mood: string) => {
+    setSelectedMoods(prev => 
+      prev.includes(mood)
+        ? prev.filter(m => m !== mood)
+        : [...prev, mood]
+    );
+  };
+
+  const generateImmediateInsight = (moods: string[], confidence: number) => {
+    // Updated logic for multiple moods
+    if (moods.includes('hopeful') || moods.includes('excited')) {
       return "Your positive energy today is beautiful - hold onto that hope! 💛";
     }
-    if (mood === 'anxious' || mood === 'worried') {
+    if (moods.includes('anxious') || moods.includes('worried')) {
       return "It's completely normal to feel this way during IVF. You're doing amazingly. 🤗";
     }
-    if (mood === 'overwhelmed') {
+    if (moods.includes('overwhelmed')) {
       return "Take it one day at a time. You're stronger than you know. 🌸";
     }
     if (confidence <= 3) {
       return "Low confidence days are part of the journey. Be gentle with yourself today. 💙";
     }
-    if (mood === 'grateful') {
+    if (moods.includes('grateful')) {
       return "Gratitude is such a powerful force. Thank you for sharing that with us. ✨";
     }
     if (confidence >= 8) {
@@ -117,47 +122,61 @@ const DailyCheckinForm: React.FC = () => {
   };
 
   const handleSubmit = async () => {
+    if (!isAuthenticated) {
+      alert('Please log in to submit a check-in');
+      return;
+    }
+
     setIsSubmitting(true);
 
-    const checkinData: DailyCheckinData = {
-      mood_tags: selectedMood ? [selectedMood] : [],
-      concerns: primaryConcern.trim(),
-      energy_level: confidenceToday,
-      user_email: 'current-user@example.com' // TODO: Get from auth context
+    const checkinData = {
+      mood_today: selectedMoods.join(', '), // Convert array to comma-separated string
+      primary_concern_today: primaryConcern,
+      confidence_today: confidenceToday,
+      user_note: userNote,
     };
 
     try {
-      // TODO: Replace with your actual API endpoint
-      const response = await fetch('https://novara-mvp-production.up.railway.app/api/checkins', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(checkinData)
-      });
-
-      if (response.ok) {
-        const insight = generateImmediateInsight(selectedMood, confidenceToday);
+      const response = await apiClient.submitCheckin(checkinData);
+      
+      if (response.success) {
+        const insight = generateImmediateInsight(selectedMoods, confidenceToday);
         setImmediateInsight(insight);
         setShowSuccess(true);
         
         // Reset form
-        setSelectedMood('');
+        setSelectedMoods([]);
         setPrimaryConcern('');
         setConfidenceToday(5);
         setUserNote('');
       } else {
-        console.error('Failed to submit check-in');
-        // TODO: Add error handling UI
+        alert(`Check-in failed: ${response.error}`);
       }
     } catch (error) {
       console.error('Error submitting check-in:', error);
-      // TODO: Add error handling UI
+      alert('Connection error. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  // If not authenticated, show login prompt
+  if (!isAuthenticated) {
+    return (
+      <Card className="w-full max-w-md mx-auto border border-gray-200 shadow-sm">
+        <CardContent className="p-6 text-center">
+          <Heart className="w-12 h-12 text-[#FF6F61] mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-800 mb-3">Ready for your daily check-in?</h3>
+          <p className="text-sm text-gray-600 mb-4">Please log in to track your IVF journey.</p>
+          <Button className="bg-[#FF6F61] hover:bg-[#FF6F61]/90 text-white">
+            Log In to Continue
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Success state
   if (showSuccess) {
     return (
       <Card className="w-full max-w-md mx-auto border-2 border-[#FF6F61] bg-gradient-to-br from-[#FFF5F0] to-white">
@@ -180,30 +199,31 @@ const DailyCheckinForm: React.FC = () => {
     );
   }
 
+  // Main form
   return (
     <Card className="w-full max-w-md mx-auto border border-gray-200 shadow-sm">
       <CardHeader className="pb-4">
         <CardTitle className="flex items-center gap-2 text-lg text-gray-800">
           <Heart className="w-5 h-5 text-[#FF6F61]" />
           Daily Check-In
+          {user?.nickname && <span className="text-sm font-normal text-gray-500">Hi, {user.nickname}!</span>}
         </CardTitle>
-        <p className="text-sm text-gray-600">How are you feeling today?</p>
       </CardHeader>
       <CardContent>
         <div className="space-y-6">
-          {/* Mood Selection - Clean Card Layout */}
+          {/* Mood Selection - Multiple Selection */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-4">
-              How are you feeling today?
+              How are you feeling today? (select all that apply)
             </label>
             <div className="grid grid-cols-2 gap-3">
               {moodOptions.map(({ mood, label, icon, description, color }) => (
                 <button
                   key={mood}
                   type="button"
-                  onClick={() => setSelectedMood(mood)}
+                  onClick={() => toggleMood(mood)}
                   className={`p-4 rounded-lg border-2 transition-all text-left ${
-                    selectedMood === mood 
+                    selectedMoods.includes(mood)
                       ? 'border-[#FF6F61] bg-[#FF6F61]/10 ring-2 ring-[#FF6F61]/20' 
                       : color
                   }`}
@@ -211,6 +231,9 @@ const DailyCheckinForm: React.FC = () => {
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-lg">{icon}</span>
                     <span className="font-medium text-sm">{label}</span>
+                    {selectedMoods.includes(mood) && (
+                      <CheckCircle className="w-4 h-4 text-[#FF6F61] ml-auto" />
+                    )}
                   </div>
                   <p className="text-xs opacity-75 leading-tight">
                     {description}
@@ -218,12 +241,17 @@ const DailyCheckinForm: React.FC = () => {
                 </button>
               ))}
             </div>
+            {selectedMoods.length > 0 && (
+              <p className="text-xs text-gray-500 mt-2">
+                Selected: {selectedMoods.join(', ')}
+              </p>
+            )}
           </div>
 
-          {/* Primary Concern */}
+          {/* Primary Concern - Updated Text */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Primary concern today (optional):
+              What are you most concerned about today? (optional)
             </label>
             <select
               value={primaryConcern}
@@ -242,22 +270,44 @@ const DailyCheckinForm: React.FC = () => {
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Confidence in your journey today (1-10):
             </label>
-            <div className="relative">
-              <div className="w-full h-3 bg-gray-200 rounded-lg overflow-hidden">
-                <div 
-                  className="h-full bg-[#FF6F61] transition-all duration-200 ease-out"
-                  style={{ width: `${confidenceToday * 10}%` }}
-                />
-              </div>
-              <input
-                type="range"
-                min="1"
-                max="10"
-                value={confidenceToday}
-                onChange={(e) => setConfidenceToday(Number(e.target.value))}
-                className="absolute top-0 left-0 w-full h-3 opacity-0 cursor-pointer"
-              />
-            </div>
+            <input
+              type="range"
+              min="1"
+              max="10"
+              value={confidenceToday}
+              onChange={(e) => setConfidenceToday(Number(e.target.value))}
+              className="w-full h-3 cursor-pointer rounded-lg"
+              style={{
+                background: `linear-gradient(to right, #FF6F61 0%, #FF6F61 ${((confidenceToday - 1) / 9) * 100}%, #e5e7eb ${((confidenceToday - 1) / 9) * 100}%, #e5e7eb 100%)`,
+                WebkitAppearance: 'none',
+                appearance: 'none',
+                outline: 'none'
+              }}
+            />
+            <style dangerouslySetInnerHTML={{
+              __html: `
+                input[type="range"]::-webkit-slider-thumb {
+                  -webkit-appearance: none;
+                  width: 20px;
+                  height: 20px;
+                  border-radius: 50%;
+                  background: #FF6F61;
+                  cursor: pointer;
+                  border: 2px solid white;
+                  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                }
+                input[type="range"]::-moz-range-thumb {
+                  width: 20px;
+                  height: 20px;
+                  border-radius: 50%;
+                  background: #FF6F61;
+                  cursor: pointer;
+                  border: 2px solid white;
+                  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                  border: none;
+                }
+              `
+            }} />
             <div className="flex justify-between text-xs text-gray-500 mt-1">
               <span>Not confident</span>
               <span className="font-medium text-[#FF6F61]">{confidenceToday}/10</span>
@@ -282,7 +332,7 @@ const DailyCheckinForm: React.FC = () => {
           <Button
             type="button"
             onClick={handleSubmit}
-            disabled={isSubmitting || !selectedMood}
+            disabled={isSubmitting || selectedMoods.length === 0}
             className="w-full bg-[#FF6F61] hover:bg-[#FF6F61]/90 text-white disabled:opacity-50"
           >
             {isSubmitting ? (

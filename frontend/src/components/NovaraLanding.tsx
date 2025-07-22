@@ -6,10 +6,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Heart, Users, Calendar, MessageCircle, ArrowRight, CheckCircle } from 'lucide-react';
+import { Heart, Users, Calendar, MessageCircle, ArrowRight, CheckCircle, LogOut, User } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { apiClient } from '../lib/api';
 import DailyCheckinForm from './DailyCheckinForm';
 
 const NovaraLanding = () => {
+  const { user, isAuthenticated, isLoading, login, logout } = useAuth();
+  
   // Load DM Sans font
   useEffect(() => {
     const link = document.createElement('link');
@@ -17,7 +21,6 @@ const NovaraLanding = () => {
     link.rel = 'stylesheet';
     document.head.appendChild(link);
 
-    // Apply font to body
     document.body.style.fontFamily = "'DM Sans', sans-serif";
 
     return () => {
@@ -27,8 +30,9 @@ const NovaraLanding = () => {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showForm, setShowForm] = useState(false);
-  const [userSignedUp, setUserSignedUp] = useState(false);
-  const [userName, setUserName] = useState('');
+  const [showLogin, setShowLogin] = useState(false);
+  const [loginEmail, setLoginEmail] = useState('');
+  const [justSignedUp, setJustSignedUp] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     nickname: '',
@@ -41,51 +45,60 @@ const NovaraLanding = () => {
     email_opt_in: true,
   });
 
-  const handleSubmit = async () => {
+  // Show loading screen while auth is initializing
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-novara-cream via-white to-novara-cream flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 rounded-full bg-gradient-to-r from-novara-coral to-novara-lavender flex items-center justify-center mx-auto mb-4 animate-pulse">
+            <Heart className="w-8 h-8 text-white" />
+          </div>
+          <p className="text-gray-600">Loading Novara...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const handleSignup = async () => {
     setIsSubmitting(true);
     
-    // Clean the form data - remove empty strings and null values
-    const cleanFormData = {
-      email: formData.email,
-      nickname: formData.nickname || '',
-      confidence_meds: formData.confidence_meds,
-      confidence_costs: formData.confidence_costs,
-      confidence_overall: formData.confidence_overall,
-      primary_need: formData.primary_need || '',
-      cycle_stage: formData.cycle_stage || '',
-      top_concern: formData.top_concern || '',
-      email_opt_in: formData.email_opt_in,
-    };
-
-    console.log('Form data types check:');
-    console.log('email:', typeof cleanFormData.email, cleanFormData.email);
-    console.log('nickname:', typeof cleanFormData.nickname, cleanFormData.nickname);
-    console.log('confidence_meds:', typeof cleanFormData.confidence_meds, cleanFormData.confidence_meds);
-    console.log('email_opt_in:', typeof cleanFormData.email_opt_in, cleanFormData.email_opt_in);
-    console.log('Full clean data:', cleanFormData);
-    
     try {
-      const response = await fetch('https://novara-mvp-production.up.railway.app/api/users', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(cleanFormData),
-      });
+      const response = await apiClient.createUser(formData);
       
-      const result = await response.json();
-      console.log('API Response:', result);
-      
-      if (result.success) {
-        setUserName(formData.nickname || formData.email.split('@')[0]);
-        setUserSignedUp(true);
+      if (response.success && response.data) {
+        // Auto-login after successful signup
+        login(formData.email, response.data.token, response.data.user);
+        setJustSignedUp(true);
         setShowForm(false);
       } else {
-        alert(`Error: ${result.error || 'Something went wrong'}`);
+        alert(`Signup failed: ${response.error || 'Unknown error'}`);
       }
     } catch (error) {
-      console.error('Network error:', error);
-      alert('Connection error. Please check your internet and try again.');
+      console.error('Signup error:', error);
+      alert('Connection error. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleLogin = async () => {
+    if (!loginEmail) return;
+    
+    setIsSubmitting(true);
+    
+    try {
+      const response = await apiClient.loginUser(loginEmail);
+      
+      if (response.success && response.data) {
+        login(loginEmail, response.data.token, response.data.user);
+        setShowLogin(false);
+        setLoginEmail('');
+      } else {
+        alert(`Login failed: ${response.error || 'User not found'}`);
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      alert('Connection error. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -108,43 +121,84 @@ const NovaraLanding = () => {
               Novara
             </h1>
           </div>
-          <Badge variant="secondary" className="bg-novara-lavender/20 text-novara-coral border-novara-coral/30">
-            Your IVF Journey Support
-          </Badge>
+          <div className="flex items-center space-x-4">
+            {isAuthenticated ? (
+              <>
+                <div className="flex items-center space-x-2 text-sm text-gray-600">
+                  <User className="w-4 h-4" />
+                  <span>Hi, {user?.nickname || user?.email?.split('@')[0]}!</span>
+                </div>
+                <Button
+                  onClick={logout}
+                  variant="outline"
+                  size="sm"
+                  className="text-gray-600 hover:text-gray-800"
+                >
+                  <LogOut className="w-4 h-4 mr-1" />
+                  Logout
+                </Button>
+              </>
+            ) : (
+              <Button
+                onClick={() => setShowLogin(true)}
+                variant="outline"
+                size="sm"
+                className="border-novara-coral text-novara-coral hover:bg-novara-coral/5"
+              >
+                Log In
+              </Button>
+            )}
+            <Badge variant="secondary" className="bg-novara-lavender/20 text-novara-coral border-novara-coral/30">
+              Your IVF Journey Support
+            </Badge>
+          </div>
         </div>
       </header>
 
-      {/* Welcome Back Section (After Signup) */}
-      {userSignedUp && (
+      {/* Welcome Back Section (For Authenticated Users) */}
+      {isAuthenticated && (
         <section className="max-w-4xl mx-auto px-6 py-12">
           <div className="text-center mb-8">
-            <div className="w-16 h-16 rounded-full bg-gradient-to-r from-novara-coral to-novara-lavender flex items-center justify-center mx-auto mb-4">
-              <CheckCircle className="w-8 h-8 text-white" />
-            </div>
-            <h2 className="text-3xl font-bold mb-4">
-              Welcome to Novara, {userName}! 🌟
-            </h2>
-            <p className="text-lg text-gray-600 mb-6">
-              Your journey has officially begun. Let's start with your first daily check-in to help us understand how you're feeling today.
-            </p>
-            
-            {/* Progression Indicator */}
-            <div className="flex items-center justify-center space-x-4 mb-8 text-sm text-gray-500">
-              <div className="flex items-center space-x-2">
-                <CheckCircle className="w-4 h-4 text-green-500" />
-                <span>Account Created</span>
-              </div>
-              <ArrowRight className="w-4 h-4" />
-              <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 rounded-full bg-novara-coral animate-pulse" />
-                <span className="font-medium text-novara-coral">First Check-in</span>
-              </div>
-              <ArrowRight className="w-4 h-4" />
-              <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 rounded-full bg-gray-300" />
-                <span>Daily Insights</span>
-              </div>
-            </div>
+            {justSignedUp ? (
+              <>
+                <div className="w-16 h-16 rounded-full bg-gradient-to-r from-novara-coral to-novara-lavender flex items-center justify-center mx-auto mb-4">
+                  <CheckCircle className="w-8 h-8 text-white" />
+                </div>
+                <h2 className="text-3xl font-bold mb-4">
+                  Welcome to Novara, {user?.nickname || user?.email?.split('@')[0]}! 🌟
+                </h2>
+                <p className="text-lg text-gray-600 mb-6">
+                  Your journey has officially begun. Let's start with your first daily check-in to help us understand how you're feeling today.
+                </p>
+                
+                {/* Progression Indicator */}
+                <div className="flex items-center justify-center space-x-4 mb-8 text-sm text-gray-500">
+                  <div className="flex items-center space-x-2">
+                    <CheckCircle className="w-4 h-4 text-green-500" />
+                    <span>Account Created</span>
+                  </div>
+                  <ArrowRight className="w-4 h-4" />
+                  <div className="flex items-center space-x-2">
+                    <div className="w-4 h-4 rounded-full bg-novara-coral animate-pulse" />
+                    <span className="font-medium text-novara-coral">First Check-in</span>
+                  </div>
+                  <ArrowRight className="w-4 h-4" />
+                  <div className="flex items-center space-x-2">
+                    <div className="w-4 h-4 rounded-full bg-gray-300" />
+                    <span>Daily Insights</span>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <h2 className="text-3xl font-bold mb-4">
+                  Welcome back, {user?.nickname || user?.email?.split('@')[0]}! 👋
+                </h2>
+                <p className="text-lg text-gray-600 mb-6">
+                  Ready for today's check-in? Share how you're feeling and get personalized insights.
+                </p>
+              </>
+            )}
           </div>
           
           {/* Daily Check-in Form */}
@@ -152,29 +206,31 @@ const NovaraLanding = () => {
             <DailyCheckinForm />
           </div>
           
-          {/* Next Steps Preview */}
-          <div className="mt-12 text-center">
-            <h3 className="text-xl font-semibold mb-4 text-gray-800">What happens next?</h3>
-            <div className="grid md:grid-cols-3 gap-6 max-w-3xl mx-auto">
-              <div className="p-4 bg-white/50 rounded-lg border border-novara-coral/20">
-                <MessageCircle className="w-6 h-6 text-novara-coral mx-auto mb-2" />
-                <p className="text-sm text-gray-600">Get personalized insights based on your daily check-ins</p>
-              </div>
-              <div className="p-4 bg-white/50 rounded-lg border border-novara-lavender/20">
-                <Calendar className="w-6 h-6 text-novara-lavender mx-auto mb-2" />
-                <p className="text-sm text-gray-600">Track your journey timeline and milestones</p>
-              </div>
-              <div className="p-4 bg-white/50 rounded-lg border border-novara-coral/20">
-                <Users className="w-6 h-6 text-novara-coral mx-auto mb-2" />
-                <p className="text-sm text-gray-600">Access expert guidance when you need it</p>
+          {/* Next Steps Preview - Only for new users */}
+          {justSignedUp && (
+            <div className="mt-12 text-center">
+              <h3 className="text-xl font-semibold mb-4 text-gray-800">What happens next?</h3>
+              <div className="grid md:grid-cols-3 gap-6 max-w-3xl mx-auto">
+                <div className="p-4 bg-white/50 rounded-lg border border-novara-coral/20">
+                  <MessageCircle className="w-6 h-6 text-novara-coral mx-auto mb-2" />
+                  <p className="text-sm text-gray-600">Get personalized insights based on your daily check-ins</p>
+                </div>
+                <div className="p-4 bg-white/50 rounded-lg border border-novara-lavender/20">
+                  <Calendar className="w-6 h-6 text-novara-lavender mx-auto mb-2" />
+                  <p className="text-sm text-gray-600">Track your journey timeline and milestones</p>
+                </div>
+                <div className="p-4 bg-white/50 rounded-lg border border-novara-coral/20">
+                  <Users className="w-6 h-6 text-novara-coral mx-auto mb-2" />
+                  <p className="text-sm text-gray-600">Access expert guidance when you need it</p>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </section>
       )}
 
-      {/* Original Hero Section (Before Signup) */}
-      {!userSignedUp && (
+      {/* Original Hero Section (For Non-Authenticated Users) */}
+      {!isAuthenticated && (
         <>
           <section className="max-w-6xl mx-auto px-6 py-16">
             <div className="text-center mb-12">
@@ -196,8 +252,12 @@ const NovaraLanding = () => {
                 >
                   Start Your Journey
                 </Button>
-                <Button variant="outline" className="border-novara-coral text-novara-coral hover:bg-novara-coral/5 px-8 py-3 text-lg">
-                  Learn More
+                <Button 
+                  onClick={() => setShowLogin(true)}
+                  variant="outline" 
+                  className="border-novara-coral text-novara-coral hover:bg-novara-coral/5 px-8 py-3 text-lg"
+                >
+                  Already have an account?
                 </Button>
               </div>
             </div>
@@ -250,7 +310,57 @@ const NovaraLanding = () => {
         </>
       )}
 
-      {/* Onboarding Form Modal */}
+      {/* Login Modal */}
+      {showLogin && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle className="text-2xl text-center bg-gradient-to-r from-novara-coral to-novara-lavender bg-clip-text text-transparent">
+                Welcome Back
+              </CardTitle>
+              <p className="text-center text-gray-600">
+                Enter your email to continue your journey
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="login-email">Email</Label>
+                  <Input
+                    id="login-email"
+                    type="email"
+                    value={loginEmail}
+                    onChange={(e) => setLoginEmail(e.target.value)}
+                    placeholder="your-email@example.com"
+                    className="border-novara-coral/30 focus:border-novara-coral"
+                  />
+                </div>
+                
+                <div className="flex gap-3 pt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowLogin(false)}
+                    className="flex-1 border-gray-300"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={handleLogin}
+                    disabled={isSubmitting || !loginEmail}
+                    className="flex-1 bg-novara-coral hover:bg-novara-coral/90 text-white"
+                  >
+                    {isSubmitting ? 'Logging in...' : 'Log In'}
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Signup Form Modal - Complete Form */}
       {showForm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -328,42 +438,44 @@ const NovaraLanding = () => {
                     How confident do you feel about IVF medications? ({formData.confidence_meds}/10)
                   </Label>
                   <div className="mt-4 px-2">
-                    <div className="relative">
-                      <input
-                        type="range"
-                        min="1"
-                        max="10"
-                        value={formData.confidence_meds}
-                        onChange={(e) => handleInputChange('confidence_meds', parseInt(e.target.value))}
-                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-novara-coral focus:ring-opacity-50"
-                        style={{
-                          background: `linear-gradient(to right, #FF6F61 0%, #FF6F61 ${(formData.confidence_meds - 1) * 11.11}%, #e5e7eb ${(formData.confidence_meds - 1) * 11.11}%, #e5e7eb 100%)`
-                        }}
-                      />
-                      <style dangerouslySetInnerHTML={{
-                        __html: `
-                          input[type="range"]::-webkit-slider-thumb {
-                            appearance: none;
-                            height: 20px;
-                            width: 20px;
-                            border-radius: 50%;
-                            background: #FF6F61;
-                            cursor: pointer;
-                            border: 2px solid #fff;
-                            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-                          }
-                          input[type="range"]::-moz-range-thumb {
-                            height: 20px;
-                            width: 20px;
-                            border-radius: 50%;
-                            background: #FF6F61;
-                            cursor: pointer;
-                            border: 2px solid #fff;
-                            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-                          }
-                        `
-                      }} />
-                    </div>
+                    <input
+                      type="range"
+                      min="1"
+                      max="10"
+                      value={formData.confidence_meds}
+                      onChange={(e) => handleInputChange('confidence_meds', parseInt(e.target.value))}
+                      className="w-full h-3 cursor-pointer rounded-lg"
+                      style={{
+                        background: `linear-gradient(to right, #FF6F61 0%, #FF6F61 ${((formData.confidence_meds - 1) / 9) * 100}%, #e5e7eb ${((formData.confidence_meds - 1) / 9) * 100}%, #e5e7eb 100%)`,
+                        WebkitAppearance: 'none',
+                        appearance: 'none',
+                        outline: 'none'
+                      }}
+                    />
+                    <style dangerouslySetInnerHTML={{
+                      __html: `
+                        input[type="range"]::-webkit-slider-thumb {
+                          -webkit-appearance: none;
+                          width: 20px;
+                          height: 20px;
+                          border-radius: 50%;
+                          background: #FF6F61;
+                          cursor: pointer;
+                          border: 2px solid white;
+                          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                        }
+                        input[type="range"]::-moz-range-thumb {
+                          width: 20px;
+                          height: 20px;
+                          border-radius: 50%;
+                          background: #FF6F61;
+                          cursor: pointer;
+                          border: 2px solid white;
+                          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                          border: none;
+                        }
+                      `
+                    }} />
                     <div className="flex justify-between text-sm text-gray-500 mt-2">
                       <span>Not confident</span>
                       <span>Very confident</span>
@@ -376,42 +488,44 @@ const NovaraLanding = () => {
                     How confident do you feel about IVF costs/insurance? ({formData.confidence_costs}/10)
                   </Label>
                   <div className="mt-4 px-2">
-                    <div className="relative">
-                      <input
-                        type="range"
-                        min="1"
-                        max="10"
-                        value={formData.confidence_costs}
-                        onChange={(e) => handleInputChange('confidence_costs', parseInt(e.target.value))}
-                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-novara-coral focus:ring-opacity-50"
-                        style={{
-                          background: `linear-gradient(to right, #FF6F61 0%, #FF6F61 ${(formData.confidence_costs - 1) * 11.11}%, #e5e7eb ${(formData.confidence_costs - 1) * 11.11}%, #e5e7eb 100%)`
-                        }}
-                      />
-                      <style dangerouslySetInnerHTML={{
-                        __html: `
-                          input[type="range"]::-webkit-slider-thumb {
-                            appearance: none;
-                            height: 20px;
-                            width: 20px;
-                            border-radius: 50%;
-                            background: #FF6F61;
-                            cursor: pointer;
-                            border: 2px solid #fff;
-                            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-                          }
-                          input[type="range"]::-moz-range-thumb {
-                            height: 20px;
-                            width: 20px;
-                            border-radius: 50%;
-                            background: #FF6F61;
-                            cursor: pointer;
-                            border: 2px solid #fff;
-                            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-                          }
-                        `
-                      }} />
-                    </div>
+                    <input
+                      type="range"
+                      min="1"
+                      max="10"
+                      value={formData.confidence_costs}
+                      onChange={(e) => handleInputChange('confidence_costs', parseInt(e.target.value))}
+                      className="w-full h-3 cursor-pointer rounded-lg"
+                      style={{
+                        background: `linear-gradient(to right, #FF6F61 0%, #FF6F61 ${((formData.confidence_costs - 1) / 9) * 100}%, #e5e7eb ${((formData.confidence_costs - 1) / 9) * 100}%, #e5e7eb 100%)`,
+                        WebkitAppearance: 'none',
+                        appearance: 'none',
+                        outline: 'none'
+                      }}
+                    />
+                    <style dangerouslySetInnerHTML={{
+                      __html: `
+                        input[type="range"]::-webkit-slider-thumb {
+                          -webkit-appearance: none;
+                          width: 20px;
+                          height: 20px;
+                          border-radius: 50%;
+                          background: #FF6F61;
+                          cursor: pointer;
+                          border: 2px solid white;
+                          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                        }
+                        input[type="range"]::-moz-range-thumb {
+                          width: 20px;
+                          height: 20px;
+                          border-radius: 50%;
+                          background: #FF6F61;
+                          cursor: pointer;
+                          border: 2px solid white;
+                          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                          border: none;
+                        }
+                      `
+                    }} />
                     <div className="flex justify-between text-sm text-gray-500 mt-2">
                       <span>Not confident</span>
                       <span>Very confident</span>
@@ -424,42 +538,44 @@ const NovaraLanding = () => {
                     How confident do you feel about your IVF journey overall? ({formData.confidence_overall}/10)
                   </Label>
                   <div className="mt-4 px-2">
-                    <div className="relative">
-                      <input
-                        type="range"
-                        min="1"
-                        max="10"
-                        value={formData.confidence_overall}
-                        onChange={(e) => handleInputChange('confidence_overall', parseInt(e.target.value))}
-                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-novara-coral focus:ring-opacity-50"
-                        style={{
-                          background: `linear-gradient(to right, #FF6F61 0%, #FF6F61 ${(formData.confidence_overall - 1) * 11.11}%, #e5e7eb ${(formData.confidence_overall - 1) * 11.11}%, #e5e7eb 100%)`
-                        }}
-                      />
-                      <style dangerouslySetInnerHTML={{
-                        __html: `
-                          input[type="range"]::-webkit-slider-thumb {
-                            appearance: none;
-                            height: 20px;
-                            width: 20px;
-                            border-radius: 50%;
-                            background: #FF6F61;
-                            cursor: pointer;
-                            border: 2px solid #fff;
-                            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-                          }
-                          input[type="range"]::-moz-range-thumb {
-                            height: 20px;
-                            width: 20px;
-                            border-radius: 50%;
-                            background: #FF6F61;
-                            cursor: pointer;
-                            border: 2px solid #fff;
-                            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-                          }
-                        `
-                      }} />
-                    </div>
+                    <input
+                      type="range"
+                      min="1"
+                      max="10"
+                      value={formData.confidence_overall}
+                      onChange={(e) => handleInputChange('confidence_overall', parseInt(e.target.value))}
+                      className="w-full h-3 cursor-pointer rounded-lg"
+                      style={{
+                        background: `linear-gradient(to right, #FF6F61 0%, #FF6F61 ${((formData.confidence_overall - 1) / 9) * 100}%, #e5e7eb ${((formData.confidence_overall - 1) / 9) * 100}%, #e5e7eb 100%)`,
+                        WebkitAppearance: 'none',
+                        appearance: 'none',
+                        outline: 'none'
+                      }}
+                    />
+                    <style dangerouslySetInnerHTML={{
+                      __html: `
+                        input[type="range"]::-webkit-slider-thumb {
+                          -webkit-appearance: none;
+                          width: 20px;
+                          height: 20px;
+                          border-radius: 50%;
+                          background: #FF6F61;
+                          cursor: pointer;
+                          border: 2px solid white;
+                          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                        }
+                        input[type="range"]::-moz-range-thumb {
+                          width: 20px;
+                          height: 20px;
+                          border-radius: 50%;
+                          background: #FF6F61;
+                          cursor: pointer;
+                          border: 2px solid white;
+                          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                          border: none;
+                        }
+                      `
+                    }} />
                     <div className="flex justify-between text-sm text-gray-500 mt-2">
                       <span>Not confident</span>
                       <span>Very confident</span>
@@ -503,7 +619,7 @@ const NovaraLanding = () => {
                   </Button>
                   <Button
                     type="button"
-                    onClick={handleSubmit}
+                    onClick={handleSignup}
                     disabled={isSubmitting || !formData.email}
                     className="flex-1 bg-novara-coral hover:bg-novara-coral/90 text-white"
                   >
