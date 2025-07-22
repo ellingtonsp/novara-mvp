@@ -22,14 +22,9 @@ const config = {
   }
 };
 
-// Enhanced Airtable API Helper with detailed logging
+// Airtable API Helper
 async function airtableRequest(endpoint, method = 'GET', data = null) {
   const url = `${config.airtable.baseUrl}/${endpoint}`;
-  
-  console.log(`=== AIRTABLE ${method} REQUEST ===`);
-  console.log('URL:', url);
-  console.log('Data being sent:', JSON.stringify(data, null, 2));
-  
   const options = {
     method,
     headers: {
@@ -43,44 +38,32 @@ async function airtableRequest(endpoint, method = 'GET', data = null) {
   }
   
   const response = await fetch(url, options);
-  const responseText = await response.text();
-  
-  console.log('Response status:', response.status);
-  console.log('Response body:', responseText);
-  
   if (!response.ok) {
-    let errorDetails;
-    try {
-      errorDetails = JSON.parse(responseText);
-      console.log('Parsed error:', JSON.stringify(errorDetails, null, 2));
-    } catch (e) {
-      console.log('Could not parse error as JSON');
-    }
+    const responseText = await response.text();
     throw new Error(`Airtable ${method} failed: ${response.status} - ${responseText}`);
   }
-  
-  return JSON.parse(responseText);
+  return response.json();
 }
 
 // Micro-Insight Engine
 function generateMicroInsight(userData) {
   const { confidence_meds, confidence_costs, confidence_overall, primary_need } = userData;
   
-  if (confidence_meds && confidence_meds <= 3) {
+  if (confidence_meds <= 4) {
     return {
       title: "About IVF medications",
       message: "It sounds like you might have concerns about IVF medications. That's extremely common — we'll aim to demystify the process, one step at a time."
     };
   }
   
-  if (confidence_costs && confidence_costs <= 3) {
+  if (confidence_costs <= 4) {
     return {
       title: "Managing financial stress",
       message: "Financial concerns during fertility treatment can feel overwhelming. You're not alone in this worry."
     };
   }
   
-  if (confidence_overall && confidence_overall <= 3) {
+  if (confidence_overall <= 4) {
     return {
       title: "Your overall journey",
       message: "Some days the path ahead might feel unclear, and that's completely understandable. Take it one day at a time."
@@ -117,42 +100,22 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Create User - Updated with full schema support
+// Create User - Clean version without created_at
 app.post('/api/users', async (req, res) => {
   try {
-    console.log('=== CREATE USER REQUEST ===');
-    console.log('Request body:', JSON.stringify(req.body, null, 2));
-    
-    // Build user data object with all supported fields
-    const userData = {};
-    
-    // Required fields
-    if (req.body.email) userData.email = req.body.email;
-    if (req.body.nickname) userData.nickname = req.body.nickname;
-    
-    // Rating fields (convert to integers for Airtable Rating type)
-    if (req.body.confidence_meds !== undefined) {
-      userData.confidence_meds = parseInt(req.body.confidence_meds);
-    }
-    if (req.body.confidence_costs !== undefined) {
-      userData.confidence_costs = parseInt(req.body.confidence_costs);
-    }
-    if (req.body.confidence_overall !== undefined) {
-      userData.confidence_overall = parseInt(req.body.confidence_overall);
-    }
-    
-    // Text fields
-    if (req.body.primary_need) userData.primary_need = req.body.primary_need;
-    if (req.body.cycle_stage) userData.cycle_stage = req.body.cycle_stage;
-    if (req.body.top_concern) userData.top_concern = req.body.top_concern;
-    if (req.body.timezone) userData.timezone = req.body.timezone;
-    
-    // System fields
-    userData.created_at = new Date().toISOString();
-    userData.email_opt_in = req.body.email_opt_in !== undefined ? req.body.email_opt_in : true;
-    userData.status = req.body.status || 'active';
-
-    console.log('Processed user data:', JSON.stringify(userData, null, 2));
+    const userData = {
+      email: req.body.email,
+      nickname: req.body.nickname,
+      confidence_meds: parseInt(req.body.confidence_meds) || 5,
+      confidence_costs: parseInt(req.body.confidence_costs) || 5,
+      confidence_overall: parseInt(req.body.confidence_overall) || 5,
+      primary_need: req.body.primary_need,
+      cycle_stage: req.body.cycle_stage,
+      top_concern: req.body.top_concern,
+      timezone: req.body.timezone,
+      email_opt_in: true,
+      status: 'active'
+    };
 
     const result = await airtableRequest('Users', 'POST', {
       fields: userData
@@ -165,36 +128,6 @@ app.post('/api/users', async (req, res) => {
     });
   } catch (error) {
     console.error('Create user error:', error);
-    res.status(400).json({ 
-      success: false, 
-      error: error.message 
-    });
-  }
-});
-
-// Debug endpoint to test minimal user creation
-app.post('/api/debug/minimal-user', async (req, res) => {
-  try {
-    console.log('=== DEBUG MINIMAL USER ===');
-    
-    const minimalData = {
-      email: req.body.email || `test-${Date.now()}@example.com`,
-      nickname: req.body.nickname || 'TestUser'
-    };
-    
-    console.log('Creating minimal user:', minimalData);
-    
-    const result = await airtableRequest('Users', 'POST', {
-      fields: minimalData
-    });
-
-    res.json({ 
-      success: true, 
-      user: { id: result.id, ...result.fields },
-      message: 'Minimal user created successfully'
-    });
-  } catch (error) {
-    console.error('Debug minimal user error:', error);
     res.status(400).json({ 
       success: false, 
       error: error.message 
