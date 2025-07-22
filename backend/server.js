@@ -110,27 +110,27 @@ app.get('/api/health', (req, res) => {
 // Create User
 app.post('/api/users', async (req, res) => {
   try {
-    const userData = {
-  email: req.body.email,
-  nickname: req.body.nickname,
-  confidence_meds: req.body.confidence_meds || 5,
-  confidence_costs: req.body.confidence_costs || 5,
-  confidence_overall: req.body.confidence_overall || 5,
-  timezone: req.body.timezone,
-  email_opt_in: req.body.email_opt_in || true,
-  status: 'active'
-};
+     const userData = {
+      email: req.body.email,
+      nickname: req.body.nickname,
+      confidence_meds: req.body.confidence_meds || 5,
+      confidence_costs: req.body.confidence_costs || 5,
+      confidence_overall: req.body.confidence_overall || 5,
+      timezone: req.body.timezone,
+      email_opt_in: req.body.email_opt_in || true,
+      status: 'active'
+    };
 
-// Only add optional fields if they have values
-if (req.body.primary_need && req.body.primary_need !== '') {
-  userData.primary_need = req.body.primary_need;
-}
-if (req.body.cycle_stage && req.body.cycle_stage !== '') {
-  userData.cycle_stage = req.body.cycle_stage;
-}
-if (req.body.top_concern && req.body.top_concern !== '') {
-  userData.top_concern = req.body.top_concern;
-}
+    // Only add optional fields if they have values
+    if (req.body.primary_need && req.body.primary_need !== '') {
+      userData.primary_need = req.body.primary_need;
+    }
+    if (req.body.cycle_stage && req.body.cycle_stage !== '') {
+      userData.cycle_stage = req.body.cycle_stage;
+    }
+    if (req.body.top_concern && req.body.top_concern !== '') {
+      userData.top_concern = req.body.top_concern;
+    }
 
     const result = await airtableRequest('Users', 'POST', {
       fields: userData
