@@ -36,7 +36,6 @@ const NovaraLanding = () => {
     top_concern: '',
     timezone: 'PST'
     email_opt_in: true,
-    status: 'active'
   });
 
   const handleSubmit = async () => {
@@ -54,7 +53,6 @@ const NovaraLanding = () => {
     top_concern: formData.top_concern || '',
     timezone: formData.timezone,
     email_opt_in: formData.email_opt_in,
-    status: formData.status
   };
 
   console.log('Form data types check:');
