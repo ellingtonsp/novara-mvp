@@ -52,6 +52,30 @@ async function airtableRequest(endpoint, method = 'GET', data = null) {
   return response.json();
 }
 
+// User Lookup Helper
+async function findUserByEmail(email) {
+  try {
+    const response = await fetch(
+      `${config.airtable.baseUrl}/Users?filterByFormula={email}='${email}'`,
+      {
+        headers: {
+          'Authorization': `Bearer ${config.airtable.apiKey}`,
+        }
+      }
+    );
+    
+    const result = await response.json();
+    
+    if (result.records && result.records.length > 0) {
+      return result.records[0].id; // Return Airtable record ID
+    }
+    return null;
+  } catch (error) {
+    console.error('User lookup error:', error);
+    return null;
+  }
+}
+
 // Micro-Insight Engine
 function generateMicroInsight(userData) {
   const { confidence_meds, confidence_costs, confidence_overall, primary_need } = userData;
@@ -90,8 +114,9 @@ app.get('/', (req, res) => {
     endpoints: {
       health: '/api/health',
       users: '/api/users',
-      checkins: '/api/checkins/daily',
-      insights: '/api/users/:id/insight'
+      checkins: '/api/checkins',
+      insights: '/api/users/:id/insight',
+      debug: '/api/debug-user/:email'
     },
     docs: 'https://github.com/ellingtonsp/novara-mvp'
   });
@@ -107,10 +132,33 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Debug User Lookup
+app.get('/api/debug-user/:email', async (req, res) => {
+  try {
+    const { email } = req.params;
+    console.log(`🔍 Debug: Looking up user: ${email}`);
+    
+    const userRecordId = await findUserByEmail(email);
+    
+    res.json({
+      success: true,
+      email: email,
+      found: userRecordId !== null,
+      recordId: userRecordId
+    });
+    
+  } catch (error) {
+    res.json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // Create User
 app.post('/api/users', async (req, res) => {
   try {
-     const userData = {
+    const userData = {
       email: req.body.email,
       nickname: req.body.nickname,
       confidence_meds: req.body.confidence_meds || 5,
@@ -167,63 +215,7 @@ app.get('/api/users/:id', async (req, res) => {
   }
 });
 
-// Create Daily Check-in
-app.post('/api/checkins/daily', async (req, res) => {
-  try {
-    const checkinData = {
-      user_id: [req.body.user_id],
-      mood_today: req.body.mood_today,
-      primary_concern_today: req.body.primary_concern_today || [],
-      confidence_today: req.body.confidence_today || 5,
-      user_note: req.body.user_note || '',
-      date_submitted: new Date().toISOString().split('T')[0]
-    };
-
-    const result = await airtableRequest('DailyCheckins', 'POST', {
-      fields: checkinData
-    });
-
-    res.status(201).json({ 
-      success: true, 
-      checkin: { id: result.id, ...result.fields },
-      message: 'Daily check-in saved successfully'
-    });
-  } catch (error) {
-    console.error('Create daily check-in error:', error);
-    res.status(400).json({ 
-      success: false, 
-      error: error.message 
-    });
-  }
-});
-
-// Get User Insight
-app.get('/api/users/:id/insight', async (req, res) => {
-  try {
-    const user = await airtableRequest(`Users/${req.params.id}`);
-    const insight = generateMicroInsight(user.fields);
-    
-    res.json({ 
-      success: true, 
-      insight,
-      user_id: req.params.id
-    });
-  } catch (error) {
-    console.error('Generate insight error:', error);
-    res.status(400).json({ 
-      success: false, 
-      error: error.message 
-    });
-  }
-});
-
-// Start server
-app.listen(port, () => {
-  console.log(`🚀 Novara API running on port ${port}`);
-  console.log(`📊 Health check: http://localhost:${port}/api/health`);
-});
-
-// Daily Check-ins API Route
+// Daily Check-ins - UNIFIED ENDPOINT
 app.post('/api/checkins', async (req, res) => {
   try {
     console.log('📝 Daily check-in submission received:', req.body);
@@ -254,45 +246,26 @@ app.post('/api/checkins', async (req, res) => {
       });
     }
 
-    // First, let's find the user record in Airtable to get the actual record ID
-    let userRecordId = null;
+    // Find user record in Airtable
+    const userRecordId = await findUserByEmail(user_id);
     
-    try {
-      const userLookupResponse = await fetch(
-        `https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/Users?filterByFormula=OR({email}='${user_id}',{Id}='${user_id}')`,
-        {
-          headers: {
-            'Authorization': `Bearer ${process.env.AIRTABLE_API_KEY}`,
-          }
-        }
-      );
-      
-      const userLookupResult = await userLookupResponse.json();
-      
-      if (userLookupResult.records && userLookupResult.records.length > 0) {
-        userRecordId = userLookupResult.records[0].id;
-        console.log('✅ Found user record:', userRecordId);
-      } else {
-        console.log('⚠️ User not found, using user_id as string');
-      }
-    } catch (lookupError) {
-      console.log('⚠️ User lookup failed, proceeding with user_id as string:', lookupError.message);
+    if (!userRecordId) {
+      console.error('❌ User not found:', user_id);
+      return res.status(404).json({ 
+        success: false, 
+        error: 'User not found. Please sign up first.' 
+      });
     }
+
+    console.log('✅ Found user record:', userRecordId);
 
     // Prepare data for Airtable DailyCheckins table
     const checkinData = {
+      user_id: [userRecordId], // Array format for linked records
       mood_today,
       confidence_today: parseInt(confidence_today),
       date_submitted: new Date().toISOString().split('T')[0], // YYYY-MM-DD format
-      // created_at will be auto-populated by Airtable
     };
-
-    // Handle user_id - use record ID if found, otherwise use as string
-    if (userRecordId) {
-      checkinData.user_id = [userRecordId]; // Array format for linked records
-    } else {
-      checkinData.user_id = user_id; // String format if it's a text field
-    }
 
     // Only add optional fields if they have actual values
     if (primary_concern_today && primary_concern_today.trim() !== '') {
@@ -306,39 +279,21 @@ app.post('/api/checkins', async (req, res) => {
     console.log('📊 Sending to Airtable DailyCheckins:', checkinData);
 
     // Create record in Airtable DailyCheckins table
-    const airtableResponse = await fetch(`https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/DailyCheckins`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.AIRTABLE_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        fields: checkinData
-      })
+    const result = await airtableRequest('DailyCheckins', 'POST', {
+      fields: checkinData
     });
 
-    const airtableResult = await airtableResponse.json();
-
-    if (!airtableResponse.ok) {
-      console.error('❌ Airtable error:', airtableResult);
-      return res.status(422).json({ 
-        success: false, 
-        error: 'Failed to save check-in to database',
-        details: airtableResult.error
-      });
-    }
-
-    console.log('✅ Daily check-in saved successfully:', airtableResult.id);
+    console.log('✅ Daily check-in saved successfully:', result.id);
 
     // Return success response with the created record
     res.status(201).json({
       success: true,
       checkin: {
-        id: airtableResult.id,
-        mood_today: airtableResult.fields.mood_today,
-        confidence_today: airtableResult.fields.confidence_today,
-        date_submitted: airtableResult.fields.date_submitted,
-        created_at: airtableResult.fields.created_at
+        id: result.id,
+        mood_today: result.fields.mood_today,
+        confidence_today: result.fields.confidence_today,
+        date_submitted: result.fields.date_submitted,
+        created_at: result.fields.created_at
       },
       message: 'Daily check-in completed successfully! 🌟'
     });
@@ -347,12 +302,13 @@ app.post('/api/checkins', async (req, res) => {
     console.error('❌ Unexpected error in /api/checkins:', error);
     res.status(500).json({ 
       success: false, 
-      error: 'Internal server error' 
+      error: 'Internal server error',
+      details: error.message
     });
   }
 });
 
-// Optional: GET endpoint to retrieve user's recent check-ins
+// Get User's Recent Check-ins
 app.get('/api/checkins/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
@@ -360,20 +316,30 @@ app.get('/api/checkins/:userId', async (req, res) => {
 
     console.log(`📈 Fetching recent check-ins for user: ${userId}`);
 
-    // Fetch user's recent check-ins from Airtable
-    const airtableResponse = await fetch(
-      `https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/DailyCheckins?filterByFormula=AND({user_id}='${userId}')&sort[0][field]=date_submitted&sort[0][direction]=desc&maxRecords=${limit}`,
+    // Find user first
+    const userRecordId = await findUserByEmail(userId);
+    
+    if (!userRecordId) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'User not found' 
+      });
+    }
+
+    // Fetch user's recent check-ins from Airtable using record ID
+    const response = await fetch(
+      `${config.airtable.baseUrl}/DailyCheckins?filterByFormula=SEARCH('${userRecordId}',ARRAYJOIN({user_id}))&sort[0][field]=date_submitted&sort[0][direction]=desc&maxRecords=${limit}`,
       {
         headers: {
-          'Authorization': `Bearer ${process.env.AIRTABLE_API_KEY}`,
+          'Authorization': `Bearer ${config.airtable.apiKey}`,
         }
       }
     );
 
-    const airtableResult = await airtableResponse.json();
+    const result = await response.json();
 
-    if (!airtableResponse.ok) {
-      console.error('❌ Airtable error fetching check-ins:', airtableResult);
+    if (!response.ok) {
+      console.error('❌ Airtable error fetching check-ins:', result);
       return res.status(422).json({ 
         success: false, 
         error: 'Failed to retrieve check-ins from database' 
@@ -381,7 +347,7 @@ app.get('/api/checkins/:userId', async (req, res) => {
     }
 
     // Transform Airtable records for frontend consumption
-    const checkins = airtableResult.records.map(record => ({
+    const checkins = result.records.map(record => ({
       id: record.id,
       mood_today: record.fields.mood_today,
       primary_concern_today: record.fields.primary_concern_today,
@@ -408,7 +374,27 @@ app.get('/api/checkins/:userId', async (req, res) => {
   }
 });
 
-// Test endpoint to verify DailyCheckins API is working
+// Get User Insight
+app.get('/api/users/:id/insight', async (req, res) => {
+  try {
+    const user = await airtableRequest(`Users/${req.params.id}`);
+    const insight = generateMicroInsight(user.fields);
+    
+    res.json({ 
+      success: true, 
+      insight,
+      user_id: req.params.id
+    });
+  } catch (error) {
+    console.error('Generate insight error:', error);
+    res.status(400).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+// Test endpoint
 app.get('/api/checkins-test', (req, res) => {
   res.json({
     success: true,
@@ -416,10 +402,17 @@ app.get('/api/checkins-test', (req, res) => {
     endpoints: {
       'POST /api/checkins': 'Submit daily check-in',
       'GET /api/checkins/:userId': 'Get user check-in history',
+      'GET /api/debug-user/:email': 'Debug user lookup',
       'GET /api/checkins-test': 'This test endpoint'
     },
     timestamp: new Date().toISOString()
   });
+});
+
+// Start server
+app.listen(port, () => {
+  console.log(`🚀 Novara API running on port ${port}`);
+  console.log(`📊 Health check: http://localhost:${port}/api/health`);
 });
 
 module.exports = app;
