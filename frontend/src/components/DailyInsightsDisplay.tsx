@@ -1,10 +1,9 @@
-// DailyInsightsDisplay.tsx
+// DailyInsightsDisplay.tsx - Fixed TypeScript errors
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Lightbulb, Heart, TrendingUp, Brain, X, RefreshCw } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { apiClient } from '../lib/api';
 
 interface Insight {
   type: string;
@@ -27,7 +26,7 @@ interface InsightResponse {
 }
 
 const DailyInsightsDisplay: React.FC = () => {
-  const { user, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [insight, setInsight] = useState<Insight | null>(null);
   const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -55,9 +54,10 @@ const DailyInsightsDisplay: React.FC = () => {
     setError(null);
 
     try {
-      const response = await fetch('/api/insights/daily', {
+      const token = localStorage.getItem('token');
+      const response = await fetch('https://novara-mvp-production.up.railway.app/api/insights/daily', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
@@ -82,10 +82,11 @@ const DailyInsightsDisplay: React.FC = () => {
     if (!insight) return;
 
     try {
-      await fetch('/api/insights/engagement', {
+      const token = localStorage.getItem('token');
+      await fetch('https://novara-mvp-production.up.railway.app/api/insights/engagement', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({

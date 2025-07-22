@@ -10,6 +10,7 @@ import { Heart, Users, Calendar, MessageCircle, ArrowRight, CheckCircle, LogOut,
 import { useAuth } from '../contexts/AuthContext';
 import { apiClient } from '../lib/api';
 import DailyCheckinForm from './DailyCheckinForm';
+import DailyInsightsDisplay from './DailyInsightsDisplay';
 
 const NovaraLanding = () => {
   const { user, isAuthenticated, isLoading, login, logout } = useAuth();
@@ -109,15 +110,15 @@ const NovaraLanding = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-novara-cream via-white to-novara-cream" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+    <div className="min-h-screen bg-gradient-to-br from-[#FFF5F0] via-white to-[#FFF5F0]" style={{ fontFamily: "'DM Sans', sans-serif" }}>
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur-sm border-b border-novara-coral/20">
+      <header className="bg-white/80 backdrop-blur-sm border-b border-[#FF6F61]/20">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-r from-novara-coral to-novara-lavender flex items-center justify-center">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-r from-[#FF6F61] to-[#CBA7FF] flex items-center justify-center">
               <Heart className="w-4 h-4 text-white" />
             </div>
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-novara-coral to-novara-lavender bg-clip-text text-transparent">
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-[#FF6F61] to-[#CBA7FF] bg-clip-text text-transparent">
               Novara
             </h1>
           </div>
@@ -143,12 +144,12 @@ const NovaraLanding = () => {
                 onClick={() => setShowLogin(true)}
                 variant="outline"
                 size="sm"
-                className="border-novara-coral text-novara-coral hover:bg-novara-coral/5"
+                className="border-[#FF6F61] text-[#FF6F61] hover:bg-[#FF6F61]/5"
               >
                 Log In
               </Button>
             )}
-            <Badge variant="secondary" className="bg-novara-lavender/20 text-novara-coral border-novara-coral/30">
+            <Badge variant="secondary" className="bg-[#CBA7FF]/20 text-[#FF6F61] border-[#FF6F61]/30">
               Your IVF Journey Support
             </Badge>
           </div>
@@ -161,7 +162,7 @@ const NovaraLanding = () => {
           <div className="text-center mb-8">
             {justSignedUp ? (
               <>
-                <div className="w-16 h-16 rounded-full bg-gradient-to-r from-novara-coral to-novara-lavender flex items-center justify-center mx-auto mb-4">
+                <div className="w-16 h-16 rounded-full bg-gradient-to-r from-[#FF6F61] to-[#CBA7FF] flex items-center justify-center mx-auto mb-4">
                   <CheckCircle className="w-8 h-8 text-white" />
                 </div>
                 <h2 className="text-3xl font-bold mb-4">
@@ -179,8 +180,8 @@ const NovaraLanding = () => {
                   </div>
                   <ArrowRight className="w-4 h-4" />
                   <div className="flex items-center space-x-2">
-                    <div className="w-4 h-4 rounded-full bg-novara-coral animate-pulse" />
-                    <span className="font-medium text-novara-coral">First Check-in</span>
+                    <div className="w-4 h-4 rounded-full bg-[#FF6F61] animate-pulse" />
+                    <span className="font-medium text-[#FF6F61]">First Check-in</span>
                   </div>
                   <ArrowRight className="w-4 h-4" />
                   <div className="flex items-center space-x-2">
@@ -201,6 +202,11 @@ const NovaraLanding = () => {
             )}
           </div>
           
+          {/* Daily Insights Display - NEW! */}
+          <div className="flex justify-center mb-6">
+            <DailyInsightsDisplay />
+          </div>
+          
           {/* Daily Check-in Form */}
           <div className="flex justify-center">
             <DailyCheckinForm />
@@ -211,16 +217,16 @@ const NovaraLanding = () => {
             <div className="mt-12 text-center">
               <h3 className="text-xl font-semibold mb-4 text-gray-800">What happens next?</h3>
               <div className="grid md:grid-cols-3 gap-6 max-w-3xl mx-auto">
-                <div className="p-4 bg-white/50 rounded-lg border border-novara-coral/20">
-                  <MessageCircle className="w-6 h-6 text-novara-coral mx-auto mb-2" />
+                <div className="p-4 bg-white/50 rounded-lg border border-[#FF6F61]/20">
+                  <MessageCircle className="w-6 h-6 text-[#FF6F61] mx-auto mb-2" />
                   <p className="text-sm text-gray-600">Get personalized insights based on your daily check-ins</p>
                 </div>
-                <div className="p-4 bg-white/50 rounded-lg border border-novara-lavender/20">
-                  <Calendar className="w-6 h-6 text-novara-lavender mx-auto mb-2" />
+                <div className="p-4 bg-white/50 rounded-lg border border-[#CBA7FF]/20">
+                  <Calendar className="w-6 h-6 text-[#CBA7FF] mx-auto mb-2" />
                   <p className="text-sm text-gray-600">Track your journey timeline and milestones</p>
                 </div>
-                <div className="p-4 bg-white/50 rounded-lg border border-novara-coral/20">
-                  <Users className="w-6 h-6 text-novara-coral mx-auto mb-2" />
+                <div className="p-4 bg-white/50 rounded-lg border border-[#FF6F61]/20">
+                  <Users className="w-6 h-6 text-[#FF6F61] mx-auto mb-2" />
                   <p className="text-sm text-gray-600">Access expert guidance when you need it</p>
                 </div>
               </div>
@@ -237,7 +243,7 @@ const NovaraLanding = () => {
               <h2 className="text-5xl font-bold mb-6 leading-tight">
                 You don't have to navigate
                 <br />
-                <span className="bg-gradient-to-r from-novara-coral to-novara-lavender bg-clip-text text-transparent">
+                <span className="bg-gradient-to-r from-[#FF6F61] to-[#CBA7FF] bg-clip-text text-transparent">
                   IVF alone
                 </span>
               </h2>
@@ -248,14 +254,14 @@ const NovaraLanding = () => {
               <div className="flex gap-4 justify-center">
                 <Button 
                   onClick={() => setShowForm(true)}
-                  className="bg-novara-coral hover:bg-novara-coral/90 text-white px-8 py-3 text-lg"
+                  className="bg-[#FF6F61] hover:bg-[#FF6F61]/90 text-white px-8 py-3 text-lg"
                 >
                   Start Your Journey
                 </Button>
                 <Button 
                   onClick={() => setShowLogin(true)}
                   variant="outline" 
-                  className="border-novara-coral text-novara-coral hover:bg-novara-coral/5 px-8 py-3 text-lg"
+                  className="border-[#FF6F61] text-[#FF6F61] hover:bg-[#FF6F61]/5 px-8 py-3 text-lg"
                 >
                   Already have an account?
                 </Button>
@@ -264,10 +270,10 @@ const NovaraLanding = () => {
 
             {/* Features Grid */}
             <div className="grid md:grid-cols-3 gap-8 mb-16">
-              <Card className="border-novara-coral/20 hover:shadow-lg transition-all duration-300 hover:border-novara-coral/40">
+              <Card className="border-[#FF6F61]/20 hover:shadow-lg transition-all duration-300 hover:border-[#FF6F61]/40">
                 <CardHeader className="text-center">
-                  <div className="w-12 h-12 rounded-lg bg-novara-coral/10 flex items-center justify-center mb-4 mx-auto">
-                    <Calendar className="w-6 h-6 text-novara-coral" />
+                  <div className="w-12 h-12 rounded-lg bg-[#FF6F61]/10 flex items-center justify-center mb-4 mx-auto">
+                    <Calendar className="w-6 h-6 text-[#FF6F61]" />
                   </div>
                   <CardTitle className="text-xl">Personalized Timeline</CardTitle>
                 </CardHeader>
@@ -278,10 +284,10 @@ const NovaraLanding = () => {
                 </CardContent>
               </Card>
 
-              <Card className="border-novara-lavender/20 hover:shadow-lg transition-all duration-300 hover:border-novara-lavender/40">
+              <Card className="border-[#CBA7FF]/20 hover:shadow-lg transition-all duration-300 hover:border-[#CBA7FF]/40">
                 <CardHeader className="text-center">
-                  <div className="w-12 h-12 rounded-lg bg-novara-lavender/10 flex items-center justify-center mb-4 mx-auto">
-                    <MessageCircle className="w-6 h-6 text-novara-lavender" />
+                  <div className="w-12 h-12 rounded-lg bg-[#CBA7FF]/10 flex items-center justify-center mb-4 mx-auto">
+                    <MessageCircle className="w-6 h-6 text-[#CBA7FF]" />
                   </div>
                   <CardTitle className="text-xl">Daily Check-ins</CardTitle>
                 </CardHeader>
@@ -292,10 +298,10 @@ const NovaraLanding = () => {
                 </CardContent>
               </Card>
 
-              <Card className="border-novara-coral/20 hover:shadow-lg transition-all duration-300 hover:border-novara-coral/40">
+              <Card className="border-[#FF6F61]/20 hover:shadow-lg transition-all duration-300 hover:border-[#FF6F61]/40">
                 <CardHeader className="text-center">
-                  <div className="w-12 h-12 rounded-lg bg-novara-coral/10 flex items-center justify-center mb-4 mx-auto">
-                    <Users className="w-6 h-6 text-novara-coral" />
+                  <div className="w-12 h-12 rounded-lg bg-[#FF6F61]/10 flex items-center justify-center mb-4 mx-auto">
+                    <Users className="w-6 h-6 text-[#FF6F61]" />
                   </div>
                   <CardTitle className="text-xl">Expert Guidance</CardTitle>
                 </CardHeader>
@@ -315,7 +321,7 @@ const NovaraLanding = () => {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <Card className="w-full max-w-md">
             <CardHeader>
-              <CardTitle className="text-2xl text-center bg-gradient-to-r from-novara-coral to-novara-lavender bg-clip-text text-transparent">
+              <CardTitle className="text-2xl text-center bg-gradient-to-r from-[#FF6F61] to-[#CBA7FF] bg-clip-text text-transparent">
                 Welcome Back
               </CardTitle>
               <p className="text-center text-gray-600">
@@ -332,7 +338,7 @@ const NovaraLanding = () => {
                     value={loginEmail}
                     onChange={(e) => setLoginEmail(e.target.value)}
                     placeholder="your-email@example.com"
-                    className="border-novara-coral/30 focus:border-novara-coral"
+                    className="border-[#FF6F61]/30 focus:border-[#FF6F61]"
                   />
                 </div>
                 
@@ -349,7 +355,7 @@ const NovaraLanding = () => {
                     type="button"
                     onClick={handleLogin}
                     disabled={isSubmitting || !loginEmail}
-                    className="flex-1 bg-novara-coral hover:bg-novara-coral/90 text-white"
+                    className="flex-1 bg-[#FF6F61] hover:bg-[#FF6F61]/90 text-white"
                   >
                     {isSubmitting ? 'Logging in...' : 'Log In'}
                   </Button>
@@ -365,7 +371,7 @@ const NovaraLanding = () => {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <CardHeader>
-              <CardTitle className="text-2xl text-center bg-gradient-to-r from-novara-coral to-novara-lavender bg-clip-text text-transparent">
+              <CardTitle className="text-2xl text-center bg-gradient-to-r from-[#FF6F61] to-[#CBA7FF] bg-clip-text text-transparent">
                 Welcome to Novara
               </CardTitle>
               <p className="text-center text-gray-600">
@@ -383,7 +389,7 @@ const NovaraLanding = () => {
                       value={formData.email}
                       onChange={(e) => handleInputChange('email', e.target.value)}
                       required
-                      className="border-novara-coral/30 focus:border-novara-coral"
+                      className="border-[#FF6F61]/30 focus:border-[#FF6F61]"
                     />
                   </div>
                   <div>
@@ -393,7 +399,7 @@ const NovaraLanding = () => {
                       value={formData.nickname}
                       onChange={(e) => handleInputChange('nickname', e.target.value)}
                       placeholder="Your preferred name"
-                      className="border-novara-coral/30 focus:border-novara-coral"
+                      className="border-[#FF6F61]/30 focus:border-[#FF6F61]"
                     />
                   </div>
                 </div>
@@ -401,7 +407,7 @@ const NovaraLanding = () => {
                 <div>
                   <Label htmlFor="cycle_stage">Where are you in your journey?</Label>
                   <Select onValueChange={(value) => handleInputChange('cycle_stage', value)}>
-                    <SelectTrigger className="border-novara-coral/30 focus:border-novara-coral">
+                    <SelectTrigger className="border-[#FF6F61]/30 focus:border-[#FF6F61]">
                       <SelectValue placeholder="Select your current stage" />
                     </SelectTrigger>
                     <SelectContent>
@@ -420,7 +426,7 @@ const NovaraLanding = () => {
                 <div>
                   <Label htmlFor="primary_need">What would be most helpful right now?</Label>
                   <Select onValueChange={(value) => handleInputChange('primary_need', value)}>
-                    <SelectTrigger className="border-novara-coral/30 focus:border-novara-coral">
+                    <SelectTrigger className="border-[#FF6F61]/30 focus:border-[#FF6F61]">
                       <SelectValue placeholder="Choose your primary need" />
                     </SelectTrigger>
                     <SelectContent>
@@ -590,18 +596,18 @@ const NovaraLanding = () => {
                     value={formData.top_concern}
                     onChange={(e) => handleInputChange('top_concern', e.target.value)}
                     placeholder="Share what's on your mind..."
-                    className="border-novara-coral/30 focus:border-novara-coral resize-none"
+                    className="border-[#FF6F61]/30 focus:border-[#FF6F61] resize-none"
                     rows={3}
                   />
                 </div>
 
-                <div className="flex items-center space-x-2 p-4 bg-novara-cream/50 rounded-lg">
+                <div className="flex items-center space-x-2 p-4 bg-[#FFF5F0]/50 rounded-lg">
                   <input
                     type="checkbox"
                     id="email_opt_in"
                     checked={formData.email_opt_in}
                     onChange={(e) => handleInputChange('email_opt_in', e.target.checked)}
-                    className="w-4 h-4 text-novara-coral bg-gray-100 border-gray-300 rounded focus:ring-novara-coral focus:ring-2"
+                    className="w-4 h-4 text-[#FF6F61] bg-gray-100 border-gray-300 rounded focus:ring-[#FF6F61] focus:ring-2"
                   />
                   <Label htmlFor="email_opt_in" className="text-sm text-gray-700">
                     I'd like to receive supportive emails and updates about my IVF journey. You can unsubscribe anytime.
@@ -621,7 +627,7 @@ const NovaraLanding = () => {
                     type="button"
                     onClick={handleSignup}
                     disabled={isSubmitting || !formData.email}
-                    className="flex-1 bg-novara-coral hover:bg-novara-coral/90 text-white"
+                    className="flex-1 bg-[#FF6F61] hover:bg-[#FF6F61]/90 text-white"
                   >
                     {isSubmitting ? 'Joining...' : 'Start My Journey'}
                   </Button>
@@ -633,11 +639,11 @@ const NovaraLanding = () => {
       )}
 
       {/* Footer */}
-      <footer className="bg-white/50 border-t border-novara-coral/20 py-8">
+      <footer className="bg-white/50 border-t border-[#FF6F61]/20 py-8">
         <div className="max-w-6xl mx-auto px-6 text-center">
           <p className="text-gray-600">
             Built with care for those navigating fertility treatment. 
-            <span className="text-novara-coral"> Your journey matters.</span>
+            <span className="text-[#FF6F61]"> Your journey matters.</span>
           </p>
         </div>
       </footer>

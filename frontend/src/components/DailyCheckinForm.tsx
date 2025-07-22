@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Heart, Clock, CheckCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { apiClient } from '../lib/api';
 
 const DailyCheckinForm: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
@@ -127,19 +126,51 @@ const DailyCheckinForm: React.FC = () => {
       return;
     }
 
+    // Validate required fields
+    if (selectedMoods.length === 0) {
+      alert('Please select at least one mood');
+      return;
+    }
+
     setIsSubmitting(true);
 
+    // Format data exactly as the backend expects
     const checkinData = {
       mood_today: selectedMoods.join(', '), // Convert array to comma-separated string
-      primary_concern_today: primaryConcern,
-      confidence_today: confidenceToday,
-      user_note: userNote,
+      confidence_today: confidenceToday, // Make sure this is a number
+      // Only include optional fields if they have values
+      ...(primaryConcern && { primary_concern_today: primaryConcern }),
+      ...(userNote && { user_note: userNote })
     };
 
+    console.log('🎯 Submitting check-in data:', checkinData);
+    console.log('🔑 Auth token exists:', !!localStorage.getItem('token'));
+
     try {
-      const response = await apiClient.submitCheckin(checkinData);
+      const token = localStorage.getItem('token');
       
-      if (response.success) {
+      if (!token) {
+        alert('Authentication token missing. Please log in again.');
+        return;
+      }
+
+      // Direct fetch call to debug the exact API interaction
+      const response = await fetch('https://novara-mvp-production.up.railway.app/api/checkins', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(checkinData)
+      });
+
+      console.log('📡 Response status:', response.status);
+      console.log('📡 Response headers:', response.headers);
+
+      const responseData = await response.json();
+      console.log('📊 Response data:', responseData);
+
+      if (response.ok && responseData.success) {
         const insight = generateImmediateInsight(selectedMoods, confidenceToday);
         setImmediateInsight(insight);
         setShowSuccess(true);
@@ -150,10 +181,11 @@ const DailyCheckinForm: React.FC = () => {
         setConfidenceToday(5);
         setUserNote('');
       } else {
-        alert(`Check-in failed: ${response.error}`);
+        console.error('❌ Check-in failed:', responseData);
+        alert(`Check-in failed: ${responseData.error || 'Unknown error'}`);
       }
     } catch (error) {
-      console.error('Error submitting check-in:', error);
+      console.error('❌ Network error:', error);
       alert('Connection error. Please try again.');
     } finally {
       setIsSubmitting(false);
