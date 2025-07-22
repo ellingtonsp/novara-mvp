@@ -96,5 +96,134 @@ class ApiClient {
     return this.request(`/checkins?limit=${limit}`);
   }
 }
+// Updates to add to your lib/api.ts file
+
+// Add these new methods to your existing apiClient object:
+
+const apiClient = {
+  // ... your existing methods ...
+
+  // Get daily insights
+  async getDailyInsights() {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error('No authentication token found');
+    }
+
+    const response = await fetch(`${API_BASE_URL}/api/insights/daily`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to fetch insights');
+    }
+
+    return data;
+  },
+
+  // Track insight engagement
+  async trackInsightEngagement(engagementData: {
+    insight_type: string;
+    action: 'viewed' | 'clicked' | 'dismissed' | 'refreshed';
+    insight_id?: string;
+  }) {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error('No authentication token found');
+    }
+
+    const response = await fetch(`${API_BASE_URL}/api/insights/engagement`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(engagementData)
+    });
+
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to track engagement');
+    }
+
+    return data;
+  },
+
+  // Get user's recent check-ins (enhanced version)
+  async getRecentCheckins(limit: number = 7) {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error('No authentication token found');
+    }
+
+    const response = await fetch(`${API_BASE_URL}/api/checkins?limit=${limit}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to fetch check-ins');
+    }
+
+    return data;
+  }
+};
+
+// TypeScript interfaces for the insight system
+export interface Insight {
+  type: string;
+  title: string;
+  message: string;
+  confidence: number;
+  priority?: number;
+}
+
+export interface AnalysisData {
+  checkins_analyzed: number;
+  date_range: string;
+  user_id: string;
+}
+
+export interface InsightResponse {
+  success: boolean;
+  insight: Insight;
+  analysis_data: AnalysisData;
+}
+
+export interface EngagementData {
+  insight_type: string;
+  action: 'viewed' | 'clicked' | 'dismissed' | 'refreshed';
+  insight_id?: string;
+}
+
+export interface CheckinData {
+  id: string;
+  mood_today: string;
+  primary_concern_today?: string;
+  confidence_today: number;
+  user_note?: string;
+  date_submitted: string;
+  created_at: string;
+}
+
+export interface CheckinsResponse {
+  success: boolean;
+  checkins: CheckinData[];
+  count: number;
+}
+
+export { apiClient };
 
 export const apiClient = new ApiClient();
