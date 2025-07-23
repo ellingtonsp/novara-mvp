@@ -1,4 +1,4 @@
-// contexts/AuthContext.tsx - Fixed version
+// contexts/AuthContext.tsx - HMR-Compatible Version
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
@@ -16,26 +16,45 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (_email: string, authToken: string, userData: User) => void;
+  login: (email: string, authToken: string, userData: User) => void;
   logout: () => void;
-  signup: (_userData: any) => Promise<void>;
+  signup: (userData: any) => Promise<void>;
+  refreshToken: () => Promise<boolean>;
+  isTokenExpired: () => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+// API Configuration
+const API_BASE_URL = import.meta.env.VITE_API_URL ||
+  (import.meta.env.DEV 
+    ? 'http://localhost:3002' 
+    : 'https://novara-mvp-production.up.railway.app');
+
+// Helper function to decode JWT and check expiration
+const isTokenExpired = (token: string): boolean => {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    const currentTime = Date.now() / 1000;
+    return payload.exp < currentTime;
+  } catch {
+    return true; // If we can't decode, consider it expired
   }
-  return context;
 };
 
-interface AuthProviderProps {
-  children: ReactNode;
-}
+// Helper function to check if token expires soon (within 1 hour)
+const isTokenExpiringSoon = (token: string): boolean => {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    const currentTime = Date.now() / 1000;
+    const oneHour = 60 * 60; // 1 hour in seconds
+    return payload.exp < (currentTime + oneHour);
+  } catch {
+    return true;
+  }
+};
 
-export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -47,12 +66,37 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const storedUser = localStorage.getItem('user');
         
         if (token && storedUser) {
-          const userData = JSON.parse(storedUser);
-          setUser(userData);
+          // In development, be less aggressive about token refresh to avoid HMR conflicts
+          if (import.meta.env.DEV) {
+            // Only check if token is completely expired, not expiring soon
+            if (isTokenExpired(token)) {
+              console.log('🔄 Token expired, clearing auth state');
+              localStorage.removeItem('token');
+              localStorage.removeItem('user');
+            } else {
+              const userData = JSON.parse(storedUser);
+              setUser(userData);
+              console.log('✅ Existing token valid (dev mode)');
+            }
+          } else {
+            // Production: full token refresh logic
+            if (isTokenExpired(token)) {
+              const refreshed = await refreshToken();
+              if (!refreshed) {
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+              } else {
+                const userData = JSON.parse(storedUser);
+                setUser(userData);
+              }
+            } else {
+              const userData = JSON.parse(storedUser);
+              setUser(userData);
+            }
+          }
         }
       } catch (error) {
         console.error('Error initializing auth:', error);
-        // Clear invalid data
         localStorage.removeItem('token');
         localStorage.removeItem('user');
       } finally {
@@ -63,22 +107,80 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     initializeAuth();
   }, []);
 
+  // Auto-refresh token (disabled in development to avoid HMR conflicts)
+  useEffect(() => {
+    if (!user || import.meta.env.DEV) return;
+
+    const checkTokenExpiration = () => {
+      const token = localStorage.getItem('token');
+      if (token && isTokenExpiringSoon(token)) {
+        console.log('🔄 Token expiring soon, refreshing...');
+        refreshToken();
+      }
+    };
+
+    // Check every 30 minutes (only in production)
+    const interval = setInterval(checkTokenExpiration, 30 * 60 * 1000);
+    checkTokenExpiration();
+
+    return () => clearInterval(interval);
+  }, [user]);
+
+  const refreshToken = async (): Promise<boolean> => {
+    try {
+      const currentUser = localStorage.getItem('user');
+      if (!currentUser) return false;
+
+      const userData = JSON.parse(currentUser);
+      
+      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: userData.email }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.token) {
+          localStorage.setItem('token', data.token);
+          localStorage.setItem('user', JSON.stringify(data.user));
+          setUser(data.user);
+          console.log('✅ Token refreshed successfully');
+          return true;
+        }
+      }
+      
+      console.error('❌ Token refresh failed:', response.status);
+      return false;
+    } catch (error) {
+      console.error('❌ Token refresh error:', error);
+      return false;
+    }
+  };
+
   const login = (_email: string, authToken: string, userData: User) => {
     localStorage.setItem('token', authToken);
     localStorage.setItem('user', JSON.stringify(userData));
     setUser(userData);
+    console.log('✅ User logged in successfully');
   };
 
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setUser(null);
+    console.log('👋 User logged out');
   };
 
   const signup = async (_userData: any) => {
-    // This method is for compatibility - actual signup logic should be in the component
-    // using apiClient.createUser() directly
     throw new Error('Use apiClient.createUser() directly for signup');
+  };
+
+  const checkTokenExpired = (): boolean => {
+    const token = localStorage.getItem('token');
+    return !token || isTokenExpired(token);
   };
 
   const value: AuthContextType = {
@@ -88,6 +190,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     login,
     logout,
     signup,
+    refreshToken,
+    isTokenExpired: checkTokenExpired,
   };
 
   return (
@@ -95,4 +199,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       {children}
     </AuthContext.Provider>
   );
+};
+
+// Consistent export for HMR compatibility
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
 };

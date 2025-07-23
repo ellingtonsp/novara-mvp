@@ -5,6 +5,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { CheckCircle } from 'lucide-react';
 import { trackInsightGeneration, trackEvent } from '../lib/analytics';
 
+
+
 interface Insight {
   title: string;
   message: string;
@@ -42,7 +44,12 @@ export default function WelcomeInsight({ onContinue }: WelcomeInsightProps) {
       try {
         console.log('🎯 Fetching welcome insight for user:', user.email);
         
-        const response = await fetch('https://novara-mvp-production.up.railway.app/api/insights/micro', {
+        const API_BASE_URL = import.meta.env.VITE_API_URL ||
+          (import.meta.env.DEV 
+            ? 'http://localhost:3002' 
+            : 'https://novara-mvp-production.up.railway.app');
+        
+        const response = await fetch(`${API_BASE_URL}/api/insights/micro`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`,

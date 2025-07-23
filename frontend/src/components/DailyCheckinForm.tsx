@@ -6,12 +6,6 @@ import { Heart, Clock, CheckCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { trackDailyCheckin, trackInsightGeneration, trackEvent } from '../lib/analytics';
 
-// API Configuration
-const API_BASE_URL = import.meta.env.VITE_API_URL ||
-  (import.meta.env.DEV 
-    ? 'http://localhost:3002' 
-    : 'https://novara-mvp-production.up.railway.app');
-
 interface DailyCheckinFormProps {
   onComplete?: () => void;
 }
