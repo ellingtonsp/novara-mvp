@@ -98,11 +98,11 @@ const NovaraLanding = () => {
     return () => style.remove();
   }, []);
 
-  // Function to get slider background with gradient based on value
-  const getSliderBackground = (value: number, min: number = 1, max: number = 10) => {
-    const percentage = ((value - min) / (max - min)) * 100;
-    return `linear-gradient(to right, #FF6F61 0%, #FF6F61 ${percentage}%, #e5e7eb ${percentage}%, #e5e7eb 100%)`;
-  };
+  // Function to get slider background with gradient based on value (commented out for future use)
+  // const getSliderBackground = (value: number, min: number = 1, max: number = 10) => {
+  //   const percentage = ((value - min) / (max - min)) * 100;
+  //   return `linear-gradient(to right, #FF6F61 0%, #FF6F61 ${percentage}%, #e5e7eb ${percentage}%, #e5e7eb 100%)`;
+  // };
 
   // Mobile-specific state
   const [showMobileMenu, setShowMobileMenu] = useState(false);
@@ -126,18 +126,18 @@ const NovaraLanding = () => {
   // Remove old modal state - now using dedicated page
 
   // Add at the top of the component, after useState for formData
-  const inspirationalMessages = [
-    "You are stronger than you think. Every step is progress.",
-    "You’re not alone—others in the Novara community are walking this path with you.",
-    "It’s okay to take things one day at a time.",
-    "Your feelings are valid. Be gentle with yourself.",
-    "Hope grows in small moments."
-  ];
-  const [inspirationIdx] = useState(() => Math.floor(Math.random() * inspirationalMessages.length));
-  const inspirationalMessage = inspirationalMessages[inspirationIdx];
+  // const inspirationalMessages = [
+  //   "You are stronger than you think. Every step is progress.",
+  //   "You’re not alone—others in the Novara community are walking this path with you.",
+  //   "It’s okay to take things one day at a time.",
+  //   "Your feelings are valid. Be gentle with yourself.",
+  //   "Hope grows in small moments."
+  // ];
+  // const [inspirationIdx] = useState(() => Math.floor(Math.random() * inspirationalMessages.length)); // Commented out for future use
+  // const inspirationalMessage = inspirationalMessages[inspirationIdx]; // Commented out for future use
 
   // Remove old modal debugging code - now using dedicated page
-  const [feedbackGiven, setFeedbackGiven] = useState<null | 'up' | 'down'>(null);
+  // const [feedbackGiven, setFeedbackGiven] = useState<null | 'up' | 'down'>(null); // Commented out for future use
 
   // Show loading screen while auth is initializing
   if (isLoading) {
