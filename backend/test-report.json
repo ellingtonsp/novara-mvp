@@ -1,0 +1,94 @@
+{
+  "summary": {
+    "total": 8,
+    "passed": 8,
+    "failed": 0,
+    "success_rate": "100.0"
+  },
+  "tests": [
+    {
+      "test": "Health Check",
+      "success": true,
+      "details": "API is responsive",
+      "data": {
+        "status": "ok",
+        "timestamp": "2025-07-23T18:26:51.123Z",
+        "service": "Novara API",
+        "environment": "production",
+        "airtable": "connected",
+        "jwt": "configured"
+      },
+      "timestamp": "2025-07-23T18:26:51.127Z"
+    },
+    {
+      "test": "User Registration",
+      "success": true,
+      "details": "User created successfully",
+      "data": {
+        "user_id": "rec1fPJ4jWcu6z4GP",
+        "email": "test-1753295211106@autotest.com"
+      },
+      "timestamp": "2025-07-23T18:26:52.640Z"
+    },
+    {
+      "test": "User Login",
+      "success": true,
+      "details": "Login successful",
+      "data": {
+        "has_token": true
+      },
+      "timestamp": "2025-07-23T18:26:53.314Z"
+    },
+    {
+      "test": "Daily Check-in",
+      "success": true,
+      "details": "Check-in saved successfully",
+      "data": {
+        "checkin_id": "recwPAKdeRtODkHd7",
+        "mood": "hopeful, anxious"
+      },
+      "timestamp": "2025-07-23T18:26:54.400Z"
+    },
+    {
+      "test": "Daily Insights",
+      "success": true,
+      "details": "Insights generated successfully",
+      "data": {
+        "insight_title": "AutoTest, your financial concerns make complete sense",
+        "insight_type": "focused_support",
+        "is_personalized": true
+      },
+      "timestamp": "2025-07-23T18:26:55.486Z"
+    },
+    {
+      "test": "Micro Insights",
+      "success": true,
+      "details": "Micro-insight generated successfully",
+      "data": {
+        "insight_title": "Your journey, your pace",
+        "has_action": false
+      },
+      "timestamp": "2025-07-23T18:26:56.436Z"
+    },
+    {
+      "test": "Analytics Tracking",
+      "success": true,
+      "details": "Analytics event tracked successfully",
+      "data": {
+        "event_type": "test_event"
+      },
+      "timestamp": "2025-07-23T18:26:57.437Z"
+    },
+    {
+      "test": "Insight Engagement",
+      "success": true,
+      "details": "Engagement tracked successfully",
+      "data": {
+        "action": "viewed",
+        "insight_type": "test_insight"
+      },
+      "timestamp": "2025-07-23T18:26:58.423Z"
+    }
+  ],
+  "timestamp": "2025-07-23T18:26:58.925Z"
+}

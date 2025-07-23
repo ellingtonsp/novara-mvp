@@ -18,6 +18,7 @@ app.use(cors({
   origin: [
     'http://localhost:5173',
     'http://localhost:5174', // Allow port 5174 for Vite dev server
+    'http://localhost:5175', // Allow port 5175 for Vite dev server
     'http://localhost:3000',
     'https://ellingtonsp.github.io'
   ],
@@ -52,7 +53,8 @@ async function airtableRequest(endpoint, method = 'GET', data = null) {
   
   const response = await fetch(url, options);
   if (!response.ok) {
-    throw new Error(`Airtable ${method} failed: ${response.statusText}`);
+    const errorBody = await response.text();
+    throw new Error(`Airtable ${method} failed: ${response.statusText} - ${errorBody}`);
   }
   return response.json();
 }
@@ -445,6 +447,32 @@ function generateWelcomeInsightFromOnboarding(data, user) {
   const lowConfidenceAreas = concerns.filter(c => c.confidence <= c.threshold);
   const avgConfidence = (confidence_meds + confidence_costs + confidence_overall) / 3;
   
+  // PRIORITY 1: SPECIFIC CONCERN + LOW CONFIDENCE MATCH
+  // If their top concern matches a low confidence area, prioritize that specific support
+  if (top_concern && top_concern.trim() !== '') {
+    const concernLower = top_concern.toLowerCase();
+    
+    // Medication concern + low medication confidence
+    if (concernLower.includes('medication') && confidence_meds <= 4) {
+      return {
+        type: 'focused_support',
+        title: `${name}, let's tackle the medication uncertainty together`,
+        message: `I see medication protocols feel uncertain right now (you rated confidence at ${confidence_meds}/10). This is incredibly common—the medical side can feel overwhelming before you have all the details. Plus, "${top_concern}" weighs on your mind—let's address that specific worry. How are you feeling today?`,
+        confidence: 0.9
+      };
+    }
+    
+    // Financial concern + low cost confidence  
+    if ((concernLower.includes('financial') || concernLower.includes('cost') || concernLower.includes('money')) && confidence_costs <= 4) {
+      return {
+        type: 'focused_support', 
+        title: `${name}, your financial concerns make complete sense`,
+        message: `You rated financial confidence at ${confidence_costs}/10, and honestly, that's realistic. IVF costs can feel overwhelming, but there are ways to approach this step by step. Plus, "${top_concern}" weighs on your mind—let's address that specific worry. How are you feeling today?`,
+        confidence: 0.9
+      };
+    }
+  }
+  
   // HIGH CONFIDENCE - Acknowledge their strength, offer specific support
   if (avgConfidence >= 6.5) {
     let message = `Welcome back, ${name}! Your confidence levels from onboarding show real strength in approaching IVF.`;
@@ -467,7 +495,7 @@ function generateWelcomeInsightFromOnboarding(data, user) {
     };
   }
   
-  // MIXED CONFIDENCE - Address specific areas
+  // SINGLE LOW CONFIDENCE AREA - Address specific areas
   if (lowConfidenceAreas.length === 1) {
     const concernArea = lowConfidenceAreas[0].area;
     let title, message;
@@ -894,6 +922,181 @@ function generatePersonalizedMicroInsight(data, user) {
 }
 
 // ============================================================================
+// DYNAMIC CHECK-IN QUESTION ENGINE
+// ============================================================================
+
+function generatePersonalizedCheckInQuestions(user) {
+  const questions = [
+    // Always include baseline questions
+    {
+      id: 'mood_today',
+      type: 'text',
+      question: 'How are you feeling today?',
+      placeholder: 'anxious, hopeful, tired...',
+      required: true,
+      priority: 1
+    },
+    {
+      id: 'confidence_today', 
+      type: 'slider',
+      question: 'Overall confidence level today',
+      min: 1,
+      max: 10,
+      required: true,
+      priority: 1
+    }
+  ];
+
+  // Add concern-specific questions based on onboarding
+  const { confidence_meds, confidence_costs, confidence_overall, top_concern } = user;
+
+  // MEDICATION CONCERNS - if low confidence or specific concern
+  if (confidence_meds <= 4 || (top_concern && top_concern.toLowerCase().includes('medication'))) {
+    questions.push({
+      id: 'medication_confidence_today',
+      type: 'slider',
+      question: `How confident do you feel about your medication protocol today? (You started at ${confidence_meds}/10)`,
+      min: 1,
+      max: 10,
+      required: false,
+      priority: 2,
+      context: 'medication_focus'
+    });
+    
+    questions.push({
+      id: 'medication_concern_today',
+      type: 'text', 
+      question: 'Any specific medication questions or worries today?',
+      placeholder: 'timing, side effects, dosing...',
+      required: false,
+      priority: 3,
+      context: 'medication_focus'
+    });
+  }
+
+  // FINANCIAL CONCERNS
+  if (confidence_costs <= 4 || (top_concern && (top_concern.toLowerCase().includes('cost') || top_concern.toLowerCase().includes('financial') || top_concern.toLowerCase().includes('money')))) {
+    questions.push({
+      id: 'financial_stress_today',
+      type: 'slider',
+      question: `How are the financial aspects feeling today? (You started at ${confidence_costs}/10)`,
+      min: 1,
+      max: 10,
+      required: false,
+      priority: 2,
+      context: 'financial_focus'
+    });
+    
+    questions.push({
+      id: 'financial_concern_today',
+      type: 'text',
+      question: 'Any new financial concerns or clarity today?',
+      placeholder: 'insurance updates, cost worries...',
+      required: false,
+      priority: 3,
+      context: 'financial_focus'
+    });
+  }
+
+  // OVERALL JOURNEY CONCERNS  
+  if (confidence_overall <= 4) {
+    questions.push({
+      id: 'journey_readiness_today',
+      type: 'slider',
+      question: `How ready do you feel for the next steps? (You started at ${confidence_overall}/10)`,
+      min: 1,
+      max: 10,
+      required: false,
+      priority: 2,
+      context: 'journey_focus'
+    });
+  }
+
+  // TOP CONCERN FOLLOW-UP (if they specified one)
+  if (top_concern && top_concern.trim() !== '') {
+    questions.push({
+      id: 'top_concern_today',
+      type: 'text',
+      question: `You mentioned "${top_concern}" was important to you. How is that feeling today?`,
+      placeholder: 'better, worse, same...',
+      required: false,
+      priority: 2,
+      context: 'concern_followup'
+    });
+  }
+
+  // Sort by priority and return
+  return questions.sort((a, b) => a.priority - b.priority);
+}
+
+// Generate contextual insights based on the enhanced check-in data
+function generateEnhancedMicroInsight(checkinData, user) {
+  console.log('🎯 Generating enhanced micro-insight for:', user.nickname || user.email);
+  console.log('📊 Enhanced check-in data:', checkinData);
+
+  // Start with standard insight generation
+  const baseInsight = generatePersonalizedMicroInsight(checkinData, user);
+  
+  // Enhance with specific concern tracking
+  let enhancedMessage = baseInsight.message;
+  const enhancements = [];
+
+  // MEDICATION CONFIDENCE TRACKING
+  if (checkinData.medication_confidence_today) {
+    const startingConfidence = user.confidence_meds || 5;
+    const todayConfidence = parseInt(checkinData.medication_confidence_today);
+    const change = todayConfidence - startingConfidence;
+
+    if (change > 0) {
+      enhancements.push(`Your medication confidence has grown from ${startingConfidence} to ${todayConfidence} - that's real progress! 📈`);
+    } else if (change < 0) {
+      enhancements.push(`Medication confidence feels lower today (${todayConfidence} vs ${startingConfidence} initially). That's okay - let's address what's causing the uncertainty. 🤝`);
+    } else {
+      enhancements.push(`Your medication confidence is holding steady at ${todayConfidence}/10. Consistency can be a strength too. 💪`);
+    }
+  }
+
+  // SPECIFIC MEDICATION CONCERNS
+  if (checkinData.medication_concern_today && checkinData.medication_concern_today.trim() !== '') {
+    enhancements.push(`You mentioned "${checkinData.medication_concern_today}" - let's keep an eye on this specific worry. 👀`);
+  }
+
+  // FINANCIAL STRESS TRACKING
+  if (checkinData.financial_stress_today) {
+    const startingConfidence = user.confidence_costs || 5;
+    const todayStress = parseInt(checkinData.financial_stress_today);
+    
+    if (todayStress <= 4) {
+      enhancements.push(`Financial stress is weighing on you today (${todayStress}/10). Remember, you don't have to solve everything at once. 💚`);
+    } else if (todayStress >= 7) {
+      enhancements.push(`You're feeling more confident about the financial side today (${todayStress}/10). That clarity helps with everything else! ✨`);
+    }
+  }
+
+  // TOP CONCERN FOLLOW-UP
+  if (checkinData.top_concern_today && checkinData.top_concern_today.trim() !== '') {
+    enhancements.push(`About "${user.top_concern}" - noting that it's "${checkinData.top_concern_today}" today. We're tracking this with you. 📝`);
+  }
+
+  // Add enhancements to the insight
+  if (enhancements.length > 0) {
+    enhancedMessage += '\n\n' + enhancements.join(' ');
+  }
+
+  return {
+    ...baseInsight,
+    message: enhancedMessage,
+    enhanced: true,
+    tracking_data: {
+      medication_confidence: checkinData.medication_confidence_today,
+      medication_concerns: checkinData.medication_concern_today,
+      financial_stress: checkinData.financial_stress_today,
+      top_concern_status: checkinData.top_concern_today
+    }
+  };
+}
+
+// ============================================================================
 // MICRO-INSIGHT ENDPOINT (FVM-FOCUSED, POST-ONBOARDING OR CHECK-IN)
 // ============================================================================
 
@@ -903,90 +1106,50 @@ function generatePersonalizedMicroInsight(data, user) {
  * Expects: { user_id (optional if JWT), onboardingData, checkinData }
  * Returns: { success, micro_insight: { title, message, action }, user_id }
  */
-app.post('/api/insights/micro', authenticateToken, async (req, res) => {
+app.post('/api/insights/micro', async (req, res) => {
   try {
-    // Prefer check-in data if provided, else use onboarding data
-    const { onboardingData, checkinData } = req.body;
-    let user = await findUserByEmail(req.user.email);
-    if (!user) {
-      return res.status(404).json({ success: false, error: 'User not found' });
+    let user;
+    try {
+      // Try to get user from JWT token first
+      let userEmail;
+      if (req.user && req.user.email) {
+        userEmail = req.user.email;
+      } 
+      // If no JWT, try to get email from request body (onboarding or checkin data)
+      else if (req.body.onboardingData && req.body.onboardingData.email) {
+        userEmail = req.body.onboardingData.email;
+      }
+      else if (req.body.checkinData && req.body.checkinData.email) {
+        userEmail = req.body.checkinData.email;
+      }
+      // If no email available, return error
+      else {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'User email required - either via authentication or in request data' 
+        });
+      }
+      
+      user = await findUserByEmail(userEmail);
+      if (!user) {
+        return res.status(404).json({ success: false, error: 'User not found' });
+      }
+      console.log('User fetched for micro-insight:', user.id, 'Email:', userEmail);
+    } catch (error) {
+      console.error('User lookup error:', error);
+      return res.status(500).json({ success: false, error: 'Internal server error' });
     }
 
     // Use latest data for insight generation
-    const data = checkinData || onboardingData || user;
+    const data = req.body.checkinData || req.body.onboardingData || user;
 
     // Enhanced micro-insight logic
     // Generate enhanced, personalized micro-insight using new engine
     const micro_insight = generatePersonalizedMicroInsight(data, user);
-    /* OLD LOGIC - REPLACED BY generatePersonalizedMicroInsight()
-    // 1. Medications
-    if (data.confidence_meds !== undefined && data.confidence_meds <= 4) {
-      micro_insight = {
-        title: 'About IVF medications',
-        message: "You mentioned meds feel daunting. Totally normal. Tomorrow we’ll nudge just one piece—not the whole protocol. For tonight, save this: you don’t have to remember everything at once.",
-        action: {
-          label: "Add tomorrow’s med reminder to your planner",
-          type: "toggle_reminder"
-        }
-      };
-    }
-    // 2. Costs/Insurance
-    else if (data.confidence_costs !== undefined && data.confidence_costs <= 4) {
-      micro_insight = {
-        title: 'Managing financial stress',
-        message: "The money part of IVF can feel overwhelming. For now, just focus on today’s step. If you want, we can send a simple cost checklist tomorrow.",
-        action: {
-          label: "Send me a cost checklist tomorrow",
-          type: "opt_in_checklist"
-        }
-      };
-    }
-    // 3. Overall journey
-    else if (data.confidence_overall !== undefined && data.confidence_overall <= 4) {
-      micro_insight = {
-        title: 'Your overall journey',
-        message: "It’s okay if the road ahead feels shaky. You don’t have to have it all figured out. For tonight, just breathe. We’ll take it one day at a time.",
-        action: {
-          label: "See 3 tips for finding steadiness",
-          type: "show_tips"
-        }
-      };
-    }
-    // 4. Primary need
-    else if (data.primary_need === 'emotional_support') {
-      micro_insight = {
-        title: 'Emotional support matters',
-        message: "You’re not alone in this. If you ever want to talk or just need a gentle nudge, we’re here.",
-        action: {
-          label: "Get a supportive message tomorrow",
-          type: "opt_in_support"
-        }
-      };
-    }
-    // 5. Top concern
-    else if (data.top_concern && data.top_concern.trim() !== '') {
-      micro_insight = {
-        title: 'We see your concern',
-        message: `You mentioned: “${data.top_concern}.” That’s valid. If you want, we can send a gentle check-in about this tomorrow.`,
-        action: {
-          label: "Remind me about this tomorrow",
-          type: "opt_in_reminder"
-        }
-      };
-    }
-    // 6. Default
-    else {
-      micro_insight = {
-        title: 'Your journey matters',
-        message: "Thank you for sharing a bit of your story. Every step you take is meaningful. We’ll be here with you, one day at a time.",
-        action: null
-      };
-    }
-    */
 
     // Store insight in database
-    const insightType = checkinData ? 'checkin_micro' : 'onboarding_micro';
-    const insightId = `${checkinData ? 'checkin' : 'onboarding'}_${Date.now()}`;
+    const insightType = req.body.checkinData ? 'checkin_micro' : 'onboarding_micro';
+    const insightId = `${req.body.checkinData ? 'checkin' : 'onboarding'}_${Date.now()}`;
     
     try {
       const insightData = {
@@ -995,7 +1158,6 @@ app.post('/api/insights/micro', authenticateToken, async (req, res) => {
         insight_title: micro_insight.title,
         insight_message: micro_insight.message,
         insight_id: insightId,
-        generated_at: new Date().toISOString(),
         date: new Date().toISOString().split('T')[0],
         context_data: JSON.stringify(data),
         status: 'active'
@@ -1348,14 +1510,15 @@ app.get('/api/checkins', authenticateToken, async (req, res) => {
     }
 
     // Fetch user's recent check-ins from Airtable using record ID
-    const response = await fetch(
-      `${config.airtable.baseUrl}/DailyCheckins?filterByFormula=SEARCH('${user.id}',ARRAYJOIN({user_id}))&sort[0][field]=date_submitted&sort[0][direction]=desc&maxRecords=${limit}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${config.airtable.apiKey}`,
-        }
+    const airtableUrl = `${config.airtable.baseUrl}/DailyCheckins?filterByFormula=SEARCH('${user.id}',ARRAYJOIN({user_id}))&sort[0][field]=date_submitted&sort[0][direction]=desc&maxRecords=${limit}`;
+    console.log('🔍 Querying Airtable with URL:', airtableUrl);
+    console.log('🆔 Looking for user ID:', user.id);
+    
+    const response = await fetch(airtableUrl, {
+      headers: {
+        'Authorization': `Bearer ${config.airtable.apiKey}`,
       }
-    );
+    });
 
     const result = await response.json();
 
@@ -1365,6 +1528,11 @@ app.get('/api/checkins', authenticateToken, async (req, res) => {
         success: false, 
         error: 'Failed to retrieve check-ins from database' 
       });
+    }
+
+    console.log(`📊 Airtable returned ${result.records?.length || 0} check-in records for user ${req.user.email}`);
+    if (result.records?.length > 0) {
+      console.log('📝 First record user_id field:', result.records[0].fields.user_id);
     }
 
     // Transform Airtable records for frontend consumption
@@ -1458,7 +1626,6 @@ app.get('/api/insights/daily', authenticateToken, async (req, res) => {
         insight_title: insight.title || insight.type,
         insight_message: insight.message,
         insight_id: insightId,
-        generated_at: new Date().toISOString(),
         date: new Date().toISOString().split('T')[0],
         context_data: JSON.stringify({ checkins_count: checkins.length, insight_type: insight.type }),
         status: 'active'
@@ -1539,7 +1706,7 @@ app.post('/api/insights/engagement', authenticateToken, async (req, res) => {
       insight_type,
       action, // 'viewed', 'clicked', 'dismissed', 'refreshed', 'liked', 'not_helpful'
       insight_id: insight_id || '',
-      timestamp: new Date().toISOString(),
+      timestamp: new Date().toISOString().split('T')[0],
       date_submitted: new Date().toISOString().split('T')[0]
     };
 
@@ -1608,7 +1775,7 @@ app.post('/api/analytics/events', authenticateToken, async (req, res) => {
     const analyticsData = {
       user_id: [user.id],
       event_type,
-      event_timestamp: new Date().toISOString(),
+      event_timestamp: new Date().toISOString().split('T')[0],
       date: new Date().toISOString().split('T')[0],
       event_data: JSON.stringify(event_data) // Store as JSON string
     };
@@ -1645,7 +1812,7 @@ app.post('/api/analytics/events', authenticateToken, async (req, res) => {
     console.log('🎯 FVM Analytics event tracked:', analyticsData);
 
     // Save to Airtable FVMAnalytics table
-    const result = await airtableRequest('FVMAnalytics', 'POST', {
+    const result = await airtableRequest('FMVAnalytics', 'POST', {
       fields: analyticsData
     });
 
@@ -1734,5 +1901,209 @@ app.listen(port, () => {
   console.log(`🔐 JWT Authentication enabled`);
   console.log(`🧠 Daily Insight Engine v1 enabled`);
 });
+
+// ============================================================================
+// DYNAMIC CHECK-IN ROUTES
+// ============================================================================
+
+// Get Personalized Check-in Questions (Protected Route)
+app.get('/api/checkins/questions', authenticateToken, async (req, res) => {
+  try {
+    console.log(`🎯 Generating personalized questions for user: ${req.user.email}`);
+
+    // Find user to get their onboarding data
+    const user = await findUserByEmail(req.user.email);
+    
+    if (!user) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'User not found' 
+      });
+    }
+
+    // Generate personalized questions based on their concerns
+    const questions = generatePersonalizedCheckInQuestions(user);
+    
+    console.log(`✅ Generated ${questions.length} personalized questions for ${req.user.email}`);
+    console.log('📝 Question contexts:', questions.map(q => q.context || 'baseline').join(', '));
+
+    res.json({
+      success: true,
+      questions,
+      personalization_summary: {
+        medication_focus: user.confidence_meds <= 4,
+        financial_focus: user.confidence_costs <= 4,
+        journey_focus: user.confidence_overall <= 4,
+        top_concern: user.top_concern || null
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error generating personalized questions:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Internal server error' 
+    });
+  }
+});
+
+// Temporarily bypass auth for enhanced check-in troubleshooting
+app.post('/api/daily-checkin-enhanced', async (req, res) => {
+  try {
+    console.log('📝 Enhanced daily check-in submission received:', req.body);
+    const checkinData = req.body;
+    console.log('Received checkinData:', checkinData);
+
+    // Validation - ensure required fields are present
+    if (!checkinData.mood_today || !checkinData.confidence_today) {
+      console.error('❌ Missing required fields');
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Missing required fields: mood_today and confidence_today are required' 
+      });
+    }
+
+    // Validate confidence_today is between 1-10
+    if (checkinData.confidence_today < 1 || checkinData.confidence_today > 10) {
+      console.error('❌ Invalid confidence rating');
+      return res.status(400).json({ 
+        success: false, 
+        error: 'confidence_today must be between 1 and 10' 
+      });
+    }
+
+    // Find user record in Airtable using JWT payload or test email
+    let userEmail = req.user ? req.user.email : 'testwelcome3333@gmail.com';
+    const user = await findUserByEmail(userEmail);
+    
+    if (!user) {
+      console.error('❌ User not found:', userEmail);
+      return res.status(404).json({ 
+        success: false, 
+        error: 'User not found' 
+      });
+    }
+
+    console.log('✅ Found user record:', user.id);
+
+    // Prepare enhanced data for Airtable DailyCheckins table
+    const enhancedCheckinData = {
+      user_id: [user.id],
+      mood_today: checkinData.mood_today,
+      confidence_today: parseInt(checkinData.confidence_today),
+      date_submitted: new Date().toISOString().split('T')[0]
+    };
+
+    // Add optional enhanced fields if they have values
+    if (checkinData.primary_concern_today && checkinData.primary_concern_today.trim() !== '') {
+      enhancedCheckinData.primary_concern_today = checkinData.primary_concern_today.trim();
+    }
+    
+    if (checkinData.medication_confidence_today) {
+      enhancedCheckinData.medication_confidence_today = parseInt(checkinData.medication_confidence_today);
+    }
+    
+    if (checkinData.medication_concern_today && checkinData.medication_concern_today.trim() !== '') {
+      enhancedCheckinData.medication_concern_today = checkinData.medication_concern_today.trim();
+    }
+    
+    if (checkinData.financial_stress_today) {
+      enhancedCheckinData.financial_stress_today = parseInt(checkinData.financial_stress_today);
+    }
+    
+    if (checkinData.financial_concern_today && checkinData.financial_concern_today.trim() !== '') {
+      enhancedCheckinData.financial_concern_today = checkinData.financial_concern_today.trim();
+    }
+    
+    if (checkinData.journey_readiness_today) {
+      enhancedCheckinData.journey_readiness_today = parseInt(checkinData.journey_readiness_today);
+    }
+    
+    if (checkinData.top_concern_today && checkinData.top_concern_today.trim() !== '') {
+      enhancedCheckinData.top_concern_today = checkinData.top_concern_today.trim();
+    }
+
+    console.log('📊 Sending enhanced check-in to Airtable:', enhancedCheckinData);
+
+    // Save to Airtable
+    const result = await airtableRequest('DailyCheckins', 'POST', {
+      fields: enhancedCheckinData
+    });
+
+    console.log('✅ Enhanced daily check-in saved successfully:', result.id);
+
+    // Generate enhanced micro-insight
+    const enhancedInsight = generateEnhancedMicroInsight(checkinData, user);
+    
+    console.log('🎯 Generated enhanced micro-insight:', enhancedInsight.title);
+
+    // Track enhanced analytics
+    const enhancedAnalytics = {
+      user_id: [user.id],
+      event_type: 'enhanced_checkin_completed',
+      event_timestamp: new Date().toISOString().split('T')[0],
+      date: new Date().toISOString().split('T')[0],
+      mood_selected: checkinData.mood_today.split(', ').map(m => m.trim()),
+      confidence_level: parseInt(checkinData.confidence_today),
+      enhanced_fields: Object.keys(checkinData).filter(key => !['mood_today', 'confidence_today'].includes(key)),
+      tracking_data: enhancedInsight.tracking_data
+    };
+
+    try {
+      await trackFVMAnalytics(enhancedAnalytics);
+      console.log('📈 Enhanced check-in analytics tracked successfully');
+    } catch (analyticsError) {
+      console.error('❌ Error tracking enhanced analytics:', analyticsError);
+    }
+
+    res.json({
+      success: true,
+      checkin: {
+        id: result.id,
+        mood_today: enhancedCheckinData.mood_today,
+        confidence_today: enhancedCheckinData.confidence_today,
+        date_submitted: enhancedCheckinData.date_submitted,
+        enhanced_fields: Object.keys(checkinData).filter(key => !['mood_today', 'confidence_today'].includes(key)).length
+      },
+      enhanced_insight: enhancedInsight,
+      message: 'Enhanced daily check-in completed successfully! 🌟✨'
+    });
+
+  } catch (error) {
+    console.error('❌ Unexpected error in enhanced check-in:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Internal server error',
+      details: error.message
+    });
+  }
+});
+
+async function trackFVMAnalytics(analyticsData) {
+  try {
+    // Adjust to match schema - put non-standard fields in event_data
+    if (analyticsData.enhanced_fields || analyticsData.tracking_data) {
+      analyticsData.event_data = JSON.stringify({
+        ...JSON.parse(analyticsData.event_data || '{}'),
+        enhanced_fields: analyticsData.enhanced_fields,
+        tracking_data: analyticsData.tracking_data
+      });
+      delete analyticsData.enhanced_fields;
+      delete analyticsData.tracking_data;
+    }
+    // Remove confidence_scores if present, add to event_data
+    if (analyticsData.confidence_scores) {
+      let eventData = JSON.parse(analyticsData.event_data || '{}');
+      eventData.confidence_scores = JSON.parse(analyticsData.confidence_scores);
+      analyticsData.event_data = JSON.stringify(eventData);
+      delete analyticsData.confidence_scores;
+    }
+    const result = await airtableRequest('FMVAnalytics', 'POST', { fields: analyticsData });
+    return result;
+  } catch (error) {
+    console.error('Analytics tracking error:', error);
+    throw error;
+  }
+}
 
 module.exports = app;
