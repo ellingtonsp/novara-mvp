@@ -1,13 +1,12 @@
 [build]
 builder = "NIXPACKS"
-buildCommand = "npm ci && npm run build"
-outputDirectory = "dist"
+buildCommand = "npm install && npm run build"
 
 [deploy]
-startCommand = "npm run preview -- --host 0.0.0.0 --port $PORT"
-healthcheckPath = "/novara-mvp/"
+startCommand = "npx serve -s dist -l $PORT"
+healthcheckPath = "/"
 healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
 
 [environment]
-NODE_ENV = "production"
-PORT = "$PORT" 
+NODE_ENV = "production" 
