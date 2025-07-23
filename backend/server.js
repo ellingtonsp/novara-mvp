@@ -2,6 +2,9 @@
 const express = require('express');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const morgan = require('morgan');
 require('dotenv').config();
 
 const app = express();
@@ -13,6 +16,52 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-t
 // Trust Railway proxy
 app.set('trust proxy', true);
 
+// Security middleware
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "https:"],
+    },
+  },
+}));
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: {
+    error: 'Too many requests from this IP, please try again later.',
+    retryAfter: '15 minutes'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Apply rate limiting to all routes
+app.use(limiter);
+
+// Stricter rate limiting for auth routes
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // limit each IP to 5 requests per windowMs
+  message: {
+    error: 'Too many authentication attempts, please try again later.',
+    retryAfter: '15 minutes'
+  },
+});
+
+// Logging middleware
+app.use(morgan('combined', {
+  stream: {
+    write: (message) => {
+      console.log(message.trim());
+    }
+  }
+}));
+
 // CORS - Allow GitHub Pages and localhost
 app.use(cors({
   origin: [
@@ -20,7 +69,8 @@ app.use(cors({
     'http://localhost:5174', // Allow port 5174 for Vite dev server
     'http://localhost:5175', // Allow port 5175 for Vite dev server
     'http://localhost:3000',
-    'https://ellingtonsp.github.io'
+    'https://ellingtonsp.github.io',
+    'https://novara-mvp.vercel.app' // Add Vercel domain
   ],
   credentials: true
 }));
@@ -1245,7 +1295,7 @@ app.get('/api/health', (req, res) => {
 // ============================================================================
 
 // Login (for existing users)
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', authLimiter, async (req, res) => {
   try {
     const { email } = req.body;
     
@@ -1294,7 +1344,7 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 // Create User (Signup + Auto-login)
-app.post('/api/users', async (req, res) => {
+app.post('/api/users', authLimiter, async (req, res) => {
   try {
     const userData = {
       email: req.body.email,

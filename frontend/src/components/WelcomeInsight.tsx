@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { CheckCircle } from 'lucide-react';
-import { FVMAnalytics } from '../lib/analytics';
+import { trackInsightGeneration, trackEvent } from '../lib/analytics';
 
 interface Insight {
   title: string;
@@ -67,7 +67,8 @@ export default function WelcomeInsight({ onContinue }: WelcomeInsightProps) {
           });
           
           // Track insight delivery
-          FVMAnalytics.insightDelivered('onboarding_micro', data.micro_insight.title, 'welcome_' + Date.now());
+          trackInsightGeneration('onboarding_micro');
+          trackEvent('Insights', 'delivered', data.micro_insight.title);
         } else {
           // Fallback insight
           setInsight({
@@ -94,12 +95,12 @@ export default function WelcomeInsight({ onContinue }: WelcomeInsightProps) {
 
   const handleFeedback = (type: 'up' | 'down') => {
     setFeedbackGiven(type);
-    FVMAnalytics.feedbackSubmitted(type === 'up' ? 'helpful' : 'not_helpful', 'onboarding');
+    trackEvent('Feedback', 'submitted', type === 'up' ? 'helpful' : 'not_helpful');
   };
 
   const handleContinue = () => {
     if (insight) {
-      FVMAnalytics.insightOpened('onboarding_micro', insight.title);
+      trackEvent('Insights', 'opened', 'onboarding_micro');
     }
     onContinue();
   };

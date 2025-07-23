@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Heart, Users, Calendar, MessageCircle, ArrowRight, CheckCircle, LogOut, User, Menu, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { apiClient } from '../lib/api';
-import { FVMAnalytics } from '../lib/analytics';
+import { trackEvent, trackAuthEvent } from '../lib/analytics';
 import DailyCheckinForm from './DailyCheckinForm';
 import DailyInsightsDisplay from './DailyInsightsDisplay';
 import WelcomeInsight from './WelcomeInsight';
@@ -164,7 +164,8 @@ const NovaraLanding = () => {
         login(formData.email, response.data.token, response.data.user);
         
                 // Track onboarding completion
-        FVMAnalytics.onboardingComplete(formData);
+        trackEvent('Onboarding', 'completed', 'user_registration');
+        trackAuthEvent('register', true);
         
         // Redirect to welcome insight page immediately
         console.log('🎯 Redirecting to welcome insight page');

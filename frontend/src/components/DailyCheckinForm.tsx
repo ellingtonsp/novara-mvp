@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Heart, Clock, CheckCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { FVMAnalytics } from '../lib/analytics';
+import { trackDailyCheckin, trackInsightGeneration, trackEvent } from '../lib/analytics';
 
 interface DailyCheckinFormProps {
   onComplete?: () => void;
@@ -265,22 +265,16 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
 
       if (response.ok && responseData.success) {
         // Track enhanced check-in completion
-        FVMAnalytics.checkInCompleted(
-          selectedMoods,
-          (enhancedCheckinData as any).confidence_today || 5,
-          !!((enhancedCheckinData as any).primary_concern_today || (enhancedCheckinData as any).medication_concern_today || (enhancedCheckinData as any).financial_concern_today)
-        );
+        trackDailyCheckin(selectedMoods.join(','), (enhancedCheckinData as any).confidence_today || 5);
+        trackEvent('Check-in', 'completed', 'enhanced');
         
         // Display enhanced insight
         if (responseData.enhanced_insight) {
           setImmediateInsight(responseData.enhanced_insight);
           
           // Track enhanced insight delivery
-          FVMAnalytics.insightDelivered(
-            responseData.enhanced_insight.enhanced ? 'enhanced_checkin_micro' : 'checkin_micro', 
-            responseData.enhanced_insight.title, 
-            'enhanced_checkin_' + Date.now()
-          );
+          trackInsightGeneration(responseData.enhanced_insight.enhanced ? 'enhanced_checkin_micro' : 'checkin_micro');
+          trackEvent('Insights', 'delivered', responseData.enhanced_insight.title);
         } else {
           setImmediateInsight({
             title: 'Enhanced Check-in Complete!',
