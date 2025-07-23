@@ -8,8 +8,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Heart, Users, Calendar, MessageCircle, ArrowRight, CheckCircle, LogOut, User, Menu, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { apiClient } from '../lib/api';
+import { FVMAnalytics } from '../lib/analytics';
 import DailyCheckinForm from './DailyCheckinForm';
 import DailyInsightsDisplay from './DailyInsightsDisplay';
+import WelcomeInsight from './WelcomeInsight';
 
 const NovaraLanding = () => {
   const { user, isAuthenticated, isLoading, login, logout } = useAuth();
@@ -30,7 +32,7 @@ const NovaraLanding = () => {
 
   // Mobile-specific state
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const [currentView, setCurrentView] = useState<'dashboard' | 'checkin' | 'insights'>('dashboard');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'checkin' | 'insights' | 'welcome'>('dashboard');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
@@ -47,6 +49,21 @@ const NovaraLanding = () => {
     top_concern: '',
     email_opt_in: true,
   });
+  // Remove old modal state - now using dedicated page
+
+  // Add at the top of the component, after useState for formData
+  const inspirationalMessages = [
+    "You are stronger than you think. Every step is progress.",
+    "You’re not alone—others in the Novara community are walking this path with you.",
+    "It’s okay to take things one day at a time.",
+    "Your feelings are valid. Be gentle with yourself.",
+    "Hope grows in small moments."
+  ];
+  const [inspirationIdx] = useState(() => Math.floor(Math.random() * inspirationalMessages.length));
+  const inspirationalMessage = inspirationalMessages[inspirationIdx];
+
+  // Remove old modal debugging code - now using dedicated page
+  const [feedbackGiven, setFeedbackGiven] = useState<null | 'up' | 'down'>(null);
 
   // Show loading screen while auth is initializing
   if (isLoading) {
@@ -69,10 +86,17 @@ const NovaraLanding = () => {
       const response = await apiClient.createUser(formData);
       
       if (response.success && response.data) {
+        console.log('✅ Onboarding signup successful, about to call micro-insight');
         login(formData.email, response.data.token, response.data.user);
+        
+                // Track onboarding completion
+        FVMAnalytics.onboardingComplete(formData);
+        
+        // Redirect to welcome insight page immediately
+        console.log('🎯 Redirecting to welcome insight page');
         setJustSignedUp(true);
         setShowForm(false);
-        setCurrentView('dashboard');
+        setCurrentView('welcome');
       } else {
         alert(`Signup failed: ${response.error || 'Unknown error'}`);
       }
@@ -617,7 +641,7 @@ const NovaraLanding = () => {
 
                   <div>
                     <Label htmlFor="confidence_meds">
-                      How confident do you feel about IVF medications? ({formData.confidence_meds}/10)
+                      When you think about your IVF medications, do you feel prepared or a bit lost? ({formData.confidence_meds}/10)
                     </Label>
                     <div className="mt-4 px-2">
                       <input
@@ -659,15 +683,15 @@ const NovaraLanding = () => {
                         `
                       }} />
                       <div className="flex justify-between text-sm text-gray-500 mt-2">
-                        <span>Not confident</span>
-                        <span>Very confident</span>
+                        <span>Very lost</span>
+                        <span>Totally prepared</span>
                       </div>
                     </div>
                   </div>
 
                   <div>
                     <Label htmlFor="confidence_costs">
-                      How confident do you feel about IVF costs/insurance? ({formData.confidence_costs}/10)
+                      When it comes to costs and insurance, do you feel on top of things or a bit in the dark? ({formData.confidence_costs}/10)
                     </Label>
                     <div className="mt-4 px-2">
                       <input
@@ -709,15 +733,15 @@ const NovaraLanding = () => {
                         `
                       }} />
                       <div className="flex justify-between text-sm text-gray-500 mt-2">
-                        <span>Not confident</span>
-                        <span>Very confident</span>
+                        <span>In the dark</span>
+                        <span>On top of it</span>
                       </div>
                     </div>
                   </div>
 
                   <div>
                     <Label htmlFor="confidence_overall">
-                      How confident do you feel about your IVF journey overall? ({formData.confidence_overall}/10)
+                      When you look at the road ahead, do you feel steady or shaky? ({formData.confidence_overall}/10)
                     </Label>
                     <div className="mt-4 px-2">
                       <input
@@ -759,8 +783,8 @@ const NovaraLanding = () => {
                         `
                       }} />
                       <div className="flex justify-between text-sm text-gray-500 mt-2">
-                        <span>Not confident</span>
-                        <span>Very confident</span>
+                        <span>Very shaky</span>
+                        <span>Steady</span>
                       </div>
                     </div>
                   </div>
@@ -777,15 +801,34 @@ const NovaraLanding = () => {
                     />
                   </div>
 
-                  <div className="flex items-center space-x-2 p-4 bg-[#FFF5F0]/50 rounded-lg">
-                    <input
-                      type="checkbox"
-                      id="email_opt_in"
-                      checked={formData.email_opt_in}
-                      onChange={(e) => handleInputChange('email_opt_in', e.target.checked)}
-                      className="w-4 h-4 text-[#FF6F61] bg-gray-100 border-gray-300 rounded focus:ring-[#FF6F61] focus:ring-2"
-                    />
-                    <Label htmlFor="email_opt_in" className="text-sm text-gray-700">
+                  <div className="flex items-start space-x-4 p-5 bg-[#FFF5F0]/50 rounded-xl border border-[#FF6F61]/20">
+                    <div className="relative flex-shrink-0 mt-1">
+                      <input
+                        type="checkbox"
+                        id="email_opt_in"
+                        checked={formData.email_opt_in}
+                        onChange={(e) => handleInputChange('email_opt_in', e.target.checked)}
+                        className="sr-only"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleInputChange('email_opt_in', !formData.email_opt_in)}
+                        className={`w-6 h-6 rounded-md border-2 transition-all duration-200 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-[#FF6F61] focus:ring-offset-2 ${
+                          formData.email_opt_in 
+                            ? 'bg-[#FF6F61] border-[#FF6F61] text-white' 
+                            : 'bg-white border-gray-300 hover:border-[#FF6F61]'
+                        }`}
+                        aria-checked={formData.email_opt_in}
+                        role="checkbox"
+                      >
+                        {formData.email_opt_in && (
+                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                      </button>
+                    </div>
+                    <Label htmlFor="email_opt_in" className="text-sm text-gray-700 leading-relaxed cursor-pointer select-none" onClick={() => handleInputChange('email_opt_in', !formData.email_opt_in)}>
                       I'd like to receive supportive emails and updates about my IVF journey. You can unsubscribe anytime.
                     </Label>
                   </div>
@@ -813,6 +856,7 @@ const NovaraLanding = () => {
             </Card>
           </div>
         )}
+        {/* Old modal code removed - now using dedicated WelcomeInsight page */}
       </div>
     );
   }
@@ -858,6 +902,8 @@ const NovaraLanding = () => {
 
       {/* Desktop Content */}
       <div className="hidden md:block">
+        {currentView === 'welcome' && <WelcomeInsight onContinue={() => setCurrentView('dashboard')} />}
+        {currentView !== 'welcome' && (
         <section className="max-w-4xl mx-auto px-6 py-12">
           <div className="text-center mb-8">
             {justSignedUp ? (
@@ -894,15 +940,17 @@ const NovaraLanding = () => {
             <DailyCheckinForm />
           </div>
         </section>
+        )}
       </div>
 
       {/* Mobile Content */}
       <div className="block md:hidden">
+        {currentView === 'welcome' && <WelcomeInsight onContinue={() => setCurrentView('dashboard')} />}
         {currentView === 'dashboard' && <MobileDashboard />}
         {currentView === 'checkin' && <MobileCheckinView />}
         {currentView === 'insights' && <MobileInsightsView />}
         
-        <MobileNavigation />
+        {currentView !== 'welcome' && <MobileNavigation />}
       </div>
     </div>
   );

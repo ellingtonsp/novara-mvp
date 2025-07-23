@@ -455,6 +455,323 @@ function generateMicroInsight(userData) {
 }
 
 // ============================================================================
+// ENHANCED MICRO-INSIGHT ENGINE v2 - CONTEXTUAL & PERSONALIZED
+// ============================================================================
+
+function generatePersonalizedMicroInsight(data, user) {
+  console.log('🎯 Generating personalized micro-insight for:', user.nickname || user.email);
+  console.log('📊 Input data:', data);
+  const insights = [];
+  
+  // Calculate overall confidence profile
+  const avgConfidence = (
+    (data.confidence_meds || 5) + 
+    (data.confidence_costs || 5) + 
+    (data.confidence_overall || 5)
+  ) / 3;
+  
+  // 1. COMBINATION INSIGHTS (Multi-factor patterns)
+  
+  // Low confidence across multiple areas
+  if (data.confidence_meds <= 4 && data.confidence_costs <= 4) {
+    insights.push({
+      title: `${user.nickname}, we see you're carrying a lot`,
+      message: "Both the medication protocols and financial planning can feel overwhelming at once. Here's what helps: tackle just one piece tomorrow. Which feels more manageable right now?",
+      action: {
+        label: "Help me prioritize tomorrow's focus",
+        type: "priority_helper"
+      },
+      priority: 9,
+      specificity: 8
+    });
+  }
+  
+  // High confidence with specific concern
+  else if (avgConfidence >= 7 && data.top_concern && data.top_concern.trim() !== '') {
+    insights.push({
+      title: "You're handling this well overall",
+      message: `Your confidence levels show real strength, ${user.nickname}. The one thing weighing on you—"${data.top_concern}"—makes sense to think about. Want a gentle strategy for this specific worry?`,
+      action: {
+        label: "Get targeted support for this concern",
+        type: "concern_strategy"
+      },
+      priority: 8,
+      specificity: 9
+    });
+  }
+  
+  // 2. CYCLE STAGE SPECIFIC INSIGHTS
+  
+  if (data.cycle_stage === 'considering' && data.confidence_overall <= 4) {
+    insights.push({
+      title: "In the 'considering' phase",
+      message: "It's completely normal to feel uncertain when you're still exploring IVF. This hesitation isn't a sign you're not ready—it shows you're thinking carefully about something important.",
+      action: {
+        label: "See what helped others in this phase",
+        type: "phase_guidance"
+      },
+      priority: 7,
+      specificity: 7
+    });
+  }
+  
+  else if (data.cycle_stage === 'stimulation' && data.confidence_meds <= 4) {
+    insights.push({
+      title: "Navigating stimulation medications",
+      message: "You're in the thick of the medication phase, and it can feel intense. Each injection you've managed is progress, even when it doesn't feel like it. Tomorrow's dose is just one step.",
+      action: {
+        label: "Quick med organization tips",
+        type: "med_tips"
+      },
+      priority: 9,
+      specificity: 9
+    });
+  }
+  
+  else if (data.cycle_stage === 'transfer' && data.confidence_overall >= 6) {
+    insights.push({
+      title: "Approaching transfer with strength",
+      message: `${user.nickname}, you've made it to transfer—that's huge. Your confidence shows you've built real resilience through this process. Trust what you've learned about yourself.`,
+      action: {
+        label: "Transfer day preparation guide",
+        type: "transfer_prep"
+      },
+      priority: 8,
+      specificity: 8
+    });
+  }
+  
+  // 3. PRIMARY NEED BASED INSIGHTS
+  
+  if (data.primary_need === 'financial_planning' && data.confidence_costs <= 4) {
+    insights.push({
+      title: "Financial planning support",
+      message: "Money worries about IVF are so valid—this is expensive and often not fully covered. You're not alone in needing to think creatively about funding. One conversation at a time.",
+      action: {
+        label: "Financial resources & strategies",
+        type: "financial_support"
+      },
+      priority: 8,
+      specificity: 7
+    });
+  }
+  
+  else if (data.primary_need === 'procedure_info' && data.confidence_overall >= 6) {
+    insights.push({
+      title: "You're building knowledge and confidence",
+      message: "Your confidence levels suggest you're gathering information well. Knowledge is power in this process—each question you ask and answer helps you feel more prepared.",
+      action: {
+        label: "Next-level procedure insights",
+        type: "advanced_info"
+      },
+      priority: 6,
+      specificity: 6
+    });
+  }
+  
+  // 4. MOOD-BASED INSIGHTS (for check-ins)
+  
+  if (data.mood_today) {
+    const moods = data.mood_today.split(', ').map(m => m.trim().toLowerCase());
+    
+    if (moods.includes('anxious') && moods.includes('hopeful')) {
+      insights.push({
+        title: "Both anxious and hopeful",
+        message: "That combination of anxiety and hope? It's the most human thing about this process. Both feelings are valid and can coexist. The hope is real, even with the worry.",
+        action: {
+          label: "Anxiety + hope coping strategies",
+          type: "mixed_emotions"
+        },
+        priority: 8,
+        specificity: 8
+      });
+    }
+    
+    else if (moods.includes('grateful') && data.confidence_today >= 7) {
+      insights.push({
+        title: "Gratitude and confidence together",
+        message: `${user.nickname}, feeling grateful while also feeling confident is a beautiful combination. This suggests you're finding ways to appreciate the journey even amid challenges.`,
+        action: {
+          label: "Ways to anchor this positive moment",
+          type: "gratitude_anchor"
+        },
+        priority: 7,
+        specificity: 7
+      });
+    }
+    
+    else if (moods.includes('overwhelmed') && data.confidence_today <= 4) {
+      insights.push({
+        title: "When everything feels like too much",
+        message: "Overwhelm + low confidence = completely understandable. Today doesn't define your capacity. Sometimes the best thing is to just focus on the next small thing in front of you.",
+        action: {
+          label: "Simple overwhelm reset techniques",
+          type: "overwhelm_reset"
+        },
+        priority: 9,
+        specificity: 8
+      });
+    }
+  }
+  
+  // 5. FALLBACK INSIGHTS (more specific than current defaults)
+  
+  // For confident users
+  if (avgConfidence >= 7 && insights.length === 0) {
+    insights.push({
+      title: `${user.nickname}, your confidence is showing`,
+      message: "Your responses suggest you're navigating this journey with real strength. That confidence you're building? It's not just about IVF—it's about trusting yourself through uncertainty.",
+      action: {
+        label: "Share this strength with others",
+        type: "peer_support"
+      },
+      priority: 5,
+      specificity: 5
+    });
+  }
+  
+  // For users needing support
+  else if (avgConfidence <= 4 && insights.length === 0) {
+    insights.push({
+      title: "You're doing more than you know",
+      message: `${user.nickname}, this process is hard, and your feelings about it are completely valid. Every small step you take—even filling out this form—is an act of courage.`,
+      action: {
+        label: "See your progress so far",
+        type: "progress_reflection"
+      },
+      priority: 6,
+      specificity: 6
+    });
+  }
+  
+  // Final fallback
+  if (insights.length === 0) {
+    insights.push({
+      title: "Your journey, your pace",
+      message: `Thank you for sharing, ${user.nickname}. Every person's IVF experience is unique, and we're here to support yours exactly as it unfolds.`,
+      action: null,
+      priority: 3,
+      specificity: 3
+    });
+  }
+  
+  // Select the best insight (highest priority + specificity)
+  insights.sort((a, b) => (b.priority + b.specificity) - (a.priority + a.specificity));
+  
+  const selectedInsight = insights[0];
+  console.log('✨ Selected insight:', selectedInsight.title);
+  console.log('📝 Generated insights count:', insights.length);
+  
+  // Remove internal scoring for response
+  delete selectedInsight.priority;
+  delete selectedInsight.specificity;
+  
+  return selectedInsight;
+}
+
+// ============================================================================
+// MICRO-INSIGHT ENDPOINT (FVM-FOCUSED, POST-ONBOARDING OR CHECK-IN)
+// ============================================================================
+
+/**
+ * POST /api/insights/micro
+ * Generate a micro-insight based on latest onboarding or check-in data.
+ * Expects: { user_id (optional if JWT), onboardingData, checkinData }
+ * Returns: { success, micro_insight: { title, message, action }, user_id }
+ */
+app.post('/api/insights/micro', authenticateToken, async (req, res) => {
+  try {
+    // Prefer check-in data if provided, else use onboarding data
+    const { onboardingData, checkinData } = req.body;
+    let user = await findUserByEmail(req.user.email);
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+
+    // Use latest data for insight generation
+    const data = checkinData || onboardingData || user;
+
+    // Enhanced micro-insight logic
+    // Generate enhanced, personalized micro-insight using new engine
+    const micro_insight = generatePersonalizedMicroInsight(data, user);
+    /* OLD LOGIC - REPLACED BY generatePersonalizedMicroInsight()
+    // 1. Medications
+    if (data.confidence_meds !== undefined && data.confidence_meds <= 4) {
+      micro_insight = {
+        title: 'About IVF medications',
+        message: "You mentioned meds feel daunting. Totally normal. Tomorrow we’ll nudge just one piece—not the whole protocol. For tonight, save this: you don’t have to remember everything at once.",
+        action: {
+          label: "Add tomorrow’s med reminder to your planner",
+          type: "toggle_reminder"
+        }
+      };
+    }
+    // 2. Costs/Insurance
+    else if (data.confidence_costs !== undefined && data.confidence_costs <= 4) {
+      micro_insight = {
+        title: 'Managing financial stress',
+        message: "The money part of IVF can feel overwhelming. For now, just focus on today’s step. If you want, we can send a simple cost checklist tomorrow.",
+        action: {
+          label: "Send me a cost checklist tomorrow",
+          type: "opt_in_checklist"
+        }
+      };
+    }
+    // 3. Overall journey
+    else if (data.confidence_overall !== undefined && data.confidence_overall <= 4) {
+      micro_insight = {
+        title: 'Your overall journey',
+        message: "It’s okay if the road ahead feels shaky. You don’t have to have it all figured out. For tonight, just breathe. We’ll take it one day at a time.",
+        action: {
+          label: "See 3 tips for finding steadiness",
+          type: "show_tips"
+        }
+      };
+    }
+    // 4. Primary need
+    else if (data.primary_need === 'emotional_support') {
+      micro_insight = {
+        title: 'Emotional support matters',
+        message: "You’re not alone in this. If you ever want to talk or just need a gentle nudge, we’re here.",
+        action: {
+          label: "Get a supportive message tomorrow",
+          type: "opt_in_support"
+        }
+      };
+    }
+    // 5. Top concern
+    else if (data.top_concern && data.top_concern.trim() !== '') {
+      micro_insight = {
+        title: 'We see your concern',
+        message: `You mentioned: “${data.top_concern}.” That’s valid. If you want, we can send a gentle check-in about this tomorrow.`,
+        action: {
+          label: "Remind me about this tomorrow",
+          type: "opt_in_reminder"
+        }
+      };
+    }
+    // 6. Default
+    else {
+      micro_insight = {
+        title: 'Your journey matters',
+        message: "Thank you for sharing a bit of your story. Every step you take is meaningful. We’ll be here with you, one day at a time.",
+        action: null
+      };
+    }
+    */
+
+    res.json({
+      success: true,
+      micro_insight,
+      user_id: user.id
+    });
+  } catch (error) {
+    console.error('Error generating micro-insight:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+// ============================================================================
 // API ROUTES
 // ============================================================================
 
@@ -920,6 +1237,53 @@ app.post('/api/insights/engagement', authenticateToken, async (req, res) => {
 
   } catch (error) {
     console.error('❌ Error tracking insight engagement:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Internal server error' 
+    });
+  }
+});
+
+// Track General Analytics Events (Protected Route) - FVM Focused
+app.post('/api/analytics/events', authenticateToken, async (req, res) => {
+  try {
+    const { event_type, event_data = {} } = req.body;
+    
+    console.log(`📈 FVM Event tracked: ${event_type}`, event_data);
+
+    // Find user
+    const user = await findUserByEmail(req.user.email);
+    if (!user) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'User not found' 
+      });
+    }
+
+    // Create comprehensive event record
+    const analyticsData = {
+      user_id: [user.id],
+      event_type, // 'onboarding_complete', 'insight_delivered', 'insight_opened', 'insight_clicked', 'check_in_completed', 'feedback_submitted'
+      event_timestamp: new Date().toISOString(),
+      date: new Date().toISOString().split('T')[0],
+      ...event_data // Additional event-specific data
+    };
+
+    // For now, log all events - later you can create an Analytics table in Airtable
+    console.log('🎯 FVM Analytics event tracked:', analyticsData);
+
+    res.json({
+      success: true,
+      message: 'Analytics event tracked successfully',
+      event: {
+        user_id: user.id,
+        event_type,
+        timestamp: analyticsData.event_timestamp
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error tracking analytics event:', error);
     res.status(500).json({ 
       success: false, 
       error: 'Internal server error' 

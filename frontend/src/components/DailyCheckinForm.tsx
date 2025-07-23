@@ -4,20 +4,21 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Heart, Clock, CheckCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { FVMAnalytics } from '../lib/analytics';
 
 interface DailyCheckinFormProps {
   onComplete?: () => void;
 }
 
 const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, logout } = useAuth();
   const [selectedMoods, setSelectedMoods] = useState<string[]>([]);
   const [primaryConcern, setPrimaryConcern] = useState('');
   const [confidenceToday, setConfidenceToday] = useState(5);
   const [userNote, setUserNote] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-  const [immediateInsight, setImmediateInsight] = useState('');
+  const [immediateInsight, setImmediateInsight] = useState<{ title: string; message: string; action?: { label: string; type: string } | null } | null>(null);
 
   // Clean mood options with better visual hierarchy
   const moodOptions = [
@@ -101,28 +102,6 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
     );
   };
 
-  const generateImmediateInsight = (moods: string[], confidence: number) => {
-    if (moods.includes('hopeful') || moods.includes('excited')) {
-      return "Your positive energy today is beautiful - hold onto that hope! 💛";
-    }
-    if (moods.includes('anxious') || moods.includes('worried')) {
-      return "It's completely normal to feel this way during IVF. You're doing amazingly. 🤗";
-    }
-    if (moods.includes('overwhelmed')) {
-      return "Take it one day at a time. You're stronger than you know. 🌸";
-    }
-    if (confidence <= 3) {
-      return "Low confidence days are part of the journey. Be gentle with yourself today. 💙";
-    }
-    if (moods.includes('grateful')) {
-      return "Gratitude is such a powerful force. Thank you for sharing that with us. ✨";
-    }
-    if (confidence >= 8) {
-      return "Your confidence is shining through today - that's wonderful to see! ⭐";
-    }
-    return "Thank you for checking in today. Every step of this journey matters. 🌿";
-  };
-
   const handleSubmit = async () => {
     if (!isAuthenticated) {
       alert('Please log in to submit a check-in');
@@ -147,13 +126,13 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
 
     try {
       const token = localStorage.getItem('token');
-      
       if (!token) {
         alert('Authentication token missing. Please log in again.');
         return;
       }
 
-      const response = await fetch('https://novara-mvp-production.up.railway.app/api/checkins', {
+      // Submit check-in as before
+      const response = await fetch('http://localhost:3000/api/checkins', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -164,17 +143,56 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
 
       const responseData = await response.json();
 
+      if (!response.ok) {
+        if (response.status === 401 || responseData.error?.includes('token') || responseData.error?.includes('expired')) {
+          alert('Your session has expired. Please log in again.');
+          logout();
+          return;
+        }
+        throw new Error(responseData.error || `Check-in failed: ${response.statusText}`);
+      }
+
       if (response.ok && responseData.success) {
-        const insight = generateImmediateInsight(selectedMoods, confidenceToday);
-        setImmediateInsight(insight);
-        setShowSuccess(true);
+        // Track check-in completion
+        FVMAnalytics.checkInCompleted(
+          selectedMoods,
+          confidenceToday,
+          !!(primaryConcern && primaryConcern.trim())
+        );
         
+        // Fetch micro-insight from backend
+        const microResponse = await fetch('http://localhost:3000/api/insights/micro', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ checkinData })
+        });
+        const microData = await microResponse.json();
+        if (microResponse.ok && microData.success && microData.micro_insight) {
+          const insight = {
+            title: microData.micro_insight.title,
+            message: microData.micro_insight.message,
+            action: microData.micro_insight.action || null
+          };
+          setImmediateInsight(insight);
+          
+          // Track insight delivery
+          FVMAnalytics.insightDelivered('checkin_micro', insight.title, 'checkin_' + Date.now());
+        } else {
+          setImmediateInsight({
+            title: 'Check-in Complete!',
+            message: 'Thank you for checking in. (Insight unavailable)',
+            action: null
+          });
+        }
+        setShowSuccess(true);
         // Reset form
         setSelectedMoods([]);
         setPrimaryConcern('');
         setConfidenceToday(5);
         setUserNote('');
-
         // Call onComplete after a short delay to show success state
         setTimeout(() => {
           if (onComplete) {
@@ -216,11 +234,18 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
         <Card className="w-full max-w-md border-2 border-[#FF6F61] bg-gradient-to-br from-[#FFF5F0] to-white">
           <CardContent className="p-8 text-center">
             <CheckCircle className="w-16 h-16 text-[#FF6F61] mx-auto mb-6" />
-            <h3 className="text-2xl font-semibold text-gray-800 mb-4">Check-in Complete!</h3>
+            <h3 className="text-2xl font-semibold text-gray-800 mb-4">{immediateInsight?.title || 'Check-in Complete!'}</h3>
             <div className="bg-white p-6 rounded-xl border border-[#CBA7FF]/30 mb-6">
               <p className="text-gray-700 leading-relaxed">
-                {immediateInsight}
+                {immediateInsight?.message}
               </p>
+              {immediateInsight?.action && (
+                <div className="mt-4">
+                  <Button className="bg-[#CBA7FF] text-white" onClick={() => {}}>
+                    {immediateInsight.action.label}
+                  </Button>
+                </div>
+              )}
             </div>
             <Button 
               onClick={() => setShowSuccess(false)}
