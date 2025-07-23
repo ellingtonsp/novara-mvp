@@ -1,30 +1,23 @@
 # Production Deployment Guide
 
 ## 🚀 Current Status
-- ✅ **Backend**: Deployed on Railway (https://novara-backend-production.up.railway.app)
-- 🔄 **Frontend**: Ready for deployment (Vercel recommended)
+- ✅ **Frontend**: Deployed on Vercel (https://novara-mvp.vercel.app)
+- 🔄 **Backend**: Deployed on Railway (URL needs verification)
+- ✅ **Database**: Airtable (functional)
 
 ## 🎯 Deployment Options
 
-### Option 1: Vercel (Recommended)
+### Option 1: Vercel (✅ COMPLETED)
 **Pros:** Zero-config, automatic HTTPS, CDN, excellent React support
 **Cons:** None for MVP
 
-**Steps:**
-1. Go to [vercel.com](https://vercel.com)
-2. Sign up with GitHub
-3. Import repository
-4. Set root directory to `frontend`
-5. Deploy automatically
+**Status:** ✅ **LIVE** - https://novara-mvp.vercel.app
 
 ### Option 2: Railway Frontend
 **Pros:** Same platform as backend, unified dashboard
 **Cons:** Less optimized for static sites
 
-**Steps:**
-1. Create new Railway service
-2. Point to `frontend` directory
-3. Deploy using existing `railway.toml`
+**Status:** Configuration ready in `frontend/railway.toml`
 
 ## 🔧 Environment Configuration
 
@@ -42,7 +35,34 @@ JWT_SECRET=your_jwt_secret
 VITE_API_URL=https://novara-backend-production.up.railway.app
 ```
 
-## 🌐 Custom Domain Setup
+## 🌐 Finding Railway Backend URL
+
+### Method 1: Railway Dashboard
+1. Go to [railway.app](https://railway.app)
+2. Sign in to your account
+3. Click on your **novara-mvp** project
+4. Look for the **"Deployments"** tab
+5. Find your active deployment and click on it
+6. The URL will be displayed in the **"Domains"** section
+
+### Method 2: Railway CLI
+```bash
+# Link to project
+railway link
+
+# Check status
+railway status
+
+# List domains
+railway domain
+```
+
+### Method 3: Check Recent Deployments
+Look for URLs in the format:
+- `https://[project-name]-[environment]-[hash].up.railway.app`
+- `https://[custom-domain].railway.app`
+
+## 🔧 Custom Domain Setup
 
 ### Vercel Domain Configuration
 1. Add domain in Vercel dashboard
@@ -111,4 +131,20 @@ VITE_API_URL=https://novara-backend-production.up.railway.app
 ## 📞 Support Contacts
 - Railway Support: Built-in chat
 - Vercel Support: Built-in chat
-- Airtable Support: Email support 
+- Airtable Support: Email support
+
+## 🔄 Current Issues & Solutions
+
+### Issue: Railway Backend URL Changed
+**Problem:** Backend URL may have changed after deployment
+**Solution:** 
+1. Check Railway dashboard for current URL
+2. Update frontend API configuration
+3. Test connectivity
+
+### Issue: Frontend 404 Error (RESOLVED ✅)
+**Problem:** Vite base path causing 404 errors
+**Solution:** 
+1. Removed `base: '/novara-mvp/'` from vite.config.ts
+2. Created root-level vercel.json
+3. Fixed asset loading paths 
