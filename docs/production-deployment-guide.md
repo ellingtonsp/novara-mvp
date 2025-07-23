@@ -2,7 +2,7 @@
 
 ## 🚀 Current Status
 - ✅ **Frontend**: Deployed on Vercel (https://novara-mvp.vercel.app)
-- 🔄 **Backend**: Deployed on Railway (URL needs verification)
+- ✅ **Backend**: Deployed on Railway (https://novara-mvp-production.up.railway.app)
 - ✅ **Database**: Airtable (functional)
 
 ## 🎯 Deployment Options
@@ -32,7 +32,7 @@ JWT_SECRET=your_jwt_secret
 
 ### Frontend Environment Variables (Vercel)
 ```
-VITE_API_URL=https://novara-backend-production.up.railway.app
+VITE_API_URL=https://novara-mvp-production.up.railway.app
 ```
 
 ## 🌐 Finding Railway Backend URL

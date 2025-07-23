@@ -6,7 +6,7 @@ Novara - Emotionally intelligent IVF support app MVP
 
 ### ✅ Live Applications
 - **Frontend:** https://novara-mvp.vercel.app
-- **Backend:** Railway (URL needs verification)
+- **Backend:** https://novara-mvp-production.up.railway.app
 - **Database:** Airtable (functional)
 
 ### 📱 Features
