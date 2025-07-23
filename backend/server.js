@@ -8,7 +8,7 @@ const morgan = require('morgan');
 require('dotenv').config();
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || (process.env.NODE_ENV === 'development' ? 3002 : 3000);
 
 // JWT Secret - make sure to set this in your Railway environment variables
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production';
@@ -67,16 +67,25 @@ app.use(morgan('combined', {
   }
 }));
 
-// CORS - Allow GitHub Pages and localhost
+// CORS - Environment-aware origin configuration
+const allowedOrigins = [
+  'http://localhost:3000',  // Frontend development
+  'http://localhost:4200',  // Stable frontend port
+  'https://novara-mvp.vercel.app', // Production frontend
+  'https://novara-mvp-staging.vercel.app', // Staging frontend
+];
+
+// Add development origins in non-production environments
+if (process.env.NODE_ENV !== 'production') {
+  allowedOrigins.push(
+    'http://localhost:5173',  // Legacy Vite dev server
+    'http://localhost:3001',  // Alternative frontend port
+    'http://localhost:4200'   // Stable frontend port (ensure it's always included)
+  );
+}
+
 app.use(cors({
-  origin: [
-    'http://localhost:5173',
-    'http://localhost:5174', // Allow port 5174 for Vite dev server
-    'http://localhost:5175', // Allow port 5175 for Vite dev server
-    'http://localhost:3000',
-    'https://ellingtonsp.github.io',
-    'https://novara-mvp.vercel.app' // Add Vercel domain
-  ],
+  origin: allowedOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Origin', 'X-Requested-With', 'Accept'],
@@ -87,7 +96,10 @@ app.use(cors({
 
 app.use(express.json());
 
-// Environment Configuration
+// Database Configuration - Unified local/production adapter
+const { databaseAdapter, airtableRequest, findUserByEmail } = require('./database/database-factory');
+
+// Legacy Airtable config for production fallback
 const config = {
   airtable: {
     apiKey: process.env.AIRTABLE_API_KEY,
@@ -96,55 +108,10 @@ const config = {
   }
 };
 
-// Airtable API Helper
-async function airtableRequest(endpoint, method = 'GET', data = null) {
-  const url = `${config.airtable.baseUrl}/${endpoint}`;
-  const options = {
-    method,
-    headers: {
-      'Authorization': `Bearer ${config.airtable.apiKey}`,
-      'Content-Type': 'application/json'
-    }
-  };
-  
-  if (data && method !== 'GET') {
-    options.body = JSON.stringify(data);
-  }
-  
-  const response = await fetch(url, options);
-  if (!response.ok) {
-    const errorBody = await response.text();
-    throw new Error(`Airtable ${method} failed: ${response.statusText} - ${errorBody}`);
-  }
-  return response.json();
-}
-
-// User Lookup Helper
-async function findUserByEmail(email) {
-  try {
-    const response = await fetch(
-      `${config.airtable.baseUrl}/Users?filterByFormula={email}='${email}'`,
-      {
-        headers: {
-          'Authorization': `Bearer ${config.airtable.apiKey}`,
-        }
-      }
-    );
-    
-    const result = await response.json();
-    
-    if (result.records && result.records.length > 0) {
-      return {
-        id: result.records[0].id,
-        ...result.records[0].fields
-      };
-    }
-    return null;
-  } catch (error) {
-    console.error('User lookup error:', error);
-    return null;
-  }
-}
+// Log database mode on startup
+console.log(databaseAdapter.isUsingLocalDatabase() ? 
+  '🗄️ Running with SQLite local database' : 
+  '🌩️ Running with Airtable production database');
 
 // JWT Middleware
 function authenticateToken(req, res, next) {
@@ -179,7 +146,7 @@ function generateToken(user) {
       nickname: user.nickname 
     },
     JWT_SECRET,
-    { expiresIn: '30d' } // Token expires in 30 days
+    { expiresIn: '90d' } // Token expires in 90 days (extended for better UX)
   );
 }
 
@@ -1166,7 +1133,7 @@ function generateEnhancedMicroInsight(checkinData, user) {
  * Expects: { user_id (optional if JWT), onboardingData, checkinData }
  * Returns: { success, micro_insight: { title, message, action }, user_id }
  */
-app.post('/api/insights/micro', async (req, res) => {
+app.post('/api/insights/micro', authenticateToken, async (req, res) => {
   try {
     let user;
     try {
@@ -1461,6 +1428,79 @@ app.get('/api/users/me', authenticateToken, async (req, res) => {
 // DAILY CHECK-INS ROUTES
 // ============================================================================
 
+// Get Last Check-in Values (Protected Route) - for form defaults
+app.get('/api/checkins/last-values', authenticateToken, async (req, res) => {
+  try {
+    console.log('📊 Fetching last check-in values for user:', req.user.email);
+
+    // Find user record
+    const user = await findUserByEmail(req.user.email);
+    if (!user) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'User not found' 
+      });
+    }
+
+    // Get the most recent check-in for this user using the database adapter
+    const checkinsUrl = `${config.airtable.baseUrl}/DailyCheckins?filterByFormula=SEARCH('${user.id}',ARRAYJOIN({user_id}))&sort[0][field]=date_submitted&sort[0][direction]=desc&maxRecords=1`;
+    
+    const response = await databaseAdapter.fetchCheckins(checkinsUrl, {
+      headers: {
+        'Authorization': `Bearer ${config.airtable.apiKey}`,
+      }
+    });
+
+    const result = await response.json();
+    
+    if (!response.ok) {
+      console.error('❌ Airtable error fetching last check-in:', result);
+      return res.status(422).json({ 
+        success: false, 
+        error: 'Failed to retrieve last check-in data' 
+      });
+    }
+
+    if (result.records && result.records.length > 0) {
+      const lastCheckin = result.records[0].fields;
+      console.log('✅ Found last check-in:', lastCheckin.date_submitted);
+      
+      // Return the last values as defaults
+      res.json({
+        success: true,
+        last_values: {
+          confidence_today: lastCheckin.confidence_today || 5,
+          medication_confidence_today: lastCheckin.medication_confidence_today || null,
+          financial_stress_today: lastCheckin.financial_stress_today || null,
+          journey_readiness_today: lastCheckin.journey_readiness_today || null,
+          last_checkin_date: lastCheckin.date_submitted
+        },
+        message: 'Last check-in values retrieved successfully'
+      });
+    } else {
+      // No previous check-ins - return onboarding defaults
+      console.log('📝 No previous check-ins found, using onboarding defaults');
+      res.json({
+        success: true,
+        last_values: {
+          confidence_today: user.confidence_overall || 5,
+          medication_confidence_today: user.confidence_meds || null,
+          financial_stress_today: user.confidence_costs || null,
+          journey_readiness_today: user.confidence_overall || null,
+          last_checkin_date: null
+        },
+        message: 'Using onboarding defaults (no previous check-ins)'
+      });
+    }
+  } catch (error) {
+    console.error('❌ Error fetching last check-in values:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Internal server error' 
+    });
+  }
+});
+
 // Submit Daily Check-in (Protected Route)
 app.post('/api/checkins', authenticateToken, async (req, res) => {
   try {
@@ -1570,12 +1610,11 @@ app.get('/api/checkins', authenticateToken, async (req, res) => {
       });
     }
 
-    // Fetch user's recent check-ins from Airtable using record ID
+    // Fetch user's recent check-ins using database adapter
     const airtableUrl = `${config.airtable.baseUrl}/DailyCheckins?filterByFormula=SEARCH('${user.id}',ARRAYJOIN({user_id}))&sort[0][field]=date_submitted&sort[0][direction]=desc&maxRecords=${limit}`;
-    console.log('🔍 Querying Airtable with URL:', airtableUrl);
-    console.log('🆔 Looking for user ID:', user.id);
+    console.log('🔍 Querying database for user checkins:', user.id);
     
-    const response = await fetch(airtableUrl, {
+    const response = await databaseAdapter.fetchCheckins(airtableUrl, {
       headers: {
         'Authorization': `Bearer ${config.airtable.apiKey}`,
       }
@@ -1643,14 +1682,12 @@ app.get('/api/insights/daily', authenticateToken, async (req, res) => {
     }
 
     // Get recent check-ins (last 7 days)
-    const response = await fetch(
-      `${config.airtable.baseUrl}/DailyCheckins?filterByFormula=SEARCH('${user.id}',ARRAYJOIN({user_id}))&sort[0][field]=date_submitted&sort[0][direction]=desc&maxRecords=7`,
-      {
-        headers: {
-          'Authorization': `Bearer ${config.airtable.apiKey}`,
-        }
+    const checkinsUrl = `${config.airtable.baseUrl}/DailyCheckins?filterByFormula=SEARCH('${user.id}',ARRAYJOIN({user_id}))&sort[0][field]=date_submitted&sort[0][direction]=desc&maxRecords=7`;
+    const response = await databaseAdapter.fetchCheckins(checkinsUrl, {
+      headers: {
+        'Authorization': `Bearer ${config.airtable.apiKey}`,
       }
-    );
+    });
 
     const result = await response.json();
     
@@ -2034,7 +2071,7 @@ app.post('/api/daily-checkin-enhanced', async (req, res) => {
     }
 
     // Find user record in Airtable using JWT payload or test email
-    let userEmail = req.user ? req.user.email : 'testwelcome3333@gmail.com';
+    let userEmail = req.user ? req.user.email : 'monkey@gmail.com';
     const user = await findUserByEmail(userEmail);
     
     if (!user) {

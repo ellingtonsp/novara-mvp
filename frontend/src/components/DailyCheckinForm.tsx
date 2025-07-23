@@ -6,6 +6,12 @@ import { Heart, Clock, CheckCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { trackDailyCheckin, trackInsightGeneration, trackEvent } from '../lib/analytics';
 
+// API Configuration
+const API_BASE_URL = import.meta.env.VITE_API_URL ||
+  (import.meta.env.DEV 
+    ? 'http://localhost:3002' 
+    : 'https://novara-mvp-production.up.railway.app');
+
 interface DailyCheckinFormProps {
   onComplete?: () => void;
 }
@@ -114,12 +120,51 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
     }
   ];
 
-  // Fetch personalized questions when component mounts
+  // Fetch personalized questions and last values when component mounts
   useEffect(() => {
     if (isAuthenticated) {
       fetchPersonalizedQuestions();
+      fetchLastCheckinValues();
     }
   }, [isAuthenticated]);
+
+  const fetchLastCheckinValues = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.warn('No authentication token for fetching last values');
+        return;
+      }
+
+      console.log('📊 Fetching last check-in values...');
+      
+      const API_BASE_URL = import.meta.env.VITE_API_URL ||
+        (import.meta.env.DEV 
+          ? 'http://localhost:3002' 
+          : 'https://novara-mvp-production.up.railway.app');
+      
+      const response = await fetch(`${API_BASE_URL}/api/checkins/last-values`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = await response.json();
+      console.log('📝 Last values response:', data);
+
+      if (response.ok && data.success && data.last_values) {
+        console.log('✅ Loaded last check-in values:', data.last_values);
+        // Store last values for use when questions are loaded
+        localStorage.setItem('lastCheckinValues', JSON.stringify(data.last_values));
+      } else {
+        console.warn('⚠️ Could not fetch last values, will use defaults');
+      }
+    } catch (error) {
+      console.error('❌ Error fetching last values:', error);
+      // Don't show error to user, just use defaults
+    }
+  };
 
   const fetchPersonalizedQuestions = async () => {
     setIsLoadingQuestions(true);
@@ -134,7 +179,12 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
 
       console.log('🎯 Fetching personalized questions...');
       
-      const response = await fetch('https://novara-mvp-production.up.railway.app/api/checkins/questions', {
+      const API_BASE_URL = import.meta.env.VITE_API_URL ||
+        (import.meta.env.DEV 
+          ? 'http://localhost:3002' 
+          : 'https://novara-mvp-production.up.railway.app');
+      
+      const response = await fetch(`${API_BASE_URL}/api/checkins/questions`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -157,13 +207,23 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
         setPersonalization(data.personalization_summary);
         console.log(`✅ Loaded ${data.questions.length} personalized questions`);
         
-        // Initialize form responses with default values
+        // Get last check-in values for defaults
+        const lastValues = JSON.parse(localStorage.getItem('lastCheckinValues') || '{}');
+        console.log('📊 Using last values as defaults:', lastValues);
+        
+        // Initialize form responses with last values or defaults
         const initialResponses: Record<string, any> = {
-          confidence_today: 5 // Always ensure confidence_today is set
+          confidence_today: lastValues.confidence_today || 5 // Use last confidence or default to 5
         };
         data.questions.forEach((q: Question) => {
           if (q.type === 'slider') {
-            initialResponses[q.id] = q.min ? Math.ceil((q.min + (q.max || 10)) / 2) : 5;
+            // Use last value if available, otherwise use midpoint
+            const lastValue = lastValues[q.id];
+            if (lastValue !== null && lastValue !== undefined) {
+              initialResponses[q.id] = lastValue;
+            } else {
+              initialResponses[q.id] = q.min ? Math.ceil((q.min + (q.max || 10)) / 2) : 5;
+            }
           } else {
             initialResponses[q.id] = '';
           }
@@ -241,8 +301,13 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
         return;
       }
 
+      const API_BASE_URL = import.meta.env.VITE_API_URL ||
+        (import.meta.env.DEV 
+          ? 'http://localhost:3002' 
+          : 'https://novara-mvp-production.up.railway.app');
+      
       // Submit enhanced check-in
-      const response = await fetch('https://novara-mvp-production.up.railway.app/api/daily-checkin-enhanced', {
+      const response = await fetch(`${API_BASE_URL}/api/daily-checkin-enhanced`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -285,14 +350,21 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
         
         setShowSuccess(true);
         
-        // Reset form
+        // Reset form with last values
         setSelectedMoods([]);
+        const lastValues = JSON.parse(localStorage.getItem('lastCheckinValues') || '{}');
         const resetResponses: Record<string, any> = {
-          confidence_today: 5 // Always ensure confidence_today is set
+          confidence_today: lastValues.confidence_today || 5 // Use last confidence or default to 5
         };
         questions.forEach(q => {
           if (q.type === 'slider') {
-            resetResponses[q.id] = q.min ? Math.ceil((q.min + (q.max || 10)) / 2) : 5;
+            // Use last value if available, otherwise use midpoint
+            const lastValue = lastValues[q.id];
+            if (lastValue !== null && lastValue !== undefined) {
+              resetResponses[q.id] = lastValue;
+            } else {
+              resetResponses[q.id] = q.min ? Math.ceil((q.min + (q.max || 10)) / 2) : 5;
+            }
           } else {
             resetResponses[q.id] = '';
           }
@@ -354,6 +426,17 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
                 ✨ {question.context.replace('_', ' ')} question
               </div>
             )}
+            {(() => {
+              const lastValues = JSON.parse(localStorage.getItem('lastCheckinValues') || '{}');
+              if (lastValues[question.id] && lastValues.last_checkin_date) {
+                return (
+                  <div className="text-xs text-green-600 bg-green-50 px-3 py-1 rounded-full inline-block">
+                    📊 Using your last value: {lastValues[question.id]}/10 (from {lastValues.last_checkin_date})
+                  </div>
+                );
+              }
+              return null;
+            })()}
             <input
               type="range"
               min={min}
@@ -564,11 +647,22 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
                 )}
               </div>
 
-              {/* Confidence Today */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Confidence in your journey today (1-10):
-                </label>
+                        {/* Confidence Today */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Confidence in your journey today (1-10):
+            </label>
+            {(() => {
+              const lastValues = JSON.parse(localStorage.getItem('lastCheckinValues') || '{}');
+              if (lastValues.confidence_today && lastValues.last_checkin_date) {
+                return (
+                  <div className="text-xs text-blue-600 bg-blue-50 px-3 py-1 rounded-full inline-block mb-2">
+                    📊 Using your last value: {lastValues.confidence_today}/10 (from {lastValues.last_checkin_date})
+                  </div>
+                );
+              }
+              return null;
+            })()}
                 <input
                   type="range"
                   min="1"
@@ -722,6 +816,17 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
             <h2 className="text-lg font-semibold text-gray-900 mb-4">
               Confidence Level Today
             </h2>
+            {(() => {
+              const lastValues = JSON.parse(localStorage.getItem('lastCheckinValues') || '{}');
+              if (lastValues.confidence_today && lastValues.last_checkin_date) {
+                return (
+                  <div className="text-xs text-blue-600 bg-blue-50 px-3 py-2 rounded-lg mb-4">
+                    📊 Using your last value: {lastValues.confidence_today}/10 (from {lastValues.last_checkin_date})
+                  </div>
+                );
+              }
+              return null;
+            })()}
             <div className="text-center mb-6">
               <div className="text-4xl font-bold text-[#FF6F61] mb-2">{formResponses.confidence_today || 5}/10</div>
               <div className="text-sm text-gray-600">
