@@ -72,7 +72,10 @@ app.use(cors({
     'https://ellingtonsp.github.io',
     'https://novara-mvp.vercel.app' // Add Vercel domain
   ],
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Origin'],
+  exposedHeaders: ['Access-Control-Allow-Origin']
 }));
 
 app.use(express.json());
