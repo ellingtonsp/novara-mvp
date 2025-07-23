@@ -13,6 +13,29 @@ import DailyCheckinForm from './DailyCheckinForm';
 import DailyInsightsDisplay from './DailyInsightsDisplay';
 import WelcomeInsight from './WelcomeInsight';
 
+const sliderThumbStyle = `
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #FF6F61;
+    cursor: pointer;
+    border: 2px solid white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #FF6F61;
+    cursor: pointer;
+    border: 2px solid white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border: none;
+  }
+`;
+
 const NovaraLanding = () => {
   const { user, isAuthenticated, isLoading, login, logout } = useAuth();
   
@@ -29,6 +52,57 @@ const NovaraLanding = () => {
       document.head.removeChild(link);
     };
   }, []);
+
+  useEffect(() => {
+    const styleElement = document.createElement('style');
+    styleElement.textContent = sliderThumbStyle;
+    document.head.appendChild(styleElement);
+
+    return () => {
+      document.head.removeChild(styleElement);
+    };
+  }, []);
+
+  useEffect(() => {
+    // Inject slider styles globally to avoid JSX parsing issues
+    const style = document.createElement('style');
+    style.textContent = `
+      .slider-gradient {
+        appearance: none;
+        height: 12px;
+        border-radius: 6px;
+        outline: none;
+        cursor: pointer;
+      }
+      .slider-gradient::-webkit-slider-thumb {
+        appearance: none;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: #FF6F61;
+        cursor: pointer;
+        border: 2px solid white;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      }
+      .slider-gradient::-moz-range-thumb {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: #FF6F61;
+        cursor: pointer;
+        border: 2px solid white;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      }
+    `;
+    document.head.appendChild(style);
+    return () => style.remove();
+  }, []);
+
+  // Function to get slider background with gradient based on value
+  const getSliderBackground = (value: number, min: number = 1, max: number = 10) => {
+    const percentage = ((value - min) / (max - min)) * 100;
+    return `linear-gradient(to right, #FF6F61 0%, #FF6F61 ${percentage}%, #e5e7eb ${percentage}%, #e5e7eb 100%)`;
+  };
 
   // Mobile-specific state
   const [showMobileMenu, setShowMobileMenu] = useState(false);
@@ -644,44 +718,17 @@ const NovaraLanding = () => {
                       When you think about your IVF medications, do you feel prepared or a bit lost? ({formData.confidence_meds}/10)
                     </Label>
                     <div className="mt-4 px-2">
-                      <input
-                        type="range"
-                        min="1"
-                        max="10"
-                        value={formData.confidence_meds}
-                        onChange={(e) => handleInputChange('confidence_meds', parseInt(e.target.value))}
-                        className="w-full h-3 cursor-pointer rounded-lg"
-                        style={{
-                          background: `linear-gradient(to right, #FF6F61 0%, #FF6F61 ${((formData.confidence_meds - 1) / 9) * 100}%, #e5e7eb ${((formData.confidence_meds - 1) / 9) * 100}%, #e5e7eb 100%)`,
-                          WebkitAppearance: 'none',
-                          appearance: 'none',
-                          outline: 'none'
-                        }}
-                      />
-                      <style dangerouslySetInnerHTML={{
-                        __html: `
-                          input[type="range"]::-webkit-slider-thumb {
-                            -webkit-appearance: none;
-                            width: 20px;
-                            height: 20px;
-                            border-radius: 50%;
-                            background: #FF6F61;
-                            cursor: pointer;
-                            border: 2px solid white;
-                            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                          }
-                          input[type="range"]::-moz-range-thumb {
-                            width: 20px;
-                            height: 20px;
-                            border-radius: 50%;
-                            background: #FF6F61;
-                            cursor: pointer;
-                            border: 2px solid white;
-                            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                            border: none;
-                          }
-                        `
-                      }} />
+                                              <input
+                          type="range"
+                          min="1"
+                          max="10"
+                          value={formData.confidence_meds}
+                          onChange={(e) => handleInputChange('confidence_meds', parseInt(e.target.value))}
+                          className="w-full h-3 cursor-pointer rounded-lg appearance-none outline-none"
+                          style={{
+                            background: `linear-gradient(to right, #FF6F61 0%, #FF6F61 ${((formData.confidence_meds - 1) / 9) * 100}%, #e5e7eb ${((formData.confidence_meds - 1) / 9) * 100}%, #e5e7eb 100%)`
+                          }}
+                        />
                       <div className="flex justify-between text-sm text-gray-500 mt-2">
                         <span>Very lost</span>
                         <span>Totally prepared</span>
@@ -694,44 +741,17 @@ const NovaraLanding = () => {
                       When it comes to costs and insurance, do you feel on top of things or a bit in the dark? ({formData.confidence_costs}/10)
                     </Label>
                     <div className="mt-4 px-2">
-                      <input
-                        type="range"
-                        min="1"
-                        max="10"
-                        value={formData.confidence_costs}
-                        onChange={(e) => handleInputChange('confidence_costs', parseInt(e.target.value))}
-                        className="w-full h-3 cursor-pointer rounded-lg"
-                        style={{
-                          background: `linear-gradient(to right, #FF6F61 0%, #FF6F61 ${((formData.confidence_costs - 1) / 9) * 100}%, #e5e7eb ${((formData.confidence_costs - 1) / 9) * 100}%, #e5e7eb 100%)`,
-                          WebkitAppearance: 'none',
-                          appearance: 'none',
-                          outline: 'none'
-                        }}
-                      />
-                      <style dangerouslySetInnerHTML={{
-                        __html: `
-                          input[type="range"]::-webkit-slider-thumb {
-                            -webkit-appearance: none;
-                            width: 20px;
-                            height: 20px;
-                            border-radius: 50%;
-                            background: #FF6F61;
-                            cursor: pointer;
-                            border: 2px solid white;
-                            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                          }
-                          input[type="range"]::-moz-range-thumb {
-                            width: 20px;
-                            height: 20px;
-                            border-radius: 50%;
-                            background: #FF6F61;
-                            cursor: pointer;
-                            border: 2px solid white;
-                            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                            border: none;
-                          }
-                        `
-                      }} />
+                                              <input
+                          type="range"
+                          min="1"
+                          max="10"
+                          value={formData.confidence_costs}
+                          onChange={(e) => handleInputChange('confidence_costs', parseInt(e.target.value))}
+                          className="w-full h-3 cursor-pointer rounded-lg appearance-none outline-none"
+                          style={{
+                            background: `linear-gradient(to right, #FF6F61 0%, #FF6F61 ${((formData.confidence_costs - 1) / 9) * 100}%, #e5e7eb ${((formData.confidence_costs - 1) / 9) * 100}%, #e5e7eb 100%)`
+                          }}
+                        />
                       <div className="flex justify-between text-sm text-gray-500 mt-2">
                         <span>In the dark</span>
                         <span>On top of it</span>
@@ -744,44 +764,17 @@ const NovaraLanding = () => {
                       When you look at the road ahead, do you feel steady or shaky? ({formData.confidence_overall}/10)
                     </Label>
                     <div className="mt-4 px-2">
-                      <input
-                        type="range"
-                        min="1"
-                        max="10"
-                        value={formData.confidence_overall}
-                        onChange={(e) => handleInputChange('confidence_overall', parseInt(e.target.value))}
-                        className="w-full h-3 cursor-pointer rounded-lg"
-                        style={{
-                          background: `linear-gradient(to right, #FF6F61 0%, #FF6F61 ${((formData.confidence_overall - 1) / 9) * 100}%, #e5e7eb ${((formData.confidence_overall - 1) / 9) * 100}%, #e5e7eb 100%)`,
-                          WebkitAppearance: 'none',
-                          appearance: 'none',
-                          outline: 'none'
-                        }}
-                      />
-                      <style dangerouslySetInnerHTML={{
-                        __html: `
-                          input[type="range"]::-webkit-slider-thumb {
-                            -webkit-appearance: none;
-                            width: 20px;
-                            height: 20px;
-                            border-radius: 50%;
-                            background: #FF6F61;
-                            cursor: pointer;
-                            border: 2px solid white;
-                            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                          }
-                          input[type="range"]::-moz-range-thumb {
-                            width: 20px;
-                            height: 20px;
-                            border-radius: 50%;
-                            background: #FF6F61;
-                            cursor: pointer;
-                            border: 2px solid white;
-                            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                            border: none;
-                          }
-                        `
-                      }} />
+                                              <input
+                          type="range"
+                          min="1"
+                          max="10"
+                          value={formData.confidence_overall}
+                          onChange={(e) => handleInputChange('confidence_overall', parseInt(e.target.value))}
+                          className="w-full h-3 cursor-pointer rounded-lg appearance-none outline-none"
+                          style={{
+                            background: `linear-gradient(to right, #FF6F61 0%, #FF6F61 ${((formData.confidence_overall - 1) / 9) * 100}%, #e5e7eb ${((formData.confidence_overall - 1) / 9) * 100}%, #e5e7eb 100%)`
+                          }}
+                        />
                       <div className="flex justify-between text-sm text-gray-500 mt-2">
                         <span>Very shaky</span>
                         <span>Steady</span>
@@ -813,18 +806,20 @@ const NovaraLanding = () => {
                       <button
                         type="button"
                         onClick={() => handleInputChange('email_opt_in', !formData.email_opt_in)}
-                        className={`w-6 h-6 rounded-md border-2 transition-all duration-200 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-[#FF6F61] focus:ring-offset-2 ${
+                        className={`w-8 h-8 rounded-lg border-3 transition-all duration-200 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-[#FF6F61] focus:ring-offset-2 ${
                           formData.email_opt_in 
-                            ? 'bg-[#FF6F61] border-[#FF6F61] text-white' 
-                            : 'bg-white border-gray-300 hover:border-[#FF6F61]'
+                            ? 'bg-[#FF6F61] border-[#FF6F61] text-white shadow-md transform scale-105' 
+                            : 'bg-white border-gray-400 hover:border-[#FF6F61] hover:bg-gray-50'
                         }`}
                         aria-checked={formData.email_opt_in}
                         role="checkbox"
                       >
-                        {formData.email_opt_in && (
-                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        {formData.email_opt_in ? (
+                          <svg className="w-5 h-5 font-bold" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                           </svg>
+                        ) : (
+                          <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
                         )}
                       </button>
                     </div>

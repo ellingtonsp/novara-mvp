@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Heart, Clock, CheckCircle } from 'lucide-react';
+import { Heart, Clock, CheckCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { FVMAnalytics } from '../lib/analytics';
 
@@ -10,15 +10,49 @@ interface DailyCheckinFormProps {
   onComplete?: () => void;
 }
 
+interface Question {
+  id: string;
+  type: 'text' | 'slider' | 'select';
+  question: string;
+  placeholder?: string;
+  required: boolean;
+  priority: number;
+  context?: string;
+  min?: number;
+  max?: number;
+  options?: string[];
+}
+
+interface PersonalizationSummary {
+  medication_focus: boolean;
+  financial_focus: boolean;
+  journey_focus: boolean;
+  top_concern: string | null;
+}
+
 const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
   const { user, isAuthenticated, logout } = useAuth();
+  
+  // Dynamic form state
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [personalization, setPersonalization] = useState<PersonalizationSummary | null>(null);
+  const [formResponses, setFormResponses] = useState<Record<string, any>>({});
+  const [isLoadingQuestions, setIsLoadingQuestions] = useState(false);
+  const [questionsError, setQuestionsError] = useState<string | null>(null);
+  
+  // Enhanced mood selection state
   const [selectedMoods, setSelectedMoods] = useState<string[]>([]);
-  const [primaryConcern, setPrimaryConcern] = useState('');
-  const [confidenceToday, setConfidenceToday] = useState(5);
-  const [userNote, setUserNote] = useState('');
+  
+  // Submission state
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-  const [immediateInsight, setImmediateInsight] = useState<{ title: string; message: string; action?: { label: string; type: string } | null } | null>(null);
+  const [immediateInsight, setImmediateInsight] = useState<{ 
+    title: string; 
+    message: string; 
+    action?: { label: string; type: string } | null;
+    enhanced?: boolean;
+    tracking_data?: any;
+  } | null>(null);
 
   // Clean mood options with better visual hierarchy
   const moodOptions = [
@@ -80,18 +114,78 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
     }
   ];
 
-  const concernOptions = [
-    'Medication side effects',
-    'Appointment outcomes',
-    'Financial stress',
-    'Relationship impact',
-    'Physical discomfort',
-    'Time management',
-    'Work balance',
-    'Family pressure',
-    'Treatment effectiveness',
-    'Other'
-  ];
+  // Fetch personalized questions when component mounts
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchPersonalizedQuestions();
+    }
+  }, [isAuthenticated]);
+
+  const fetchPersonalizedQuestions = async () => {
+    setIsLoadingQuestions(true);
+    setQuestionsError(null);
+
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setQuestionsError('Authentication token missing');
+        return;
+      }
+
+      console.log('🎯 Fetching personalized questions...');
+      
+      const response = await fetch('http://localhost:3000/api/checkins/questions', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = await response.json();
+      console.log('📝 Questions response:', data);
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          logout();
+          return;
+        }
+        throw new Error(data.error || 'Failed to fetch questions');
+      }
+
+      if (data.success && data.questions) {
+        setQuestions(data.questions);
+        setPersonalization(data.personalization_summary);
+        console.log(`✅ Loaded ${data.questions.length} personalized questions`);
+        
+        // Initialize form responses with default values
+        const initialResponses: Record<string, any> = {
+          confidence_today: 5 // Always ensure confidence_today is set
+        };
+        data.questions.forEach((q: Question) => {
+          if (q.type === 'slider') {
+            initialResponses[q.id] = q.min ? Math.ceil((q.min + (q.max || 10)) / 2) : 5;
+          } else {
+            initialResponses[q.id] = '';
+          }
+        });
+        setFormResponses(initialResponses);
+      } else {
+        setQuestionsError('Failed to load personalized questions');
+      }
+    } catch (error) {
+      console.error('❌ Error fetching questions:', error);
+      setQuestionsError('Connection error. Please try again.');
+    } finally {
+      setIsLoadingQuestions(false);
+    }
+  };
+
+  const handleResponseChange = (questionId: string, value: any) => {
+    setFormResponses(prev => ({
+      ...prev,
+      [questionId]: value
+    }));
+  };
 
   // Toggle mood selection for multiple moods
   const toggleMood = (mood: string) => {
@@ -108,40 +202,57 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
       return;
     }
 
+    console.log('🐛 DEBUG - selectedMoods at submit:', selectedMoods);
+    console.log('🐛 DEBUG - selectedMoods.length:', selectedMoods.length);
+
     if (selectedMoods.length === 0) {
       alert('Please select at least one mood');
       return;
     }
 
+    // Validate required personalized fields
+    const requiredQuestions = questions.filter(q => q.required && q.id !== 'mood_today' && q.id !== 'confidence_today');
+    const missingRequired = requiredQuestions.find(q => 
+      !formResponses[q.id] || (typeof formResponses[q.id] === 'string' && formResponses[q.id].trim() === '')
+    );
+
+    if (missingRequired) {
+      alert(`Please fill in the required field: ${missingRequired.question}`);
+      return;
+    }
+
     setIsSubmitting(true);
 
-    const checkinData = {
-      mood_today: selectedMoods.join(', '),
-      confidence_today: confidenceToday,
-      ...(primaryConcern && { primary_concern_today: primaryConcern }),
-      ...(userNote && { user_note: userNote })
+    // Prepare enhanced check-in data - merge mood with personalized responses
+    const enhancedCheckinData = {
+      ...formResponses,
+      mood_today: selectedMoods.join(', '), // Put this AFTER formResponses so it doesn't get overwritten
+      confidence_today: formResponses.confidence_today || 5, // Ensure confidence_today is always present
     };
-
-    console.log('🎯 Submitting check-in data:', checkinData);
+    
+    console.log('🐛 DEBUG - enhancedCheckinData.mood_today:', enhancedCheckinData.mood_today);
+    console.log('🎯 Submitting enhanced check-in data:', enhancedCheckinData);
 
     try {
       const token = localStorage.getItem('token');
       if (!token) {
         alert('Authentication token missing. Please log in again.');
+        logout();
         return;
       }
 
-      // Submit check-in as before
-      const response = await fetch('http://localhost:3000/api/checkins', {
+      // Submit enhanced check-in
+      const response = await fetch('http://localhost:3000/api/daily-checkin-enhanced', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(checkinData)
+        body: JSON.stringify(enhancedCheckinData)
       });
 
       const responseData = await response.json();
+      console.log('📡 Enhanced check-in response:', responseData);
 
       if (!response.ok) {
         if (response.status === 401 || responseData.error?.includes('token') || responseData.error?.includes('expired')) {
@@ -153,54 +264,50 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
       }
 
       if (response.ok && responseData.success) {
-        // Track check-in completion
+        // Track enhanced check-in completion
         FVMAnalytics.checkInCompleted(
           selectedMoods,
-          confidenceToday,
-          !!(primaryConcern && primaryConcern.trim())
+          (enhancedCheckinData as any).confidence_today || 5,
+          !!((enhancedCheckinData as any).primary_concern_today || (enhancedCheckinData as any).medication_concern_today || (enhancedCheckinData as any).financial_concern_today)
         );
         
-        // Fetch micro-insight from backend
-        const microResponse = await fetch('http://localhost:3000/api/insights/micro', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ checkinData })
-        });
-        const microData = await microResponse.json();
-        if (microResponse.ok && microData.success && microData.micro_insight) {
-          const insight = {
-            title: microData.micro_insight.title,
-            message: microData.micro_insight.message,
-            action: microData.micro_insight.action || null
-          };
-          setImmediateInsight(insight);
+        // Display enhanced insight
+        if (responseData.enhanced_insight) {
+          setImmediateInsight(responseData.enhanced_insight);
           
-          // Track insight delivery
-          FVMAnalytics.insightDelivered('checkin_micro', insight.title, 'checkin_' + Date.now());
+          // Track enhanced insight delivery
+          FVMAnalytics.insightDelivered(
+            responseData.enhanced_insight.enhanced ? 'enhanced_checkin_micro' : 'checkin_micro', 
+            responseData.enhanced_insight.title, 
+            'enhanced_checkin_' + Date.now()
+          );
         } else {
           setImmediateInsight({
-            title: 'Check-in Complete!',
-            message: 'Thank you for checking in. (Insight unavailable)',
-            action: null
+            title: 'Enhanced Check-in Complete!',
+            message: 'Thank you for sharing your detailed check-in. Your personalized insights are being prepared.',
+            enhanced: true
           });
         }
+        
         setShowSuccess(true);
+        
         // Reset form
         setSelectedMoods([]);
-        setPrimaryConcern('');
-        setConfidenceToday(5);
-        setUserNote('');
-        // Call onComplete after a short delay to show success state
-        setTimeout(() => {
-          if (onComplete) {
-            onComplete();
+        const resetResponses: Record<string, any> = {
+          confidence_today: 5 // Always ensure confidence_today is set
+        };
+        questions.forEach(q => {
+          if (q.type === 'slider') {
+            resetResponses[q.id] = q.min ? Math.ceil((q.min + (q.max || 10)) / 2) : 5;
+          } else {
+            resetResponses[q.id] = '';
           }
-        }, 2000);
+        });
+        setFormResponses(resetResponses);
+        
+        // Don't auto-call onComplete - let user dismiss manually via Continue button
       } else {
-        console.error('❌ Check-in failed:', responseData);
+        console.error('❌ Enhanced check-in failed:', responseData);
         alert(`Check-in failed: ${responseData.error || 'Unknown error'}`);
       }
     } catch (error) {
@@ -208,6 +315,96 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
       alert('Connection error. Please try again.');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const renderPersonalizedQuestion = (question: Question) => {
+    const value = formResponses[question.id];
+    
+    switch (question.type) {
+      case 'text':
+        return (
+          <div key={question.id} className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">
+              {question.question}
+              {question.required && <span className="text-red-500 ml-1">*</span>}
+            </label>
+            {question.context && (
+              <div className="text-xs text-blue-600 bg-blue-50 px-3 py-1 rounded-full inline-block">
+                ✨ {question.context.replace('_', ' ')} question
+              </div>
+            )}
+            <Textarea
+              value={value || ''}
+              onChange={(e) => handleResponseChange(question.id, e.target.value)}
+              placeholder={question.placeholder || 'Share your thoughts...'}
+              className="resize-none border-gray-200 focus:border-[#FF6F61] focus:ring-[#FF6F61]"
+              rows={3}
+            />
+          </div>
+        );
+        
+      case 'slider':
+        const min = question.min || 1;
+        const max = question.max || 10;
+        const numValue = Number(value) || min;
+        
+        return (
+          <div key={question.id} className="space-y-3">
+            <label className="block text-sm font-medium text-gray-700">
+              {question.question}
+              {question.required && <span className="text-red-500 ml-1">*</span>}
+            </label>
+            {question.context && (
+              <div className="text-xs text-blue-600 bg-blue-50 px-3 py-1 rounded-full inline-block">
+                ✨ {question.context.replace('_', ' ')} question
+              </div>
+            )}
+            <input
+              type="range"
+              min={min}
+              max={max}
+              value={numValue}
+              onChange={(e) => handleResponseChange(question.id, Number(e.target.value))}
+              className="w-full h-3 cursor-pointer rounded-lg appearance-none outline-none"
+              style={{
+                background: `linear-gradient(to right, #FF6F61 0%, #FF6F61 ${((numValue - min) / (max - min)) * 100}%, #e5e7eb ${((numValue - min) / (max - min)) * 100}%, #e5e7eb 100%)`
+              }}
+            />
+            <style dangerouslySetInnerHTML={{
+              __html: `
+                input[type="range"]::-webkit-slider-thumb {
+                  -webkit-appearance: none;
+                  width: 20px;
+                  height: 20px;
+                  border-radius: 50%;
+                  background: #FF6F61;
+                  cursor: pointer;
+                  border: 2px solid white;
+                  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                }
+                input[type="range"]::-moz-range-thumb {
+                  width: 20px;
+                  height: 20px;
+                  border-radius: 50%;
+                  background: #FF6F61;
+                  cursor: pointer;
+                  border: 2px solid white;
+                  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                  border: none;
+                }
+              `
+            }} />
+            <div className="flex justify-between text-xs text-gray-500">
+              <span>Low ({min})</span>
+              <span className="font-medium text-[#FF6F61]">{numValue}/{max}</span>
+              <span>High ({max})</span>
+            </div>
+          </div>
+        );
+        
+      default:
+        return null;
     }
   };
 
@@ -227,6 +424,38 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
     );
   }
 
+  // Loading questions state
+  if (isLoadingQuestions) {
+    return (
+      <Card className="w-full max-w-md mx-auto border border-gray-200 shadow-sm">
+        <CardContent className="p-6 text-center">
+          <Loader2 className="w-8 h-8 text-[#FF6F61] mx-auto mb-4 animate-spin" />
+          <h3 className="text-lg font-semibold text-gray-800 mb-2">Personalizing Your Check-in</h3>
+          <p className="text-sm text-gray-600">Loading questions tailored to your concerns...</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Questions error state
+  if (questionsError) {
+    return (
+      <Card className="w-full max-w-md mx-auto border border-gray-200 shadow-sm">
+        <CardContent className="p-6 text-center">
+          <Heart className="w-8 h-8 text-red-500 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-800 mb-2">Unable to Load Questions</h3>
+          <p className="text-sm text-gray-600 mb-4">{questionsError}</p>
+          <Button 
+            onClick={fetchPersonalizedQuestions}
+            className="bg-[#FF6F61] hover:bg-[#FF6F61]/90 text-white"
+          >
+            Try Again
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
   // Success state
   if (showSuccess) {
     return (
@@ -234,21 +463,26 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
         <Card className="w-full max-w-md border-2 border-[#FF6F61] bg-gradient-to-br from-[#FFF5F0] to-white">
           <CardContent className="p-8 text-center">
             <CheckCircle className="w-16 h-16 text-[#FF6F61] mx-auto mb-6" />
-            <h3 className="text-2xl font-semibold text-gray-800 mb-4">{immediateInsight?.title || 'Check-in Complete!'}</h3>
-            <div className="bg-white p-6 rounded-xl border border-[#CBA7FF]/30 mb-6">
-              <p className="text-gray-700 leading-relaxed">
+            <h3 className="text-2xl font-semibold text-gray-800 mb-4">
+              {immediateInsight?.title || 'Enhanced Check-in Complete!'}
+            </h3>
+            <div className="bg-white p-4 md:p-6 rounded-xl border border-[#CBA7FF]/30 mb-6">
+              <p className="text-gray-700 leading-relaxed whitespace-pre-line text-sm md:text-base">
                 {immediateInsight?.message}
               </p>
-              {immediateInsight?.action && (
-                <div className="mt-4">
-                  <Button className="bg-[#CBA7FF] text-white" onClick={() => {}}>
-                    {immediateInsight.action.label}
-                  </Button>
+              {immediateInsight?.enhanced && (
+                <div className="mt-3 text-xs text-green-600 bg-green-50 px-2 py-1 rounded-md inline-block">
+                  💚 Personalized for you
                 </div>
               )}
             </div>
             <Button 
-              onClick={() => setShowSuccess(false)}
+              onClick={() => {
+                setShowSuccess(false);
+                if (onComplete) {
+                  onComplete();
+                }
+              }}
               className="w-full bg-[#FF6F61] hover:bg-[#FF6F61]/90 text-white py-3 text-lg"
             >
               Continue
@@ -259,17 +493,43 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
     );
   }
 
-  // Desktop Form (Original Style) - Hidden on Mobile
+  // Get personalized questions excluding the baseline mood/confidence (we handle those graphically)
+  const personalizedQuestions = questions.filter(q => 
+    q.id !== 'mood_today' && q.id !== 'confidence_today'
+  );
+
+  // Check validation for submit button
+  const baselineValid = selectedMoods.length > 0 && formResponses.confidence_today;
+  const requiredPersonalizedValid = personalizedQuestions
+    .filter(q => q.required)
+    .every(q => {
+      const response = formResponses[q.id];
+      return response !== undefined && response !== null && response !== '';
+    });
+  const canSubmit = baselineValid && requiredPersonalizedValid;
+
+  // Enhanced form rendering with both graphical and personalized sections
   return (
     <>
+      {/* Desktop Form - Enhanced */}
       <div className="hidden md:block desktop-only">
         <Card className="w-full max-w-md mx-auto border border-gray-200 shadow-sm">
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-2 text-lg text-gray-800">
               <Heart className="w-5 h-5 text-[#FF6F61]" />
-              Daily Check-In
+              Enhanced Daily Check-In
               {user?.nickname && <span className="text-sm font-normal text-gray-500">Hi, {user.nickname}!</span>}
             </CardTitle>
+            {personalization && (
+              <div className="text-xs text-gray-600">
+                ✨ Personalized for: {[
+                  personalization.medication_focus && 'medication concerns',
+                  personalization.financial_focus && 'financial planning', 
+                  personalization.journey_focus && 'journey readiness',
+                  personalization.top_concern && `"${personalization.top_concern}"`
+                ].filter(Boolean).join(', ')}
+              </div>
+            )}
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
@@ -310,23 +570,6 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
                 )}
               </div>
 
-              {/* Primary Concern */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  What are you most concerned about today? (optional)
-                </label>
-                <select
-                  value={primaryConcern}
-                  onChange={(e) => setPrimaryConcern(e.target.value)}
-                  className="w-full p-3 border border-gray-200 rounded-lg focus:border-[#FF6F61] focus:ring-2 focus:ring-[#FF6F61]/20 bg-white"
-                >
-                  <option value="">Choose if you'd like to share</option>
-                  {concernOptions.map(concern => (
-                    <option key={concern} value={concern}>{concern}</option>
-                  ))}
-                </select>
-              </div>
-
               {/* Confidence Today */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -336,11 +579,11 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
                   type="range"
                   min="1"
                   max="10"
-                  value={confidenceToday}
-                  onChange={(e) => setConfidenceToday(Number(e.target.value))}
+                  value={formResponses.confidence_today || 5}
+                  onChange={(e) => handleResponseChange('confidence_today', Number(e.target.value))}
                   className="w-full h-3 cursor-pointer rounded-lg appearance-none outline-none"
                   style={{
-                    background: `linear-gradient(to right, #FF6F61 0%, #FF6F61 ${((confidenceToday - 1) / 9) * 100}%, #e5e7eb ${((confidenceToday - 1) / 9) * 100}%, #e5e7eb 100%)`
+                    background: `linear-gradient(to right, #FF6F61 0%, #FF6F61 ${((formResponses.confidence_today - 1) / 9) * 100}%, #e5e7eb ${((formResponses.confidence_today - 1) / 9) * 100}%, #e5e7eb 100%)`
                   }}
                 />
                 <style dangerouslySetInnerHTML={{
@@ -369,46 +612,41 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
                 }} />
                 <div className="flex justify-between text-xs text-gray-500 mt-1">
                   <span>Not confident</span>
-                  <span className="font-medium text-[#FF6F61]">{confidenceToday}/10</span>
+                  <span className="font-medium text-[#FF6F61]">{formResponses.confidence_today || 5}/10</span>
                   <span>Very confident</span>
                 </div>
               </div>
 
-              {/* User Note */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Anything else you'd like to share? (optional)
-                </label>
-                <Textarea
-                  value={userNote}
-                  onChange={(e) => setUserNote(e.target.value)}
-                  placeholder="Share any thoughts, questions, or reflections about today..."
-                  className="resize-none border-gray-200 focus:border-[#FF6F61] focus:ring-[#FF6F61]"
-                  rows={3}
-                />
-              </div>
+              {/* Personalized Questions */}
+              {personalizedQuestions.map(renderPersonalizedQuestion)}
 
               <Button
                 type="button"
                 onClick={handleSubmit}
-                disabled={isSubmitting || selectedMoods.length === 0}
-                className="w-full bg-[#FF6F61] hover:bg-[#FF6F61]/90 text-white disabled:opacity-50"
+                disabled={isSubmitting || !canSubmit}
+                className="w-full bg-[#FF6F61] hover:bg-[#FF6F61]/90 text-white disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? (
                   <>
                     <Clock className="w-4 h-4 mr-2 animate-spin" />
-                    Saving...
+                    Saving Enhanced Check-in...
                   </>
                 ) : (
-                  'Complete Check-in'
+                  `Complete Enhanced Check-in (${questions.length} questions)`
                 )}
               </Button>
+              
+              {!canSubmit && (
+                <p className="text-xs text-gray-500 text-center">
+                  Please fill in all required fields
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Mobile Form - Only show on mobile */}
+      {/* Mobile Form - Enhanced with full UI */}
       <div className="block md:hidden mobile-only min-h-screen bg-[#FFF5F0]">
         {/* Mobile Header */}
         <div className="bg-white shadow-sm px-4 py-6">
@@ -416,18 +654,28 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
             <div className="flex items-center space-x-3">
               <Heart className="w-6 h-6 text-[#FF6F61]" />
               <div>
-                <h1 className="text-xl font-bold text-gray-900">Daily Check-in</h1>
+                <h1 className="text-xl font-bold text-gray-900">Enhanced Check-in</h1>
                 {user?.nickname && (
-                  <p className="text-sm text-gray-600">Hi {user.nickname}! How are you today?</p>
+                  <p className="text-sm text-gray-600">Hi {user.nickname}! Let's see how you're doing today</p>
                 )}
               </div>
             </div>
             <div className="text-2xl">✨</div>
           </div>
+          {personalization && (
+            <div className="mt-3 text-xs text-blue-600 bg-blue-50 px-3 py-1 rounded-full inline-block">
+              ✨ Personalized for: {[
+                personalization.medication_focus && 'medication',
+                personalization.financial_focus && 'financial', 
+                personalization.journey_focus && 'journey',
+                personalization.top_concern && `"${personalization.top_concern}"`
+              ].filter(Boolean).join(', ')}
+            </div>
+          )}
         </div>
 
         <div className="px-4 py-6 space-y-8 pb-40">
-          {/* Mobile Mood Selection - FIXED LAYOUT */}
+          {/* Mobile Mood Selection */}
           <div>
             <h2 className="text-lg font-semibold text-gray-900 mb-4">
               How are you feeling today?
@@ -447,14 +695,12 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
                       : color
                   }`}
                 >
-                  {/* Checkmark positioned absolutely in top-right corner */}
                   {selectedMoods.includes(mood) && (
                     <div className="absolute top-2 right-2">
                       <CheckCircle className="w-5 h-5 text-[#FF6F61]" />
                     </div>
                   )}
                   
-                  {/* Content area with proper spacing */}
                   <div className="flex flex-col justify-between h-full pr-6">
                     <div className="flex items-center gap-2 mb-2">
                       <span className="text-xl flex-shrink-0">{icon}</span>
@@ -483,23 +729,23 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
               Confidence Level Today
             </h2>
             <div className="text-center mb-6">
-              <div className="text-4xl font-bold text-[#FF6F61] mb-2">{confidenceToday}/10</div>
+              <div className="text-4xl font-bold text-[#FF6F61] mb-2">{formResponses.confidence_today || 5}/10</div>
               <div className="text-sm text-gray-600">
-                {confidenceToday <= 3 && "Taking it one step at a time"}
-                {confidenceToday > 3 && confidenceToday <= 6 && "Finding your rhythm"}
-                {confidenceToday > 6 && confidenceToday <= 8 && "Feeling strong"}
-                {confidenceToday > 8 && "Absolutely crushing it!"}
+                {(formResponses.confidence_today || 5) <= 3 && "Taking it one step at a time"}
+                {(formResponses.confidence_today || 5) > 3 && (formResponses.confidence_today || 5) <= 6 && "Finding your rhythm"}
+                {(formResponses.confidence_today || 5) > 6 && (formResponses.confidence_today || 5) <= 8 && "Feeling strong"}
+                {(formResponses.confidence_today || 5) > 8 && "Absolutely crushing it!"}
               </div>
             </div>
             <input
               type="range"
               min="1"
               max="10"
-              value={confidenceToday}
-              onChange={(e) => setConfidenceToday(Number(e.target.value))}
+              value={formResponses.confidence_today || 5}
+              onChange={(e) => handleResponseChange('confidence_today', Number(e.target.value))}
               className="w-full h-4 bg-gray-200 rounded-lg appearance-none cursor-pointer outline-none"
               style={{
-                background: `linear-gradient(to right, #FF6F61 0%, #FF6F61 ${((confidenceToday - 1) / 9) * 100}%, #e5e7eb ${((confidenceToday - 1) / 9) * 100}%, #e5e7eb 100%)`
+                background: `linear-gradient(to right, #FF6F61 0%, #FF6F61 ${(((formResponses.confidence_today || 5) - 1) / 9) * 100}%, #e5e7eb ${(((formResponses.confidence_today || 5) - 1) / 9) * 100}%, #e5e7eb 100%)`
               }}
             />
             <style dangerouslySetInnerHTML={{
@@ -531,42 +777,12 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
             </div>
           </div>
 
-          {/* Mobile Primary Concern */}
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              Primary Concern Today
-              <span className="block text-sm font-normal text-gray-600 mt-1">
-                Optional - what's on your mind?
-              </span>
-            </h2>
-            <select
-              value={primaryConcern}
-              onChange={(e) => setPrimaryConcern(e.target.value)}
-              className="w-full p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#FF6F61] focus:border-transparent text-base bg-white"
-            >
-              <option value="">Choose if you'd like to share</option>
-              {concernOptions.map(concern => (
-                <option key={concern} value={concern}>{concern}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Mobile Note Section */}
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              Anything else?
-              <span className="block text-sm font-normal text-gray-600 mt-1">
-                Optional - share any thoughts about your day
-              </span>
-            </h2>
-            <Textarea
-              value={userNote}
-              onChange={(e) => setUserNote(e.target.value)}
-              className="w-full p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#FF6F61] focus:border-transparent text-base resize-none bg-white"
-              rows={4}
-              placeholder="Share anything else about your day, feelings, or journey..."
-            />
-          </div>
+          {/* Mobile Personalized Questions */}
+          {personalizedQuestions.map((question) => (
+            <div key={question.id} className="bg-white p-6 rounded-xl shadow-sm">
+              {renderPersonalizedQuestion(question)}
+            </div>
+          ))}
         </div>
 
         {/* Mobile Fixed Submit Button */}
@@ -574,9 +790,9 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={selectedMoods.length === 0 || isSubmitting}
+            disabled={!canSubmit || isSubmitting}
             className={`w-full py-4 px-6 rounded-xl font-semibold text-lg transition-all active:scale-95 ${
-              selectedMoods.length === 0 || isSubmitting
+              !canSubmit || isSubmitting
                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 : 'bg-[#FF6F61] text-white hover:bg-[#e55a4d] shadow-lg'
             }`}
@@ -584,15 +800,15 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
             {isSubmitting ? (
               <div className="flex items-center justify-center space-x-2">
                 <Clock className="w-5 h-5 animate-spin" />
-                <span>Saving...</span>
+                <span>Saving Enhanced Check-in...</span>
               </div>
             ) : (
-              'Complete Check-in'
+              `Complete Enhanced Check-in (${questions.length} questions)`
             )}
           </button>
-          {selectedMoods.length === 0 && (
+          {!canSubmit && (
             <p className="text-sm text-gray-500 text-center mt-2">
-              Please select at least one mood to continue
+              Please fill in all required fields
             </p>
           )}
         </div>

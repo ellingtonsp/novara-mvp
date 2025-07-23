@@ -136,13 +136,6 @@ export default function WelcomeInsight({ onContinue }: WelcomeInsightProps) {
           
           <div className="bg-white p-6 rounded-xl border border-[#CBA7FF]/30 mb-6">
             <p className="text-gray-700 leading-relaxed">{insight.message}</p>
-            {insight.action && (
-              <div className="mt-4">
-                <Button className="bg-[#CBA7FF] text-white" onClick={() => {}}>
-                  {insight.action.label}
-                </Button>
-              </div>
-            )}
           </div>
 
           {!feedbackGiven ? (
