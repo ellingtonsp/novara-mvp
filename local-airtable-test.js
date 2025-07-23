@@ -1,8 +1,7 @@
-// local-airtable-test.js
-// Run this in your local project: node local-airtable-test.js
-
+// Novara Airtable Schema Test - Local Development
+// This script tests our Airtable connection and validates the schema
 const AIRTABLE_BASE_ID = 'app5QWCcVbCnVg2Gg';
-const AIRTABLE_API_KEY = 'patp9wk9fzHxtkVUZ.d9f6dd86c7878398eb0720aab9b2f4095ebf570037b564d6bd7e227f08de7f71';
+const AIRTABLE_API_KEY = 'patp9wk9fzHxtkVUZ.1ba015773d9bbdc098796035b0a7bfd620edfbf6cd3b5aecc88c0beb5ef6dde7';
 
 async function testAirtableSchema() {
   console.log('🔍 Testing Novara Airtable Schema...\n');

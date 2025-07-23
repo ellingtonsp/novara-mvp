@@ -42,7 +42,7 @@ export default function WelcomeInsight({ onContinue }: WelcomeInsightProps) {
       try {
         console.log('🎯 Fetching welcome insight for user:', user.email);
         
-        const response = await fetch('http://localhost:3000/api/insights/micro', {
+        const response = await fetch('https://novara-mvp-production.up.railway.app/api/insights/micro', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`,
