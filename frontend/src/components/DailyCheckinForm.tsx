@@ -134,7 +134,7 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
 
       console.log('🎯 Fetching personalized questions...');
       
-      const response = await fetch('http://localhost:3000/api/checkins/questions', {
+      const response = await fetch('https://novara-mvp-production.up.railway.app/api/checkins/questions', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -242,7 +242,7 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
       }
 
       // Submit enhanced check-in
-      const response = await fetch('http://localhost:3000/api/daily-checkin-enhanced', {
+      const response = await fetch('https://novara-mvp-production.up.railway.app/api/daily-checkin-enhanced', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

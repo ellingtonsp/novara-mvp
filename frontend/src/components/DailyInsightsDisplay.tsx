@@ -62,7 +62,7 @@ const DailyInsightsDisplay: React.FC = () => {
       const token = localStorage.getItem('token');
       console.log('🧠 Fetching insights with token:', !!token);
       
-      const response = await fetch('http://localhost:3000/api/insights/daily', {
+      const response = await fetch('https://novara-mvp-production.up.railway.app/api/insights/daily', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -93,7 +93,7 @@ const DailyInsightsDisplay: React.FC = () => {
 
     try {
       const token = localStorage.getItem('token');
-      await fetch('http://localhost:3000/api/insights/engagement', {
+      await fetch('https://novara-mvp-production.up.railway.app/api/insights/engagement', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
