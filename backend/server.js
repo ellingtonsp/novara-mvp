@@ -760,11 +760,62 @@ app.post('/api/insights/micro', authenticateToken, async (req, res) => {
     }
     */
 
-    res.json({
-      success: true,
-      micro_insight,
-      user_id: user.id
-    });
+    // Store insight in database
+    const insightType = checkinData ? 'checkin_micro' : 'onboarding_micro';
+    const insightId = `${checkinData ? 'checkin' : 'onboarding'}_${Date.now()}`;
+    
+    try {
+      const insightData = {
+        user_id: [user.id],
+        insight_type: insightType,
+        insight_title: micro_insight.title,
+        insight_message: micro_insight.message,
+        insight_id: insightId,
+        generated_at: new Date().toISOString(),
+        date: new Date().toISOString().split('T')[0],
+        context_data: JSON.stringify(data),
+        status: 'active'
+      };
+
+      // Add action data if present
+      if (micro_insight.action) {
+        insightData.action_label = micro_insight.action.label;
+        insightData.action_type = micro_insight.action.type;
+      }
+
+      console.log('💾 Saving insight to database:', insightData);
+      
+      const result = await airtableRequest('Insights', 'POST', {
+        fields: insightData
+      });
+      
+      console.log('✅ Insight saved to database:', result.id);
+
+      res.json({
+        success: true,
+        micro_insight: {
+          ...micro_insight,
+          id: result.id,
+          insight_id: insightId
+        },
+        user_id: user.id,
+        message: 'Personalized micro-insight generated and saved successfully! ✨'
+      });
+      
+    } catch (saveError) {
+      console.error('❌ Error saving insight to database:', saveError);
+      
+      // Still return the insight even if save fails
+      res.json({
+        success: true,
+        micro_insight: {
+          ...micro_insight,
+          insight_id: insightId
+        },
+        user_id: user.id,
+        message: 'Personalized micro-insight generated successfully! ✨ (Note: Storage temporarily unavailable)'
+      });
+    }
   } catch (error) {
     console.error('Error generating micro-insight:', error);
     res.status(500).json({ success: false, error: 'Internal server error' });
@@ -1173,17 +1224,65 @@ app.get('/api/insights/daily', authenticateToken, async (req, res) => {
     
     console.log(`✅ Generated insight type: ${insight.type} for user: ${req.user.email}`);
 
-    res.json({
-      success: true,
-      insight,
-      analysis_data: {
-        checkins_analyzed: checkins.length,
-        date_range: checkins.length > 0 ? 
-          `${checkins[checkins.length - 1].date_submitted} to ${checkins[0].date_submitted}` : 
-          'No recent check-ins',
-        user_id: user.id
-      }
-    });
+    // Store daily insight in database
+    const insightId = `daily_${Date.now()}`;
+    
+    try {
+      const insightData = {
+        user_id: [user.id],
+        insight_type: 'daily_insight',
+        insight_title: insight.title || insight.type,
+        insight_message: insight.message,
+        insight_id: insightId,
+        generated_at: new Date().toISOString(),
+        date: new Date().toISOString().split('T')[0],
+        context_data: JSON.stringify({ checkins_count: checkins.length, insight_type: insight.type }),
+        status: 'active'
+      };
+
+      console.log('💾 Saving daily insight to database:', insightData);
+      
+      const result = await airtableRequest('Insights', 'POST', {
+        fields: insightData
+      });
+      
+      console.log('✅ Daily insight saved to database:', result.id);
+
+      res.json({
+        success: true,
+        insight: {
+          ...insight,
+          id: result.id,
+          insight_id: insightId
+        },
+        analysis_data: {
+          checkins_analyzed: checkins.length,
+          date_range: checkins.length > 0 ? 
+            `${checkins[checkins.length - 1].date_submitted} to ${checkins[0].date_submitted}` : 
+            'No recent check-ins',
+          user_id: user.id
+        }
+      });
+      
+    } catch (saveError) {
+      console.error('❌ Error saving daily insight to database:', saveError);
+      
+      // Still return the insight even if save fails
+      res.json({
+        success: true,
+        insight: {
+          ...insight,
+          insight_id: insightId
+        },
+        analysis_data: {
+          checkins_analyzed: checkins.length,
+          date_range: checkins.length > 0 ? 
+            `${checkins[checkins.length - 1].date_submitted} to ${checkins[0].date_submitted}` : 
+            'No recent check-ins',
+          user_id: user.id
+        }
+      });
+    }
 
   } catch (error) {
     console.error('❌ Error generating daily insights:', error);
