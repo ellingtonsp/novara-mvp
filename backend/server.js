@@ -1210,30 +1210,51 @@ app.post('/api/insights/engagement', authenticateToken, async (req, res) => {
       });
     }
 
-    // Create engagement record
-    // Note: You can create an "InsightEngagement" table in Airtable later for full tracking
+    // Create engagement record for Airtable
     const engagementData = {
       user_id: [user.id],
       insight_type,
-      action, // 'viewed', 'clicked', 'dismissed', 'refreshed'
+      action, // 'viewed', 'clicked', 'dismissed', 'refreshed', 'liked', 'not_helpful'
       insight_id: insight_id || '',
       timestamp: new Date().toISOString(),
       date_submitted: new Date().toISOString().split('T')[0]
     };
 
-    // For now, just log engagement - you can create InsightEngagement table later
     console.log('📈 Insight engagement tracked:', engagementData);
 
-    res.json({
-      success: true,
-      message: 'Engagement tracked successfully',
-      engagement: {
-        user_id: user.id,
-        insight_type,
-        action,
-        timestamp: engagementData.timestamp
-      }
-    });
+    try {
+      // Try to save to InsightEngagement table (if it exists)
+      const result = await airtableRequest('InsightEngagement', 'POST', {
+        fields: engagementData
+      });
+      console.log('✅ Engagement saved to InsightEngagement table:', result.id);
+      
+      res.json({
+        success: true,
+        message: 'Engagement tracked successfully',
+        engagement: {
+          id: result.id,
+          user_id: user.id,
+          insight_type,
+          action,
+          timestamp: engagementData.timestamp
+        }
+      });
+    } catch (tableError) {
+      // If InsightEngagement table doesn't exist, just log for now
+      console.log('⚠️ InsightEngagement table not found, logging only:', tableError.message);
+      
+      res.json({
+        success: true,
+        message: 'Engagement logged (table will be created later)',
+        engagement: {
+          user_id: user.id,
+          insight_type,
+          action,
+          timestamp: engagementData.timestamp
+        }
+      });
+    }
 
   } catch (error) {
     console.error('❌ Error tracking insight engagement:', error);
@@ -1260,22 +1281,58 @@ app.post('/api/analytics/events', authenticateToken, async (req, res) => {
       });
     }
 
-    // Create comprehensive event record
+    // Create comprehensive event record for Airtable
     const analyticsData = {
       user_id: [user.id],
-      event_type, // 'onboarding_complete', 'insight_delivered', 'insight_opened', 'insight_clicked', 'check_in_completed', 'feedback_submitted'
+      event_type,
       event_timestamp: new Date().toISOString(),
       date: new Date().toISOString().split('T')[0],
-      ...event_data // Additional event-specific data
+      event_data: JSON.stringify(event_data) // Store as JSON string
     };
 
-    // For now, log all events - later you can create an Analytics table in Airtable
+    // Add event-specific fields for easier querying
+    if (event_data.confidence_scores) {
+      analyticsData.confidence_scores = JSON.stringify(event_data.confidence_scores);
+    }
+    if (event_data.insight_type) {
+      analyticsData.insight_type = event_data.insight_type;
+    }
+    if (event_data.insight_title) {
+      analyticsData.insight_title = event_data.insight_title;
+    }
+    if (event_data.insight_id) {
+      analyticsData.insight_id = event_data.insight_id;
+    }
+    if (event_data.feedback_type) {
+      analyticsData.feedback_type = event_data.feedback_type;
+    }
+    if (event_data.feedback_context) {
+      analyticsData.feedback_context = event_data.feedback_context;
+    }
+    if (event_data.mood_selected && Array.isArray(event_data.mood_selected)) {
+      analyticsData.mood_selected = event_data.mood_selected;
+    }
+    if (event_data.confidence_level) {
+      analyticsData.confidence_level = event_data.confidence_level;
+    }
+    if (event_data.concern_mentioned !== undefined) {
+      analyticsData.concern_mentioned = event_data.concern_mentioned;
+    }
+
     console.log('🎯 FVM Analytics event tracked:', analyticsData);
+
+    // Save to Airtable FVMAnalytics table
+    const result = await airtableRequest('FVMAnalytics', 'POST', {
+      fields: analyticsData
+    });
+
+    console.log('✅ Analytics event saved to Airtable:', result.id);
 
     res.json({
       success: true,
       message: 'Analytics event tracked successfully',
       event: {
+        id: result.id,
         user_id: user.id,
         event_type,
         timestamp: analyticsData.event_timestamp
