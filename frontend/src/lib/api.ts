@@ -1,7 +1,7 @@
 // lib/api.ts - Simple direct fix with hardcoded Railway URL
 
 // Always use Railway URL - no environment detection
-const API_BASE_URL = 'https://novara-backend-production.up.railway.app';
+const API_BASE_URL = 'https://novara-mvp-production.up.railway.app';
 
 // TypeScript interfaces
 export interface User {
