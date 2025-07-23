@@ -17,6 +17,7 @@ app.set('trust proxy', true);
 app.use(cors({
   origin: [
     'http://localhost:5173',
+    'http://localhost:5174', // Allow port 5174 for Vite dev server
     'http://localhost:3000',
     'https://ellingtonsp.github.io'
   ],
@@ -402,22 +403,245 @@ function selectBestInsight(patterns, checkins, user) {
   return insights.sort((a, b) => b.priority - a.priority)[0];
 }
 
-// Advanced Insight Generation Engine
+// Advanced Insight Generation Engine - TRULY PERSONALIZED
 function generateDailyInsights(checkins, user) {
+  // Always use user's onboarding data for personalization
+  const onboardingData = {
+    confidence_meds: user.confidence_meds || 5,
+    confidence_costs: user.confidence_costs || 5, 
+    confidence_overall: user.confidence_overall || 5,
+    primary_need: user.primary_need,
+    top_concern: user.top_concern,
+    cycle_stage: user.cycle_stage,
+    nickname: user.nickname
+  };
+  
+  console.log('🧠 Generating personalized dashboard insight for:', user.nickname || user.email);
+  console.log('📊 User profile:', onboardingData);
+  console.log('📈 Recent check-ins:', checkins?.length || 0);
+
+  // NEW USERS (No check-ins yet) - Use onboarding data
   if (!checkins || checkins.length === 0) {
+    return generateWelcomeInsightFromOnboarding(onboardingData, user);
+  }
+
+  // RETURNING USERS - Combine onboarding + check-in patterns  
+  const analysis = analyzeUserPatternsWithContext(checkins, onboardingData, user);
+  return generateContextualInsight(analysis, checkins, user);
+}
+
+// Generate personalized welcome for new users based on their onboarding
+function generateWelcomeInsightFromOnboarding(data, user) {
+  const { confidence_meds, confidence_costs, confidence_overall, primary_need, top_concern, cycle_stage } = data;
+  const name = user.nickname || user.email.split('@')[0];
+  
+  // Identify their biggest concern area
+  const concerns = [
+    { area: 'medications', confidence: confidence_meds, threshold: 4 },
+    { area: 'costs', confidence: confidence_costs, threshold: 4 },
+    { area: 'overall', confidence: confidence_overall, threshold: 4 }
+  ];
+  
+  const lowConfidenceAreas = concerns.filter(c => c.confidence <= c.threshold);
+  const avgConfidence = (confidence_meds + confidence_costs + confidence_overall) / 3;
+  
+  // HIGH CONFIDENCE - Acknowledge their strength, offer specific support
+  if (avgConfidence >= 6.5) {
+    let message = `Welcome back, ${name}! Your confidence levels from onboarding show real strength in approaching IVF.`;
+    
+    if (top_concern && top_concern.trim() !== '') {
+      message += ` I noticed you mentioned "${top_concern}" as a concern. Even when we feel confident overall, specific worries are completely normal.`;
+    }
+    
+    if (primary_need === 'emotional_support') {
+      message += ` Since emotional support is important to you, remember: having confidence doesn't mean doing this alone.`;
+    } else if (primary_need === 'financial_planning') {
+      message += ` With financial planning being a priority, your confidence suggests you're ready to tackle the practical steps ahead.`;
+    }
+    
     return {
-      type: 'welcome',
-      title: 'Welcome back!',
-      message: "We're here to support you on this journey. Consider sharing how you're feeling today.",
+      type: 'confident_welcome',
+      title: `You're approaching this with real strength, ${name}`,
+      message: message + ` How are you feeling today?`,
       confidence: 0.9
     };
   }
-
-  // Analyze patterns from recent check-ins
-  const analysis = analyzeUserPatterns(checkins, user);
   
-  // Generate insight based on strongest pattern
-  return selectBestInsight(analysis, checkins, user);
+  // MIXED CONFIDENCE - Address specific areas
+  if (lowConfidenceAreas.length === 1) {
+    const concernArea = lowConfidenceAreas[0].area;
+    let title, message;
+    
+    if (concernArea === 'medications') {
+      title = `${name}, let's tackle the medication uncertainty together`;
+      message = `I see medication protocols feel uncertain right now (you rated confidence at ${confidence_meds}/10). This is incredibly common—the medical side can feel overwhelming before you have all the details.`;
+    } else if (concernArea === 'costs') {
+      title = `${name}, your financial concerns make complete sense`;
+      message = `You rated financial confidence at ${confidence_costs}/10, and honestly, that's realistic. IVF costs can feel overwhelming, but there are ways to approach this step by step.`;
+    } else {
+      title = `${name}, it's okay to feel uncertain about the journey ahead`;
+      message = `Your overall confidence is at ${confidence_overall}/10 right now, which shows you're being honest about how big this feels. That self-awareness is actually a strength.`;
+    }
+    
+    if (top_concern && top_concern.trim() !== '') {
+      message += ` Plus, "${top_concern}" weighs on your mind—let's address that specific worry.`;
+    }
+    
+    return {
+      type: 'focused_support',
+      title,
+      message: message + ` How are you feeling today?`,
+      confidence: 0.85
+    };
+  }
+  
+  // LOW CONFIDENCE OVERALL - Gentle, comprehensive support
+  if (avgConfidence <= 4) {
+    let message = `${name}, thank you for being so honest in your onboarding. `;
+    
+    if (lowConfidenceAreas.length >= 2) {
+      message += `Feeling uncertain about multiple aspects—medications, costs, the overall journey—is completely normal when starting IVF. `;
+    }
+    
+    if (top_concern && top_concern.trim() !== '') {
+      message += `"${top_concern}" weighs heavily, and that makes perfect sense. `;
+    }
+    
+    message += `You don't have to figure everything out at once. Let's start with how you're feeling right now, today.`;
+    
+    return {
+      type: 'gentle_support', 
+      title: `${name}, you're not alone in feeling uncertain`,
+      message,
+      confidence: 0.9
+    };
+  }
+  
+  // DEFAULT - Balanced approach
+  return {
+    type: 'balanced_welcome',
+    title: `Welcome back, ${name}`,
+    message: `Based on your onboarding, you're approaching IVF with a realistic mix of confidence and natural concerns. ${top_concern ? `"${top_concern}" is on your mind, ` : ''}and that's exactly the kind of honest self-assessment that helps. How are you feeling today?`,
+    confidence: 0.8
+  };
+}
+
+// Analyze patterns for returning users (combining onboarding + check-ins)
+function analyzeUserPatternsWithContext(checkins, onboardingData, user) {
+  if (!checkins || checkins.length === 0) return null;
+  
+  const recent = checkins.slice(0, 3); // Last 3 check-ins
+  const name = user.nickname || user.email.split('@')[0];
+  
+  // Analyze mood evolution
+  const moods = recent.map(c => c.mood_today).filter(Boolean);
+  const confidences = recent.map(c => c.confidence_today).filter(c => c !== undefined);
+  const concerns = recent.map(c => c.primary_concern_today).filter(Boolean);
+  
+  return {
+    recent_moods: moods,
+    recent_confidences: confidences,
+    recent_concerns: concerns,
+    latest_checkin: recent[0],
+    avg_recent_confidence: confidences.length > 0 ? confidences.reduce((a,b) => a+b) / confidences.length : null,
+    onboarding: onboardingData,
+    name,
+    checkin_count: checkins.length
+  };
+}
+
+// Generate contextual insight for returning users
+function generateContextualInsight(analysis, checkins, user) {
+  if (!analysis || !analysis.latest_checkin) {
+    return generateWelcomeInsightFromOnboarding(analysis.onboarding, user);
+  }
+  
+  const { latest_checkin, recent_moods, recent_confidences, recent_concerns, onboarding, name, avg_recent_confidence } = analysis;
+  const { confidence_meds, confidence_costs, top_concern: onboarding_concern } = onboarding;
+  
+  console.log('📊 Analyzing returning user patterns:', {
+    latest_mood: latest_checkin.mood_today,
+    latest_confidence: latest_checkin.confidence_today,
+    avg_confidence: avg_recent_confidence,
+    onboarding_concern,
+    recent_concerns
+  });
+  
+  // PATTERN: Recent concern matches onboarding concern
+  if (latest_checkin.primary_concern_today && onboarding_concern && 
+      latest_checkin.primary_concern_today.toLowerCase().includes(onboarding_concern.toLowerCase().split(' ')[0])) {
+    return {
+      type: 'persistent_concern_support',
+      title: `${name}, I see "${onboarding_concern}" is still on your mind`,
+      message: `This was important to you from the start, and it came up again today. That consistency tells me this isn't just a passing worry—it's something worth addressing directly. Your recent check-ins show you're being thoughtful about tracking what matters most.`,
+      confidence: 0.9
+    };
+  }
+  
+  // PATTERN: Confidence improving over time
+  if (recent_confidences.length >= 2) {
+    const confidence_trend = recent_confidences[0] - recent_confidences[recent_confidences.length - 1];
+    if (confidence_trend >= 2) {
+      return {
+        type: 'confidence_growth',
+        title: `${name}, your confidence is growing—I can see it`,
+        message: `Looking at your recent check-ins, your confidence has climbed from ${recent_confidences[recent_confidences.length - 1]} to ${recent_confidences[0]}. That's not just numbers—that's you building real strength through this process. How does that growth feel?`,
+        confidence: 0.95
+      };
+    }
+  }
+  
+  // PATTERN: Mixed emotions (common IVF experience)
+  if (latest_checkin.mood_today && latest_checkin.mood_today.includes(',')) {
+    const emotions = latest_checkin.mood_today.split(',').map(e => e.trim());
+    if (emotions.length >= 2) {
+      return {
+        type: 'emotional_complexity',
+        title: `${name}, feeling ${emotions[0]} and ${emotions[1]} makes complete sense`,
+        message: `IVF brings up complex emotions—it's normal to feel multiple things at once. ${latest_checkin.primary_concern_today ? `"${latest_checkin.primary_concern_today}" weighs on you today, ` : ''}and holding space for all these feelings is part of the journey.`,
+        confidence: 0.88
+      };
+    }
+  }
+  
+  // PATTERN: Low confidence + specific concern
+  if (latest_checkin.confidence_today <= 4 && latest_checkin.primary_concern_today) {
+    let contextMessage = `Today's confidence (${latest_checkin.confidence_today}/10) and your concern about "${latest_checkin.primary_concern_today}" both deserve attention. `;
+    
+    // Connect to onboarding if relevant
+    if (confidence_costs <= 4 && latest_checkin.primary_concern_today.toLowerCase().includes('financial')) {
+      contextMessage += `This connects to the financial uncertainty you felt during onboarding—you're not alone in this worry carrying forward.`;
+    } else if (confidence_meds <= 4 && latest_checkin.primary_concern_today.toLowerCase().includes('medication')) {
+      contextMessage += `This builds on the medication concerns from your onboarding—it's common for these worries to evolve as treatment gets closer.`;
+    } else {
+      contextMessage += `Let's address this specific concern while it's fresh on your mind.`;
+    }
+    
+    return {
+      type: 'targeted_concern_support',
+      title: `${name}, let's focus on what's weighing on you today`,
+      message: contextMessage,
+      confidence: 0.87
+    };
+  }
+  
+  // PATTERN: High confidence + mood awareness
+  if (latest_checkin.confidence_today >= 7) {
+    return {
+      type: 'confident_check_in',
+      title: `${name}, your ${latest_checkin.confidence_today}/10 confidence shows real strength`,
+      message: `Feeling ${latest_checkin.mood_today || 'strong'} with high confidence suggests you're finding your footing in this process. ${latest_checkin.primary_concern_today ? `Even with "${latest_checkin.primary_concern_today}" on your mind, ` : ''}you're approaching this from a place of growing strength.`,
+      confidence: 0.85
+    };
+  }
+  
+  // DEFAULT: Recent check-in acknowledgment
+  return {
+    type: 'recent_checkin_support',
+    title: `Thanks for checking in, ${name}`,
+    message: `Your recent check-ins show you're staying connected to how you're feeling through this process. ${latest_checkin.mood_today ? `Feeling ${latest_checkin.mood_today} ` : ''}${latest_checkin.confidence_today ? `with ${latest_checkin.confidence_today}/10 confidence ` : ''}tells me you're being honest with yourself about the ups and downs.`,
+    confidence: 0.8
+  };
 }
 
 // ============================================================================
