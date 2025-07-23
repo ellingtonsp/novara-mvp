@@ -1289,7 +1289,8 @@ app.get('/api/health', (req, res) => {
     service: 'Novara API',
     environment: process.env.NODE_ENV || 'production',
     airtable: config.airtable.apiKey ? 'connected' : 'not configured',
-    jwt: JWT_SECRET ? 'configured' : 'not configured'
+    jwt: JWT_SECRET ? 'configured' : 'not configured',
+    version: '1.0.1' // Added to trigger redeploy
   });
 });
 
