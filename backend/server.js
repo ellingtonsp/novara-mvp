@@ -100,6 +100,7 @@ const allowedOrigins = [
   'http://localhost:4200',  // Stable frontend port
   'https://novara-mvp.vercel.app', // Production frontend
   'https://novara-mvp-staging.vercel.app', // Staging frontend
+  'https://novara-mvp-git-staging-novara-fertility.vercel.app', // Vercel staging frontend
 ];
 
 // Add development origins in non-production environments
