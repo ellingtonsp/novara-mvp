@@ -158,24 +158,33 @@ class DatabaseAdapter {
     };
 
     const url = `${config.airtable.baseUrl}/${endpoint}`;
-    const options = {
-      method,
-      headers: {
-        'Authorization': `Bearer ${config.airtable.apiKey}`,
-        'Content-Type': 'application/json'
+    
+    console.log(`🌩️ Production: Making ${method} request to Airtable:`, url);
+    
+    try {
+      const axiosConfig = {
+        method: method,
+        url: url,
+        headers: {
+          'Authorization': `Bearer ${config.airtable.apiKey}`,
+          'Content-Type': 'application/json'
+        }
+      };
+      
+      if (data && method !== 'GET') {
+        axiosConfig.data = data;
       }
-    };
-    
-    if (data && method !== 'GET') {
-      options.body = JSON.stringify(data);
+      
+      const response = await axios(axiosConfig);
+      console.log(`✅ Production: Airtable ${method} request successful`, response.status);
+      return response.data;
+      
+    } catch (error) {
+      console.error(`❌ Production: Airtable ${method} request failed:`, error.response?.data || error.message);
+      
+      const errorMessage = error.response?.data?.error?.message || error.message;
+      throw new Error(`Airtable ${method} failed: ${errorMessage}`);
     }
-    
-    const response = await fetch(url, options);
-    if (!response.ok) {
-      const errorBody = await response.text();
-      throw new Error(`Airtable ${method} failed: ${response.statusText} - ${errorBody}`);
-    }
-    return response.json();
   }
 
   async originalFindUserByEmail(email) {
