@@ -29,6 +29,19 @@ if (process.env.NODE_ENV === 'production') {
   app.set('trust proxy', 1); // More restrictive for staging
 }
 
+// Configure rate limiting to work with trust proxy
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: {
+    error: 'Too many requests from this IP, please try again later.',
+    retryAfter: '15 minutes'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  trustProxy: true, // Trust Railway's proxy
+});
+
 // Security middleware
 app.use(helmet({
   contentSecurityPolicy: {
@@ -42,17 +55,7 @@ app.use(helmet({
   },
 }));
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: {
-    error: 'Too many requests from this IP, please try again later.',
-    retryAfter: '15 minutes'
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
+// Rate limiting configured above with trustProxy
 
 // Apply rate limiting to all routes
 app.use(limiter);
