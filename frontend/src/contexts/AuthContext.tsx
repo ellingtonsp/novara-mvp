@@ -76,7 +76,7 @@ const decodeTokenSafely = (token: string | null | undefined): any | null => {
 };
 
 // Helper function to decode JWT and check expiration
-const isTokenExpired = (token: string | null): boolean => {
+const isTokenExpired = (token: string | null | undefined): boolean => {
   if (!token) return true;
   const payload = decodeTokenSafely(token);
   if (!payload) {
@@ -88,7 +88,7 @@ const isTokenExpired = (token: string | null): boolean => {
 };
 
 // Helper function to check if token expires soon (within 1 hour)
-const isTokenExpiringSoon = (token: string | null): boolean => {
+const isTokenExpiringSoon = (token: string | null | undefined): boolean => {
   if (!token) return true;
   const payload = decodeTokenSafely(token);
   if (!payload) {
