@@ -68,7 +68,8 @@ if (environmentConfig.debugMode) {
     environment: environmentConfig.environment,
     apiUrl: environmentConfig.apiUrl,
     hostname: window.location.hostname,
-    mode: import.meta.env.MODE
+    mode: import.meta.env.MODE,
+    timestamp: new Date().toISOString() // Force cache bust
   });
 }
 
