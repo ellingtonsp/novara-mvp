@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Lightbulb, Heart, TrendingUp, Brain, X, RefreshCw, ThumbsUp, Bookmark } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { API_BASE_URL } from '../lib/environment';
 
 
 
@@ -64,11 +65,6 @@ const DailyInsightsDisplay: React.FC = () => {
       const token = localStorage.getItem('token');
       console.log('🧠 Fetching insights with token:', !!token);
       
-      const API_BASE_URL = import.meta.env.VITE_API_URL ||
-        (import.meta.env.DEV 
-          ? 'http://localhost:3002' 
-          : 'https://novara-mvp-production.up.railway.app');
-      
       const response = await fetch(`${API_BASE_URL}/api/insights/daily`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -100,10 +96,6 @@ const DailyInsightsDisplay: React.FC = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const API_BASE_URL = import.meta.env.VITE_API_URL ||
-        (import.meta.env.DEV 
-          ? 'http://localhost:3002' 
-          : 'https://novara-mvp-production.up.railway.app');
       
       await fetch(`${API_BASE_URL}/api/insights/engagement`, {
         method: 'POST',

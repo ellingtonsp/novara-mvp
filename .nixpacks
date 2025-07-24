@@ -8,4 +8,4 @@ cmds = ["cd backend && npm ci --omit=dev"]
 cmds = ["cd backend && npm install"]
 
 [start]
-cmd = "cd backend && NODE_ENV=production node server.js" 
+cmd = "cd backend && node server.js"

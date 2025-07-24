@@ -1,0 +1,83 @@
+// Environment Configuration - Centralized environment management
+// This file ensures all components use the correct environment-specific settings
+
+export interface EnvironmentConfig {
+  apiUrl: string;
+  environment: string;
+  isDevelopment: boolean;
+  isStaging: boolean;
+  isProduction: boolean;
+  debugMode: boolean;
+}
+
+// Environment detection
+const getEnvironment = (): string => {
+  // Check for explicit environment variable first
+  if (import.meta.env.VITE_ENV) {
+    return import.meta.env.VITE_ENV;
+  }
+  
+  // Fall back to NODE_ENV
+  if (import.meta.env.MODE === 'development') {
+    return 'development';
+  }
+  
+  // Check for staging indicators
+  if (window.location.hostname.includes('staging') || 
+      window.location.hostname.includes('git-staging')) {
+    return 'staging';
+  }
+  
+  // Default to production
+  return 'production';
+};
+
+// API URL configuration
+const getApiUrl = (): string => {
+  // Use explicit API URL if provided
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  
+  const env = getEnvironment();
+  
+  switch (env) {
+    case 'development':
+      return 'http://localhost:9002'; // Stable local backend port
+    case 'staging':
+      return 'https://novara-staging-staging.up.railway.app';
+    case 'production':
+    default:
+      return 'https://novara-mvp-production.up.railway.app';
+  }
+};
+
+// Create environment configuration
+export const environmentConfig: EnvironmentConfig = {
+  apiUrl: getApiUrl(),
+  environment: getEnvironment(),
+  isDevelopment: getEnvironment() === 'development',
+  isStaging: getEnvironment() === 'staging',
+  isProduction: getEnvironment() === 'production',
+  debugMode: import.meta.env.VITE_DEBUG === 'true' || getEnvironment() === 'development'
+};
+
+// Log environment configuration (always log in staging for debugging)
+if (environmentConfig.debugMode || environmentConfig.isStaging) {
+  console.log('🌍 Environment Configuration:', {
+    environment: environmentConfig.environment,
+    apiUrl: environmentConfig.apiUrl,
+    hostname: window.location.hostname,
+    mode: import.meta.env.MODE,
+    viteApiUrl: import.meta.env.VITE_API_URL,
+    viteEnv: import.meta.env.VITE_ENV,
+    timestamp: new Date().toISOString(), // Force cache bust
+    vercelEnv: 'updated-production' // Force redeploy with new env vars
+  });
+}
+
+// Export commonly used values
+export const API_BASE_URL = environmentConfig.apiUrl;
+export const IS_DEVELOPMENT = environmentConfig.isDevelopment;
+export const IS_STAGING = environmentConfig.isStaging;
+export const IS_PRODUCTION = environmentConfig.isProduction; 

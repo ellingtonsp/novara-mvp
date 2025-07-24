@@ -3,12 +3,11 @@ builder = "NIXPACKS"
 buildCommand = "npm install"
 
 [deploy]
-startCommand = "npm start"
+startCommand = "node server.js"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
 
 [environment]
-NODE_ENV = "production"
 USE_LOCAL_DATABASE = "false"
 DATABASE_TYPE = "airtable" 

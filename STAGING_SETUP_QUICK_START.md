@@ -8,11 +8,12 @@ Your `staging` branch is ready with bug fixes! Now connect it to your deployment
 
 ### **1. Railway Staging (Backend)**
 ```
-🔗 https://railway.app → Your Staging Project
+🔗 https://railway.app → novara-mvp Project → Staging Environment
 ```
 
 **Key Changes Needed:**
-- **Branch**: Change from `main` → `staging` 
+- **Environment**: Switch from `production` → `staging` environment
+- **Branch**: Deploy from `staging` branch 
 - **Environment Variables**: Set staging-specific values
 - **Auto-deploy**: Enable for staging branch
 
@@ -85,6 +86,7 @@ git merge stable  # Deploys to production
 - ✅ **Staging branch**: Created with bug fixes
 - ✅ **Documentation**: Complete setup guides  
 - ✅ **Test scripts**: Ready to validate environment
+- ✅ **Railway staging environment**: Created and configured
 - ⏳ **Railway config**: Needs branch connection
 - ⏳ **Vercel config**: Needs branch connection
 

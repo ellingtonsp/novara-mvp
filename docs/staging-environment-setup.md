@@ -4,7 +4,7 @@
 
 ### **Overview**
 This guide sets up a complete staging environment with:
-- **Railway Backend**: Staging API server
+- **Railway Backend**: Staging API server (environment within same project)
 - **Vercel Frontend**: Staging web application
 - **Airtable**: Staging database
 - **Environment Variables**: Proper configuration for staging
@@ -13,22 +13,20 @@ This guide sets up a complete staging environment with:
 
 ## **🔧 Railway Staging Backend Setup**
 
-### **Step 1: Create Railway Staging Project**
+### **Step 1: Create Railway Staging Environment**
 
 ```bash
-# Navigate to backend directory
-cd backend
-
-# Initialize Railway staging project
-railway init --name "novara-staging"
+# From project root directory
+# Create staging environment within existing project
+railway environment new staging
 
 # Or use the setup script
-../scripts/setup-railway-staging.sh
+./scripts/setup-railway-staging.sh
 ```
 
 ### **Step 2: Configure Environment Variables**
 
-Go to Railway Dashboard → Your Staging Project → Variables tab
+Go to Railway Dashboard → novara-mvp Project → Switch to "staging" environment → Variables tab
 
 **Required Variables:**
 ```bash
@@ -51,7 +49,8 @@ ENABLE_REQUEST_LOGGING=true
 ### **Step 3: Deploy Staging Backend**
 
 ```bash
-# Deploy to Railway staging
+# Switch to staging environment and deploy
+railway environment staging
 railway up
 
 # Check deployment status

@@ -1,7 +1,13 @@
-// lib/api.ts - Simple direct fix with hardcoded Railway URL
+// lib/api.ts - Centralized API client using environment configuration
+import { API_BASE_URL, environmentConfig } from './environment';
 
-// Always use Railway URL - no environment detection
-const API_BASE_URL = 'https://novara-mvp-production.up.railway.app';
+// Log API configuration in debug mode
+if (environmentConfig.debugMode) {
+  console.log('🔗 API Client Configuration:', {
+    apiUrl: API_BASE_URL,
+    environment: environmentConfig.environment
+  });
+}
 
 // TypeScript interfaces
 export interface User {

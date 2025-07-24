@@ -10,8 +10,8 @@ RUN npm ci --omit=dev
 # Copy backend source
 COPY backend ./
 
-# Set production env
-ENV NODE_ENV=production
+# Set environment (will be overridden by Railway env vars)
+ENV NODE_ENV=staging
 
 # Expose dynamic port
 EXPOSE $PORT

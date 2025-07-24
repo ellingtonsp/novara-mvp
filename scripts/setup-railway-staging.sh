@@ -44,22 +44,27 @@ echo ""
 echo -e "${BLUE}🔧 Setting up Railway Staging Environment...${NC}"
 echo "================================================"
 
-cd backend
+# Check if we're in the right directory
+if [ ! -f "railway.json" ]; then
+    echo -e "${RED}❌ Error: railway.json not found. Please run this script from the project root.${NC}"
+    exit 1
+fi
 
-# Check if staging project exists
-if railway status &> /dev/null; then
-    echo -e "${GREEN}✅ Railway staging project found${NC}"
+# Check if staging environment exists
+if railway environment staging &> /dev/null; then
+    echo -e "${GREEN}✅ Railway staging environment found${NC}"
 else
-    echo -e "${YELLOW}🏗️ Creating Railway staging project...${NC}"
-    railway init --name "novara-staging"
+    echo -e "${YELLOW}🏗️ Creating Railway staging environment...${NC}"
+    railway environment new staging
 fi
 
 echo ""
 echo -e "${YELLOW}⚠️ Next Steps for Railway Staging:${NC}"
 echo "1. Go to Railway dashboard: https://railway.app"
-echo "2. Select your 'novara-staging' project"
-echo "3. Go to Variables tab"
-echo "4. Add these environment variables:"
+echo "2. Select your 'novara-mvp' project"
+echo "3. Switch to 'staging' environment (top right dropdown)"
+echo "4. Go to Variables tab"
+echo "5. Add these environment variables:"
 echo ""
 
 echo -e "${CYAN}Required Variables:${NC}"
@@ -78,15 +83,12 @@ echo "   ENABLE_DEBUG_LOGGING=true"
 echo "   ENABLE_REQUEST_LOGGING=true"
 echo ""
 
-# Return to root directory
-cd ..
-
 echo -e "${BLUE}📋 Manual Setup Checklist${NC}"
 echo "=============================="
 echo ""
 echo -e "${YELLOW}Railway Staging:${NC}"
-echo "□ Set environment variables in Railway dashboard"
-echo "□ Deploy staging backend: cd backend && railway up"
+echo "□ Set environment variables in Railway dashboard (staging environment)"
+echo "□ Deploy staging backend: railway environment staging && railway up"
 echo "□ Get Railway staging domain from dashboard"
 echo "□ Test health check: curl [RAILWAY_STAGING_DOMAIN]/api/health"
 echo ""

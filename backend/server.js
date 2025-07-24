@@ -9,6 +9,11 @@ require('dotenv').config();
 
 const app = express();
 
+// Override NODE_ENV for staging environment if RAILWAY_ENVIRONMENT is set to staging
+if (process.env.RAILWAY_ENVIRONMENT === 'staging') {
+  process.env.NODE_ENV = 'staging';
+}
+
 // Ensure port uses process.env.PORT in production with safe parsing and fallback, plus diagnostic logging
 const port = process.env.PORT ? parseInt(process.env.PORT, 10) : (process.env.NODE_ENV === 'production' ? 8080 : (process.env.NODE_ENV === 'development' ? 3002 : 3000));
 if (process.env.NODE_ENV === 'production' && !process.env.PORT) {
@@ -95,6 +100,7 @@ const allowedOrigins = [
   'http://localhost:4200',  // Stable frontend port
   'https://novara-mvp.vercel.app', // Production frontend
   'https://novara-mvp-staging.vercel.app', // Staging frontend
+  'https://novara-mvp-git-staging-novara-fertility.vercel.app', // Vercel staging frontend
 ];
 
 // Add development origins in non-production environments
@@ -1286,7 +1292,7 @@ app.get('/api/health', (req, res) => {
     environment: process.env.NODE_ENV || 'production',
     airtable: config.airtable.apiKey ? 'connected' : 'not configured',
     jwt: JWT_SECRET ? 'configured' : 'not configured',
-    version: '1.0.1' // Added to trigger redeploy
+    version: '1.0.2' // Force redeploy with staging environment
   });
 });
 

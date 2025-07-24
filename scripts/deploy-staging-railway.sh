@@ -27,20 +27,21 @@ if ! railway whoami &> /dev/null; then
     exit 1
 fi
 
-echo "📋 Current Railway projects:"
-railway projects
+echo "📋 Current Railway project and environment:"
+railway status
 
 echo ""
-echo "🚀 Deploying to Railway staging..."
+echo "🚀 Deploying to Railway staging environment..."
 echo "⚠️  Make sure you're on the 'staging' branch!"
 
-# Deploy to Railway
-railway up --service staging
+# Switch to staging environment and deploy
+railway environment staging
+railway up
 
 echo ""
 echo "✅ Deployment initiated!"
 echo "🔍 Check deployment status at: https://railway.app/dashboard"
 echo "🌐 Staging URL: https://novara-staging-production.up.railway.app"
 echo ""
-echo "📊 To check logs: railway logs --service staging"
+echo "📊 To check logs: railway logs"
 echo "🔧 To open Railway dashboard: railway open" 
