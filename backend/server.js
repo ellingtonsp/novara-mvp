@@ -1639,7 +1639,7 @@ app.get('/api/checkins/last-values', authenticateToken, async (req, res) => {
     }
 
     // Get the most recent check-in for this user using the database adapter
-    const checkinsUrl = `${config.airtable.baseUrl}/DailyCheckins?filterByFormula=SEARCH('${user.id}',ARRAYJOIN({user_id}))&sort[0][field]=date_submitted&sort[0][direction]=desc&maxRecords=1`;
+    const checkinsUrl = `${config.airtable.baseUrl}/DailyCheckins?filterByFormula=user_id='${user.id}'&sort[0][field]=date_submitted&sort[0][direction]=desc&maxRecords=1`;
     
     const response = await databaseAdapter.fetchCheckins(checkinsUrl, {
       headers: {
@@ -1669,7 +1669,7 @@ app.get('/api/checkins/last-values', authenticateToken, async (req, res) => {
           medication_confidence_today: lastCheckin.medication_confidence_today || null,
           financial_stress_today: lastCheckin.financial_stress_today || null,
           journey_readiness_today: lastCheckin.journey_readiness_today || null,
-          last_checkin_date: lastCheckin.date_submitted
+          last_checkin_date: lastCheckin.date_submitted || null
         },
         message: 'Last check-in values retrieved successfully'
       });
@@ -1807,7 +1807,7 @@ app.get('/api/checkins', authenticateToken, async (req, res) => {
     }
 
     // Fetch user's recent check-ins using database adapter
-    const airtableUrl = `${config.airtable.baseUrl}/DailyCheckins?filterByFormula=SEARCH('${user.id}',ARRAYJOIN({user_id}))&sort[0][field]=date_submitted&sort[0][direction]=desc&maxRecords=${limit}`;
+    const airtableUrl = `${config.airtable.baseUrl}/DailyCheckins?filterByFormula=user_id='${user.id}'&sort[0][field]=date_submitted&sort[0][direction]=desc&maxRecords=${limit}`;
     console.log('🔍 Querying database for user checkins:', user.id);
     
     const response = await databaseAdapter.fetchCheckins(airtableUrl, {
@@ -1834,12 +1834,12 @@ app.get('/api/checkins', authenticateToken, async (req, res) => {
     // Transform Airtable records for frontend consumption
     const checkins = result.records.map(record => ({
       id: record.id,
-      mood_today: record.fields.mood_today,
-      primary_concern_today: record.fields.primary_concern_today,
-      confidence_today: record.fields.confidence_today,
-      user_note: record.fields.user_note,
-      date_submitted: record.fields.date_submitted,
-      created_at: record.fields.created_at
+      mood_today: record.fields.mood_today || '',
+      primary_concern_today: record.fields.primary_concern_today || null,
+      confidence_today: record.fields.confidence_today || 5,
+      user_note: record.fields.user_note || null,
+      date_submitted: record.fields.date_submitted || '',
+      created_at: record.fields.created_at || record.createdTime
     }));
 
     console.log(`✅ Retrieved ${checkins.length} check-ins for user: ${req.user.email}`);
@@ -1878,7 +1878,7 @@ app.get('/api/insights/daily', authenticateToken, async (req, res) => {
     }
 
     // Get recent check-ins (last 7 days)
-    const checkinsUrl = `${config.airtable.baseUrl}/DailyCheckins?filterByFormula=SEARCH('${user.id}',ARRAYJOIN({user_id}))&sort[0][field]=date_submitted&sort[0][direction]=desc&maxRecords=7`;
+    const checkinsUrl = `${config.airtable.baseUrl}/DailyCheckins?filterByFormula=user_id='${user.id}'&sort[0][field]=date_submitted&sort[0][direction]=desc&maxRecords=7`;
     const response = await databaseAdapter.fetchCheckins(checkinsUrl, {
       headers: {
         'Authorization': `Bearer ${config.airtable.apiKey}`,
@@ -1897,12 +1897,12 @@ app.get('/api/insights/daily', authenticateToken, async (req, res) => {
 
     const checkins = result.records.map(record => ({
       id: record.id,
-      mood_today: record.fields.mood_today,
-      primary_concern_today: record.fields.primary_concern_today,
-      confidence_today: record.fields.confidence_today,
-      user_note: record.fields.user_note,
-      date_submitted: record.fields.date_submitted,
-      created_at: record.fields.created_at
+      mood_today: record.fields.mood_today || '',
+      primary_concern_today: record.fields.primary_concern_today || null,
+      confidence_today: record.fields.confidence_today || 5,
+      user_note: record.fields.user_note || null,
+      date_submitted: record.fields.date_submitted || '',
+      created_at: record.fields.created_at || record.createdTime
     }));
 
     // Generate insights using the new engine
