@@ -67,7 +67,7 @@ const DailyInsightsDisplay: React.FC = () => {
       const API_BASE_URL = import.meta.env.VITE_API_URL ||
         (import.meta.env.DEV 
           ? 'http://localhost:3002' 
-          : 'https://novara-mvp-production.up.railway.app');
+          : 'https://novara-staging-staging.up.railway.app');
       
       const response = await fetch(`${API_BASE_URL}/api/insights/daily`, {
         headers: {
@@ -103,7 +103,7 @@ const DailyInsightsDisplay: React.FC = () => {
       const API_BASE_URL = import.meta.env.VITE_API_URL ||
         (import.meta.env.DEV 
           ? 'http://localhost:3002' 
-          : 'https://novara-mvp-production.up.railway.app');
+          : 'https://novara-staging-staging.up.railway.app');
       
       await fetch(`${API_BASE_URL}/api/insights/engagement`, {
         method: 'POST',

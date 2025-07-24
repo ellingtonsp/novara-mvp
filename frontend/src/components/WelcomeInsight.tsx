@@ -44,10 +44,10 @@ export default function WelcomeInsight({ onContinue }: WelcomeInsightProps) {
       try {
         console.log('🎯 Fetching welcome insight for user:', user.email);
         
-        const API_BASE_URL = import.meta.env.VITE_API_URL ||
-          (import.meta.env.DEV 
-            ? 'http://localhost:3002' 
-            : 'https://novara-mvp-production.up.railway.app');
+            const API_BASE_URL = import.meta.env.VITE_API_URL ||
+      (import.meta.env.DEV 
+        ? 'http://localhost:3002' 
+        : 'https://novara-staging-staging.up.railway.app');
         
         const response = await fetch(`${API_BASE_URL}/api/insights/micro`, {
           method: 'POST',
