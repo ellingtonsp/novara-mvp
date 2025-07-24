@@ -1,6 +1,6 @@
 [build]
 builder = "NIXPACKS"
-buildCommand = "npm install --omit=dev"
+buildCommand = "npm install"
 
 [deploy]
 startCommand = "npm start"
@@ -10,4 +10,5 @@ restartPolicyType = "ON_FAILURE"
 
 [environment]
 NODE_ENV = "production"
-PORT = "$PORT" 
+USE_LOCAL_DATABASE = "false"
+DATABASE_TYPE = "airtable" 
