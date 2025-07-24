@@ -28,6 +28,7 @@
     "track:deployments:stats": "node scripts/simple-deployment-tracker.js --stats",
     "monitor:failures": "node scripts/railway-web-monitor.js --once",
     "monitor:failures:continuous": "node scripts/railway-web-monitor.js --continuous",
+    "test:railway-secrets": "node scripts/test-railway-secrets.js",
     "health-check": "node scripts/environment-health-check.js",
     "health-check:dev": "node scripts/environment-health-check.js development",
     "health-check:staging": "node scripts/environment-health-check.js staging",

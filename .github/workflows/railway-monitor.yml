@@ -25,6 +25,13 @@ jobs:
     - name: Install dependencies
       run: npm ci
       
+    - name: Test Railway secrets
+      env:
+        RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
+      run: |
+        node scripts/test-railway-secrets.js
+        
     - name: Monitor Railway deployments
       env:
         RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
