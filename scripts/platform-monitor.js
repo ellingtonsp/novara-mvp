@@ -102,9 +102,12 @@ async function checkRailwayStatus() {
   }
   
   try {
-    const query = `
+    // First, get project information
+    const projectQuery = `
       query {
         project(id: "${CONFIG.railway.projectId}") {
+          id
+          name
           services {
             nodes {
               id
@@ -126,25 +129,70 @@ async function checkRailwayStatus() {
       }
     `;
     
-    const response = await makeRequest(CONFIG.railway.apiUrl, {
+    const projectResponse = await makeRequest(CONFIG.railway.apiUrl, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${CONFIG.railway.token}`
       },
-      body: JSON.stringify({ query })
+      body: JSON.stringify({ query: projectQuery })
     });
     
-    if (response.statusCode === 200) {
-      const data = JSON.parse(response.data);
-      return {
-        status: 'success',
-        data: data.data
-      };
+    if (projectResponse.statusCode === 200) {
+      const projectData = JSON.parse(projectResponse.data);
+      
+      // Get detailed deployment information
+      const deploymentsQuery = `
+        query {
+          deployments(projectId: "${CONFIG.railway.projectId}", limit: 20) {
+            nodes {
+              id
+              status
+              createdAt
+              updatedAt
+              meta {
+                image
+                buildLogs
+                startTime
+                endTime
+              }
+              service {
+                name
+              }
+            }
+          }
+        }
+      `;
+      
+      const deploymentsResponse = await makeRequest(CONFIG.railway.apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${CONFIG.railway.token}`
+        },
+        body: JSON.stringify({ query: deploymentsQuery })
+      });
+      
+      if (deploymentsResponse.statusCode === 200) {
+        const deploymentsData = JSON.parse(deploymentsResponse.data);
+        
+        return {
+          status: 'success',
+          data: {
+            project: projectData.data?.project,
+            deployments: deploymentsData.data?.deployments
+          }
+        };
+      } else {
+        return {
+          status: 'error',
+          error: `Deployments API: HTTP ${deploymentsResponse.statusCode}`,
+          data: deploymentsResponse.data
+        };
+      }
     } else {
       return {
         status: 'error',
-        error: `HTTP ${response.statusCode}`,
-        data: response.data
+        error: `Project API: HTTP ${projectResponse.statusCode}`,
+        data: projectResponse.data
       };
     }
   } catch (error) {
