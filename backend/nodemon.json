@@ -20,13 +20,21 @@
     "*.spec.js",
     ".git/**/*",
     ".app-ready",
+    "**/.app-ready",
+    ".app-ready*",
+    "*.app-ready",
     "test-*.js",
     "production-*.js",
-    "scripts/**/*"
+    "scripts/**/*",
+    "*.log",
+    "*.pid",
+    ".env*",
+    "coverage/**/*"
   ],
   "ext": "js,json",
-  "delay": 1000,
+  "delay": 2000,
   "verbose": false,
+  "legacyWatch": false,
   "env": {
     "NODE_ENV": "development"
   }

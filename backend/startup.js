@@ -49,6 +49,12 @@ function checkAppReady() {
 // Mark application as ready
 function markAppReady() {
   try {
+    // In development, avoid writing file to prevent nodemon restarts
+    if (process.env.NODE_ENV === 'development') {
+      log('Application marked as ready (development mode - skipping file write)');
+      return;
+    }
+    
     fs.writeFileSync(STARTUP_CONFIG.readyFile, new Date().toISOString());
     log('Application marked as ready');
   } catch (error) {
