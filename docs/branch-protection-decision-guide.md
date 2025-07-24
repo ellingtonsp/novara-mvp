@@ -1,4 +1,4 @@
-# 🛡️ Branch Protection Decision Guide for Novara MVP
+i tem# 🛡️ Branch Protection Decision Guide for Novara MVP
 
 ## 🎯 **The Question: Should You Remove Branch Protection?**
 

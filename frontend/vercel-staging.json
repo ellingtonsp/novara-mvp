@@ -1,6 +1,5 @@
 {
   "version": 2,
-  "name": "novara-mvp-staging",
   "builds": [
     {
       "src": "package.json",
@@ -12,17 +11,16 @@
   ],
   "routes": [
     {
+      "src": "/assets/(.*)",
+      "dest": "/assets/$1"
+    },
+    {
+      "src": "/vite.svg",
+      "dest": "/vite.svg"
+    },
+    {
       "src": "/(.*)",
       "dest": "/index.html"
     }
-  ],
-  "env": {
-    "VITE_ENV": "staging",
-    "VITE_API_URL": "https://novara-staging.up.railway.app"
-  },
-  "functions": {
-    "app/api/**/*.js": {
-      "runtime": "nodejs18.x"
-    }
-  }
-} 
+  ]
+}

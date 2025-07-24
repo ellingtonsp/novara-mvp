@@ -1,4 +1,11 @@
 {
+  "name": "novara-mvp",
+  "version": "1.0.0",
+  "description": "Novara MVP - Full Stack Application",
+  "scripts": {
+    "start": "cd backend && npm start",
+    "install": "cd backend && npm ci --omit=dev"
+  },
   "dependencies": {
     "node-fetch": "^3.3.2"
   }

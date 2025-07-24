@@ -8,7 +8,13 @@ const morgan = require('morgan');
 require('dotenv').config();
 
 const app = express();
-const port = process.env.PORT || (process.env.NODE_ENV === 'development' ? 3002 : 3000);
+
+// Ensure port uses process.env.PORT in production with safe parsing and fallback, plus diagnostic logging
+const port = process.env.PORT ? parseInt(process.env.PORT, 10) : (process.env.NODE_ENV === 'production' ? 8080 : (process.env.NODE_ENV === 'development' ? 3002 : 3000));
+if (process.env.NODE_ENV === 'production' && !process.env.PORT) {
+  console.warn('⚠️ PORT not set in production - falling back to 8080, but this may cause 502 errors');
+}
+console.log(`Starting server on port ${port} (env PORT: ${process.env.PORT || 'not set'}, NODE_ENV: ${process.env.NODE_ENV || 'not set'})`);
 
 // Validate PORT is a valid integer
 if (process.env.PORT) {
@@ -2062,11 +2068,12 @@ app.get('/api/checkins-test', (req, res) => {
 // START SERVER
 // ============================================================================
 
-app.listen(port, () => {
+// Update app.listen to bind to '0.0.0.0' explicitly (required for container networking) with full startup logs
+app.listen(port, '0.0.0.0', () => {
   console.log(`🚀 Novara API running on port ${port}`);
-  console.log(`📊 Health check: http://localhost:${port}/api/health`);
-  console.log(`🔐 JWT Authentication enabled`);
-  console.log(`🧠 Daily Insight Engine v1 enabled`);
+  console.log(`📊 Health check: http://0.0.0.0:${port}/api/health`);
+  console.log(`🔍 Environment: ${process.env.NODE_ENV || 'not set'}`);
+  console.log(`🔌 Bound to host: 0.0.0.0 (required for Railway container networking)`);
 });
 
 // ============================================================================
