@@ -6,6 +6,8 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const morgan = require('morgan');
 const Sentry = require("@sentry/node");
+const logger = require('./utils/logger');
+const { performanceMiddleware } = require('./middleware/performance');
 require('dotenv').config();
 
 const app = express();
@@ -27,7 +29,11 @@ const port = process.env.PORT ? parseInt(process.env.PORT, 10) : (process.env.NO
 if (process.env.NODE_ENV === 'production' && !process.env.PORT) {
   console.warn('⚠️ PORT not set in production - falling back to 8080, but this may cause 502 errors');
 }
-console.log(`Starting server on port ${port} (env PORT: ${process.env.PORT || 'not set'}, NODE_ENV: ${process.env.NODE_ENV || 'not set'})`);
+logger.startup(`Starting server on port ${port}`, {
+  port,
+  envPort: process.env.PORT || 'not set',
+  nodeEnv: process.env.NODE_ENV || 'not set'
+});
 
 // Validate PORT is a valid integer
 if (process.env.PORT) {
@@ -83,6 +89,9 @@ app.use(helmet({
 // Add Sentry middleware
 app.use(Sentry.Handlers.requestHandler());
 
+// Add performance monitoring
+app.use(performanceMiddleware);
+
 // Apply rate limiting to all routes
 app.use(limiter);
 
@@ -98,11 +107,7 @@ const authLimiter = rateLimit({
 
 // Logging middleware
 app.use(morgan('combined', {
-  stream: {
-    write: (message) => {
-      console.log(message.trim());
-    }
-  }
+  stream: logger.stream
 }));
 
 // CORS - Environment-aware origin configuration
@@ -148,9 +153,11 @@ const config = {
 };
 
 // Log database mode on startup
-console.log(databaseAdapter.isUsingLocalDatabase() ? 
-  '🗄️ Running with SQLite local database' : 
-  '🌩️ Running with Airtable production database');
+logger.startup(databaseAdapter.isUsingLocalDatabase() ? 
+  'Running with SQLite local database' : 
+  'Running with Airtable production database', {
+    databaseType: databaseAdapter.isUsingLocalDatabase() ? 'sqlite' : 'airtable'
+  });
 
 // JWT Middleware
 function authenticateToken(req, res, next) {

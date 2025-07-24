@@ -4,7 +4,6 @@ import './index.css'
 import App from './App.tsx'
 import { AuthProvider } from './contexts/AuthContext'
 import * as Sentry from "@sentry/react";
-
 // Initialize Sentry
 Sentry.init({
   dsn: import.meta.env.VITE_SENTRY_DSN,
