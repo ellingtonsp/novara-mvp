@@ -30,6 +30,9 @@ Sentry.init({
 // Initialize Redis
 initializeRedis();
 
+// Import startup utilities
+const { markAppReady } = require('./startup');
+
 // Override NODE_ENV for staging environment if RAILWAY_ENVIRONMENT is set to staging
 if (process.env.RAILWAY_ENVIRONMENT === 'staging') {
   process.env.NODE_ENV = 'staging';
@@ -1309,29 +1312,50 @@ app.get('/', (req, res) => {
   });
 });
 
-// Health Check - Ultra-fast version for Railway deployment
+// Startup Health Check - Responds immediately during deployment
 app.get('/api/health', (req, res) => {
-  // Immediate response - no external dependencies
+  // Always respond immediately - Railway needs this to pass
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    service: 'Novara API',
+    environment: process.env.NODE_ENV || 'production',
+    version: '1.0.3',
+    startup: 'ready'
+  });
+});
+
+// Detailed Health Check - For monitoring after deployment
+app.get('/api/health/detailed', (req, res) => {
   const healthStatus = {
     status: 'ok',
     timestamp: new Date().toISOString(),
     service: 'Novara API',
     environment: process.env.NODE_ENV || 'production',
     version: '1.0.3',
-    deployment: 'stable'
+    checks: {}
   };
   
-  // Only check external services if they're available (non-blocking)
-  if (typeof config !== 'undefined' && config && config.airtable && config.airtable.apiKey) {
-    healthStatus.airtable = 'connected';
-  } else {
-    healthStatus.airtable = 'checking';
+  // Check Airtable connection
+  try {
+    if (typeof config !== 'undefined' && config && config.airtable && config.airtable.apiKey) {
+      healthStatus.checks.airtable = 'connected';
+    } else {
+      healthStatus.checks.airtable = 'not configured';
+    }
+  } catch (error) {
+    healthStatus.checks.airtable = 'error';
   }
   
-  if (JWT_SECRET && JWT_SECRET !== 'your-super-secret-jwt-key-change-this-in-production') {
-    healthStatus.jwt = 'configured';
-  } else {
-    healthStatus.jwt = 'checking';
+  // Check JWT configuration
+  try {
+    if (JWT_SECRET && JWT_SECRET !== 'your-super-secret-jwt-key-change-this-in-production') {
+      healthStatus.checks.jwt = 'configured';
+    } else {
+      healthStatus.checks.jwt = 'not configured';
+    }
+  } catch (error) {
+    healthStatus.checks.jwt = 'error';
   }
   
   res.json(healthStatus);
@@ -2149,6 +2173,12 @@ app.listen(port, '0.0.0.0', () => {
   console.log(`📊 Health check: http://0.0.0.0:${port}/api/health`);
   console.log(`🔍 Environment: ${process.env.NODE_ENV || 'not set'}`);
   console.log(`🔌 Bound to host: 0.0.0.0 (required for Railway container networking)`);
+  
+  // Mark application as ready for health checks
+  setTimeout(() => {
+    markAppReady();
+    console.log(`✅ Application marked as ready for health checks`);
+  }, 2000); // Give 2 seconds for everything to initialize
 });
 
 // ============================================================================
