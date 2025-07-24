@@ -36,7 +36,7 @@ const tokenCache = new Map<string, { payload: any; timestamp: number }>();
 const CACHE_TTL = 60000; // 1 minute cache
 
 // Helper function to safely decode JWT token with caching
-const decodeTokenSafely = (token: string | null): any | null => {
+const decodeTokenSafely = (token: string | null | undefined): any | null => {
   if (!token || typeof token !== 'string') {
     return null;
   }
@@ -108,8 +108,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        const token = localStorage.getItem('token');
-        const storedUser = localStorage.getItem('user');
+        const token = localStorage.getItem('token') || null;
+        const storedUser = localStorage.getItem('user') || null;
         
         if (token && storedUser) {
           // In development, be less aggressive about token refresh to avoid HMR conflicts
@@ -158,8 +158,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (!user || import.meta.env.DEV) return;
 
     const checkTokenExpiration = () => {
-      const token = localStorage.getItem('token');
-      if (token && isTokenExpiringSoon(token as string)) {
+      const token = localStorage.getItem('token') || null;
+      if (token && isTokenExpiringSoon(token)) {
         console.log('🔄 Token expiring soon, refreshing...');
         refreshToken();
       }
