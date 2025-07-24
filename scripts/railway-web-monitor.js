@@ -12,10 +12,23 @@ const path = require('path');
 
 // Configuration
 const CONFIG = {
+  railway: {
+    projectId: process.env.RAILWAY_PROJECT_ID || 'f3025bf5-5cd5-4b7b-b045-4d477a4c7835',
+    environments: {
+      production: {
+        name: 'Production',
+        healthUrl: 'https://novara-mvp-production.up.railway.app/api/health'
+      },
+      staging: {
+        name: 'Staging', 
+        healthUrl: 'https://novara-staging-staging.up.railway.app/api/health'
+      }
+    }
+  },
   logFile: path.join(__dirname, '../logs/railway-web-monitor.log'),
   checkInterval: 60 * 1000, // 1 minute
-  healthCheckUrl: 'https://novara-mvp-production.up.railway.app/api/health',
-  stagingHealthUrl: 'https://novara-mvp-staging.up.railway.app/api/health'
+  healthCheckTimeout: 10000, // 10 seconds
+  alertThreshold: 3 // Alert after 3 consecutive failures
 };
 
 // Ensure logs directory exists
@@ -55,7 +68,7 @@ function executeRailwayCommand(command) {
 async function checkHealth(url, serviceName) {
   try {
     const response = await new Promise((resolve, reject) => {
-      const req = https.get(url, { timeout: 10000 }, (res) => {
+      const req = https.get(url, { timeout: CONFIG.healthCheckTimeout }, (res) => {
         let data = '';
         res.on('data', chunk => data += chunk);
         res.on('end', () => resolve({ statusCode: res.statusCode, data }));
@@ -206,7 +219,7 @@ async function monitorEnvironments() {
   
   // Check production health
   log('Checking production health...');
-  const productionHealth = await checkHealth(CONFIG.healthCheckUrl, 'production');
+  const productionHealth = await checkHealth(CONFIG.railway.environments.production.healthUrl, 'production');
   results.production = productionHealth;
   
   if (!productionHealth.healthy) {
@@ -221,7 +234,7 @@ async function monitorEnvironments() {
   
   // Check staging health
   log('Checking staging health...');
-  const stagingHealth = await checkHealth(CONFIG.stagingHealthUrl, 'staging');
+  const stagingHealth = await checkHealth(CONFIG.railway.environments.staging.healthUrl, 'staging');
   results.staging = stagingHealth;
   
   if (!stagingHealth.healthy) {

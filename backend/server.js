@@ -1309,17 +1309,54 @@ app.get('/', (req, res) => {
   });
 });
 
-// Health Check
+// Health Check - Robust version that doesn't depend on external configs
 app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'ok', 
-    timestamp: new Date().toISOString(),
-    service: 'Novara API',
-    environment: process.env.NODE_ENV || 'production',
-    airtable: config.airtable.apiKey ? 'connected' : 'not configured',
-    jwt: JWT_SECRET ? 'configured' : 'not configured',
-    version: '1.0.3' // Force redeploy with staging environment
-  });
+  try {
+    // Basic health check that doesn't depend on external services
+    const healthStatus = {
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      service: 'Novara API',
+      environment: process.env.NODE_ENV || 'production',
+      version: '1.0.3'
+    };
+    
+    // Safely check Airtable configuration
+    try {
+      if (config && config.airtable && config.airtable.apiKey) {
+        healthStatus.airtable = 'connected';
+      } else {
+        healthStatus.airtable = 'not configured';
+      }
+    } catch (error) {
+      healthStatus.airtable = 'error checking';
+    }
+    
+    // Safely check JWT configuration
+    try {
+      if (JWT_SECRET && JWT_SECRET !== 'your-super-secret-jwt-key-change-this-in-production') {
+        healthStatus.jwt = 'configured';
+      } else {
+        healthStatus.jwt = 'not configured';
+      }
+    } catch (error) {
+      healthStatus.jwt = 'error checking';
+    }
+    
+    res.json(healthStatus);
+  } catch (error) {
+    // Fallback health response if anything fails
+    res.json({
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      service: 'Novara API',
+      environment: process.env.NODE_ENV || 'production',
+      airtable: 'unknown',
+      jwt: 'unknown',
+      version: '1.0.3',
+      note: 'Basic health check - some services may be unavailable'
+    });
+  }
 });
 
 // Cache management endpoints

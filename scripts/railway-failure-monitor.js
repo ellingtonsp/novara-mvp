@@ -9,13 +9,12 @@ const https = require('https');
 const fs = require('fs');
 const path = require('path');
 
+// Import centralized configuration
+const { RAILWAY_CONFIG, MONITORING_CONFIG } = require('./environment-config');
+
 // Configuration
 const CONFIG = {
-  railway: {
-    projectId: 'f3025bf5-5cd5-4b7b-b045-4d477a4c7835',
-    token: 'e3fe9d3a-1b89-483c-aa75-477da8ef6a2f',
-    apiUrl: 'https://backboard.railway.app/graphql/v2'
-  },
+  railway: RAILWAY_CONFIG,
   logFile: path.join(__dirname, '../logs/railway-failures.log'),
   checkInterval: 30 * 1000, // 30 seconds
   healthCheckTimeout: 300000, // 5 minutes

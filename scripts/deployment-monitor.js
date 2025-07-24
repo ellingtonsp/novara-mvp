@@ -10,29 +10,28 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
+// Import centralized configuration
+const { ENVIRONMENTS, MONITORING_CONFIG } = require('./environment-config');
+
 // Configuration
 const CONFIG = {
   environments: {
     staging: {
-      backend: 'https://novara-staging-staging.up.railway.app',
-      frontend: 'https://novara-mvp-git-staging-novara-fertility.vercel.app',
-      name: 'Staging'
+      backend: ENVIRONMENTS.staging.backend,
+      frontend: ENVIRONMENTS.staging.frontend,
+      name: ENVIRONMENTS.staging.name
     },
     production: {
-      backend: 'https://novara-production-production.up.railway.app',
-      frontend: 'https://novara-mvp.vercel.app',
-      name: 'Production'
+      backend: ENVIRONMENTS.production.backend,
+      frontend: ENVIRONMENTS.production.frontend,
+      name: ENVIRONMENTS.production.name
     }
   },
-  healthEndpoints: [
-    '/api/health',
-    '/api/checkins/questions',
-    '/api/insights/daily'
-  ],
-  timeout: 10000, // 10 seconds
-  retries: 3,
-  checkInterval: 5 * 60 * 1000, // 5 minutes
-  alertThreshold: 3, // Alert after 3 consecutive failures
+  healthEndpoints: MONITORING_CONFIG.healthEndpoints,
+  timeout: MONITORING_CONFIG.timeout,
+  retries: MONITORING_CONFIG.retries,
+  checkInterval: MONITORING_CONFIG.checkInterval,
+  alertThreshold: MONITORING_CONFIG.alertThreshold,
   logFile: path.join(__dirname, '../logs/deployment-monitor.log'),
   statusFile: path.join(__dirname, '../logs/deployment-status.json')
 };

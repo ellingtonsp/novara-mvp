@@ -11,16 +11,21 @@ const path = require('path');
 
 // Configuration
 const CONFIG = {
-  railway: {
-    apiUrl: 'https://backboard.railway.app/graphql/v2',
-    projectId: process.env.RAILWAY_PROJECT_ID,
-    token: process.env.RAILWAY_TOKEN
+  environments: {
+    production: {
+      backend: 'https://novara-mvp-production.up.railway.app',
+      frontend: 'https://novara-mvp.vercel.app',
+      name: 'Production'
+    },
+    staging: {
+      backend: 'https://novara-staging-staging.up.railway.app',
+      frontend: 'https://novara-mvp-staging.vercel.app',
+      name: 'Staging'
+    }
   },
-  vercel: {
-    apiUrl: 'https://api.vercel.com/v1',
-    token: process.env.VERCEL_TOKEN,
-    teamId: process.env.VERCEL_TEAM_ID
-  },
+  healthEndpoints: ['/api/health'],
+  timeout: 10000,
+  checkInterval: 5 * 60 * 1000, // 5 minutes
   logFile: path.join(__dirname, '../logs/platform-monitor.log'),
   statusFile: path.join(__dirname, '../logs/platform-status.json')
 };
