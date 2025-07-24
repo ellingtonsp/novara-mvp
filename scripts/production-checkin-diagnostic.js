@@ -8,7 +8,7 @@
 
 const https = require('https');
 
-const PRODUCTION_BASE = 'https://novara-mvp-production.up.railway.app';
+const STAGING_BASE = 'https://novara-staging-staging.up.railway.app';
 
 // Colors for console output
 const colors = {
@@ -59,13 +59,13 @@ function makeRequest(url, options = {}) {
 }
 
 async function diagnosticTest() {
-  log('\n🔍 PRODUCTION CHECK-IN DIAGNOSTIC', 'magenta');
+  log('\n🔍 STAGING CHECK-IN DIAGNOSTIC', 'magenta');
   log('='.repeat(50), 'blue');
   
   try {
     // Step 1: Test health endpoint
-    log('\n1️⃣ Testing Production Health...', 'yellow');
-    const health = await makeRequest(`${PRODUCTION_BASE}/api/health`);
+    log('\n1️⃣ Testing Staging Health...', 'yellow');
+         const health = await makeRequest(`${STAGING_BASE}/api/health`);
     if (health.status === 200) {
       log(`✅ Production is healthy: ${health.data.environment} v${health.data.version}`, 'green');
     } else {
@@ -85,7 +85,7 @@ async function diagnosticTest() {
       cycle_stage: 'ivf_prep'
     };
 
-    const userResponse = await makeRequest(`${PRODUCTION_BASE}/api/users`, {
+         const userResponse = await makeRequest(`${STAGING_BASE}/api/users`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -109,7 +109,7 @@ async function diagnosticTest() {
       primary_concern_today: 'Diagnostic test concern'
     };
 
-    const checkinResponse = await makeRequest(`${PRODUCTION_BASE}/api/checkins`, {
+         const checkinResponse = await makeRequest(`${STAGING_BASE}/api/checkins`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -127,7 +127,7 @@ async function diagnosticTest() {
 
     // Step 4: Retrieve check-ins to verify storage
     log('\n4️⃣ Retrieving Submitted Check-ins...', 'yellow');
-    const checkinsResponse = await makeRequest(`${PRODUCTION_BASE}/api/checkins`, {
+         const checkinsResponse = await makeRequest(`${STAGING_BASE}/api/checkins`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`
@@ -148,7 +148,7 @@ async function diagnosticTest() {
 
     // Step 5: Test daily insights
     log('\n5️⃣ Testing Daily Insights...', 'yellow');
-    const insightsResponse = await makeRequest(`${PRODUCTION_BASE}/api/insights/daily`, {
+         const insightsResponse = await makeRequest(`${STAGING_BASE}/api/insights/daily`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`

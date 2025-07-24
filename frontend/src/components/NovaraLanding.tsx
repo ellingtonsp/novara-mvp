@@ -5,10 +5,11 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Heart, Users, Calendar, MessageCircle, ArrowRight, CheckCircle, LogOut, User, Menu, X } from 'lucide-react';
+import { Heart, Users, Calendar, MessageCircle, ArrowRight, CheckCircle, LogOut, User, Menu, X, RefreshCw } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { apiClient } from '../lib/api';
 import { trackEvent, trackAuthEvent } from '../lib/analytics';
+import { clearAllCaches } from '../utils/pwa';
 import DailyCheckinForm from './DailyCheckinForm';
 import DailyInsightsDisplay from './DailyInsightsDisplay';
 import WelcomeInsight from './WelcomeInsight';
@@ -38,6 +39,7 @@ const sliderThumbStyle = `
 
 const NovaraLanding = () => {
   const { user, isAuthenticated, isLoading, login, logout } = useAuth();
+  const [isClearingCache, setIsClearingCache] = useState(false);
   
   // Load DM Sans font
   useEffect(() => {
@@ -215,6 +217,22 @@ const NovaraLanding = () => {
     setCurrentView('insights');
   };
 
+  const handleClearCache = async () => {
+    setIsClearingCache(true);
+    try {
+      await clearAllCaches();
+      alert('Cache cleared successfully! The app will reload to apply changes.');
+      window.location.reload();
+    } catch (error) {
+      console.error('Failed to clear cache:', error);
+      alert('Failed to clear cache. Please try again.');
+    } finally {
+      setIsClearingCache(false);
+    }
+  };
+
+
+
   // Mobile Navigation Component
   const MobileNavigation = () => (
     <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 safe-area-pb z-40">
@@ -300,19 +318,32 @@ const NovaraLanding = () => {
               <p className="text-sm text-gray-600">{user?.email}</p>
             </div>
           </div>
-          <Button
-            onClick={() => {
-              logout();
-              setShowMobileMenu(false);
-              setCurrentView('dashboard');
-            }}
-            variant="outline"
-            size="sm"
-            className="w-full text-gray-600 hover:text-gray-800"
-          >
-            <LogOut className="w-4 h-4 mr-2" />
-            Sign Out
-          </Button>
+          <div className="space-y-2">
+            <Button
+              onClick={() => {
+                logout();
+                setShowMobileMenu(false);
+                setCurrentView('dashboard');
+              }}
+              variant="outline"
+              size="sm"
+              className="w-full text-gray-600 hover:text-gray-800"
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Sign Out
+            </Button>
+            
+            <Button
+              onClick={handleClearCache}
+              disabled={isClearingCache}
+              variant="outline"
+              size="sm"
+              className="w-full text-gray-600 hover:text-gray-800"
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 ${isClearingCache ? 'animate-spin' : ''}`} />
+              {isClearingCache ? 'Clearing...' : 'Clear Cache'}
+            </Button>
+          </div>
         </div>
       )}
     </header>
