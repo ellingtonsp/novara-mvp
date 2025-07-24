@@ -1,0 +1,60 @@
+name: Environment Configuration Validation
+
+on:
+  push:
+    branches: [main, staging]
+    paths:
+      - 'scripts/environment-config.js'
+      - 'scripts/**/*.js'
+      - '.github/workflows/environment-validation.yml'
+  pull_request:
+    branches: [main, staging]
+    paths:
+      - 'scripts/environment-config.js'
+      - 'scripts/**/*.js'
+      - '.github/workflows/environment-validation.yml'
+
+jobs:
+  validate-environments:
+    name: Validate Environment Configurations
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Validate environment configurations
+        run: node scripts/validate-environment-config.js
+        
+      - name: Run comprehensive health checks
+        run: node scripts/comprehensive-health-check.js check
+        
+      - name: Run tests
+        run: npm test
+        
+      - name: Create validation report
+        if: always()
+        run: |
+          echo "## Environment Configuration Validation Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Timestamp:** $(date -u)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -f "logs/health-report.json" ]; then
+            echo "**Health Check Results:**" >> $GITHUB_STEP_SUMMARY
+            echo '```json' >> $GITHUB_STEP_SUMMARY
+            cat logs/health-report.json >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Validation Status:** ${{ job.status }}" >> $GITHUB_STEP_SUMMARY 
