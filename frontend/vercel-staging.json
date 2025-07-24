@@ -1,0 +1,28 @@
+{
+  "version": 2,
+  "name": "novara-mvp-staging",
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ],
+  "env": {
+    "VITE_ENV": "staging",
+    "VITE_API_URL": "https://novara-staging.up.railway.app"
+  },
+  "functions": {
+    "app/api/**/*.js": {
+      "runtime": "nodejs18.x"
+    }
+  }
+} 

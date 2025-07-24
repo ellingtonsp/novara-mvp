@@ -1,0 +1,20 @@
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "npm start"
+healthcheckPath = "/api/health"
+healthcheckTimeout = 300
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
+
+[env]
+NODE_ENV = "staging"
+USE_LOCAL_DATABASE = "false"
+DATABASE_TYPE = "airtable"
+PORT = "3000"
+
+# These will need to be set in Railway dashboard
+# AIRTABLE_API_KEY = "your_staging_airtable_api_key"
+# AIRTABLE_BASE_ID = "your_staging_airtable_base_id"
+# JWT_SECRET = "your_staging_jwt_secret" 
