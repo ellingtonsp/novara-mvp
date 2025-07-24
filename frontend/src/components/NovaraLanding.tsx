@@ -689,7 +689,11 @@ const NovaraLanding = () => {
                         <SelectItem value="considering">Just considering IVF</SelectItem>
                         <SelectItem value="ivf_prep">Preparing for IVF</SelectItem>
                         <SelectItem value="stimulation">In stimulation phase</SelectItem>
+                        <SelectItem value="retrieval">Around retrieval</SelectItem>
                         <SelectItem value="transfer">Transfer stage</SelectItem>
+                        <SelectItem value="tww">Two-week wait</SelectItem>
+                        <SelectItem value="pregnant">Pregnant</SelectItem>
+                        <SelectItem value="between_cycles">Between cycles</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
