@@ -62,13 +62,15 @@ export const environmentConfig: EnvironmentConfig = {
   debugMode: import.meta.env.VITE_DEBUG === 'true' || getEnvironment() === 'development'
 };
 
-// Log environment configuration (only in development/staging)
-if (environmentConfig.debugMode) {
+// Log environment configuration (always log in staging for debugging)
+if (environmentConfig.debugMode || environmentConfig.isStaging) {
   console.log('🌍 Environment Configuration:', {
     environment: environmentConfig.environment,
     apiUrl: environmentConfig.apiUrl,
     hostname: window.location.hostname,
     mode: import.meta.env.MODE,
+    viteApiUrl: import.meta.env.VITE_API_URL,
+    viteEnv: import.meta.env.VITE_ENV,
     timestamp: new Date().toISOString() // Force cache bust
   });
 }
