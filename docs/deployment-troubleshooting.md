@@ -44,6 +44,19 @@ CORS_ORIGIN=https://novara-mvp.vercel.app
 - Environment variables not set
 - Port conflicts (should use `$PORT` in Railway)
 
+#### **Issue 4: PORT Variable Error**
+**Error Message:**
+```
+PORT variable must be integer between 0 and 65535
+```
+
+**Solution:**
+- ✅ **Fixed**: Removed explicit PORT from railway.toml
+- ✅ **Fixed**: Railway automatically provides `$PORT` environment variable
+- ✅ **Fixed**: Server.js properly uses `process.env.PORT`
+
+**Important:** Do NOT set PORT manually in Railway environment variables. Railway provides it automatically.
+
 ### **Vercel Frontend Deployment Issues**
 
 #### **Issue 1: Build Failures**
