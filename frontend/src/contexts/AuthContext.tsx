@@ -64,7 +64,9 @@ const decodeTokenSafely = (token: string | null | undefined): any | null => {
     // Cache the result (limit cache size to prevent memory leaks)
     if (tokenCache.size > 10) {
       const firstKey = tokenCache.keys().next().value;
-      tokenCache.delete(firstKey);
+      if (firstKey) {
+        tokenCache.delete(firstKey);
+      }
     }
     tokenCache.set(token, { payload, timestamp: Date.now() });
 
