@@ -312,7 +312,7 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
       // Use imported API_BASE_URL from environment configuration
       
       // Submit enhanced check-in
-      const response = await fetch(`${API_BASE_URL}/api/daily-checkin-enhanced`, {
+      const response = await fetch(`${API_BASE_URL}/api/checkins`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

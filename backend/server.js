@@ -2239,8 +2239,8 @@ app.get('/api/checkins/questions', authenticateToken, async (req, res) => {
   }
 });
 
-// Temporarily bypass auth for enhanced check-in troubleshooting
-app.post('/api/daily-checkin-enhanced', async (req, res) => {
+// Enhanced check-in endpoint - DEVELOPMENT ONLY
+app.post('/api/daily-checkin-enhanced', authenticateToken, async (req, res) => {
   try {
     console.log('📝 Enhanced daily check-in submission received:', req.body);
     const checkinData = req.body;
@@ -2264,12 +2264,11 @@ app.post('/api/daily-checkin-enhanced', async (req, res) => {
       });
     }
 
-    // Find user record in Airtable using JWT payload or test email
-    let userEmail = req.user ? req.user.email : 'monkey@gmail.com';
-    const user = await findUserByEmail(userEmail);
+    // Find user record using JWT payload (SECURE VERSION)
+    const user = await findUserByEmail(req.user.email);
     
     if (!user) {
-      console.error('❌ User not found:', userEmail);
+      console.error('❌ User not found:', req.user.email);
       return res.status(404).json({ 
         success: false, 
         error: 'User not found' 
