@@ -80,7 +80,7 @@ print_status 0 "Frontend build complete"
 echo ""
 echo "🌐 Deploying Frontend to Vercel Staging..."
 
-vercel --prod --env staging
+vercel --prod
 
 if [ $? -ne 0 ]; then
     echo -e "${RED}❌ Frontend deployment failed${NC}"
