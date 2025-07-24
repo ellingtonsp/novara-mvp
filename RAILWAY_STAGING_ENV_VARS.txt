@@ -1,0 +1,27 @@
+# 🚂 RAILWAY STAGING ENVIRONMENT VARIABLES
+# Copy these exact values into Railway → Your Staging Project → Variables
+
+# === REQUIRED VARIABLES ===
+
+AIRTABLE_API_KEY=patp9wk9fzHxtkVUZ.1ba015773d9bbdc098796035b0a7bfd620edfbf6cd3b5aecc88c0beb5ef6dde7
+
+AIRTABLE_BASE_ID=appEOWvLjCn5c7Ght
+
+NODE_ENV=staging
+
+JWT_SECRET=staging_super_secret_jwt_key_different_from_prod
+
+PORT=$PORT
+
+# === OPTIONAL (BUT RECOMMENDED) ===
+
+RAILWAY_ENVIRONMENT=staging
+
+# === INSTRUCTIONS ===
+# 1. Go to https://railway.app/dashboard
+# 2. Find your staging project
+# 3. Click "Variables" tab
+# 4. Add each variable above (name = value)
+# 5. Deploy/Redeploy the service
+#
+# ⚠️ IMPORTANT: Make sure the service is connected to the 'staging' git branch!

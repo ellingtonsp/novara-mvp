@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
+    "local": "NODE_ENV=development USE_LOCAL_DATABASE=true nodemon server.js",
     "test:regression": "node production-regression-test.js"
   },
   "dependencies": {

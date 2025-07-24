@@ -1,0 +1,26 @@
+# ▲ VERCEL STAGING ENVIRONMENT VARIABLES  
+# Copy these exact values into Vercel → Your Staging Project → Settings → Environment Variables
+
+# === REQUIRED VARIABLES ===
+
+VITE_API_URL=https://novara-staging-production.up.railway.app
+
+NODE_ENV=production
+
+# === OPTIONAL (BUT RECOMMENDED) ===
+
+VITE_GA_MEASUREMENT_ID=G-STAGING-TEST-ID
+
+VITE_APP_ENV=staging
+
+# === INSTRUCTIONS ===
+# 1. Go to https://vercel.com/dashboard
+# 2. Find your staging project (novara-mvp-staging)
+# 3. Go to Settings → Environment Variables
+# 4. For each variable above:
+#    - Name: [variable name]
+#    - Value: [variable value]  
+#    - Environment: Check "Preview" (this is key for staging!)
+# 5. Redeploy from staging branch
+#
+# ⚠️ IMPORTANT: Set Environment scope to "Preview" for staging branch deployments!

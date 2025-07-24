@@ -31,27 +31,71 @@ const API_BASE_URL = import.meta.env.VITE_API_URL ||
     ? 'http://localhost:3002' 
     : 'https://novara-mvp-production.up.railway.app');
 
+// Cache for decoded tokens to prevent repeated parsing and memory leaks
+const tokenCache = new Map<string, { payload: any; timestamp: number }>();
+const CACHE_TTL = 60000; // 1 minute cache
+
+// Helper function to safely decode JWT token with caching
+const decodeTokenSafely = (token: string): any | null => {
+  if (!token || typeof token !== 'string') {
+    return null;
+  }
+
+  // Check cache first
+  const cached = tokenCache.get(token);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.payload;
+  }
+
+  try {
+    // Validate token format (must have 3 parts separated by dots)
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      return null;
+    }
+
+    const payload = JSON.parse(atob(parts[1]));
+    
+    // Validate required JWT fields
+    if (!payload.exp || typeof payload.exp !== 'number') {
+      return null;
+    }
+
+    // Cache the result (limit cache size to prevent memory leaks)
+    if (tokenCache.size > 10) {
+      const firstKey = tokenCache.keys().next().value;
+      tokenCache.delete(firstKey);
+    }
+    tokenCache.set(token, { payload, timestamp: Date.now() });
+
+    return payload;
+  } catch (error) {
+    console.warn('JWT decode error:', error);
+    return null;
+  }
+};
+
 // Helper function to decode JWT and check expiration
 const isTokenExpired = (token: string): boolean => {
-  try {
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    const currentTime = Date.now() / 1000;
-    return payload.exp < currentTime;
-  } catch {
+  const payload = decodeTokenSafely(token);
+  if (!payload) {
     return true; // If we can't decode, consider it expired
   }
+
+  const currentTime = Date.now() / 1000;
+  return payload.exp < currentTime;
 };
 
 // Helper function to check if token expires soon (within 1 hour)
 const isTokenExpiringSoon = (token: string): boolean => {
-  try {
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    const currentTime = Date.now() / 1000;
-    const oneHour = 60 * 60; // 1 hour in seconds
-    return payload.exp < (currentTime + oneHour);
-  } catch {
+  const payload = decodeTokenSafely(token);
+  if (!payload) {
     return true;
   }
+
+  const currentTime = Date.now() / 1000;
+  const oneHour = 60 * 60; // 1 hour in seconds
+  return payload.exp < (currentTime + oneHour);
 };
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {

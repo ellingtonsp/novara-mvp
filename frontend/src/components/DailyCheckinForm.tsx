@@ -117,8 +117,31 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
   // Fetch personalized questions and last values when component mounts
   useEffect(() => {
     if (isAuthenticated) {
-      fetchPersonalizedQuestions();
-      fetchLastCheckinValues();
+      // Fetch both simultaneously but handle completion properly
+      const initializeForm = async () => {
+        setIsLoadingQuestions(true);
+        try {
+          // Execute both operations in parallel
+          const [questionsResult, lastValuesResult] = await Promise.allSettled([
+            fetchPersonalizedQuestions(),
+            fetchLastCheckinValues()
+          ]);
+          
+          // Log any failures without blocking the UI
+          if (questionsResult.status === 'rejected') {
+            console.warn('Failed to fetch personalized questions:', questionsResult.reason);
+          }
+          if (lastValuesResult.status === 'rejected') {
+            console.warn('Failed to fetch last check-in values:', lastValuesResult.reason);
+          }
+        } catch (error) {
+          console.error('Error initializing form:', error);
+        } finally {
+          setIsLoadingQuestions(false);
+        }
+      };
+      
+      initializeForm();
     }
   }, [isAuthenticated]);
 

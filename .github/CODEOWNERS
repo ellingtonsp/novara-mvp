@@ -1,0 +1,26 @@
+# Global code owners
+* @ellingtonsp
+
+# Frontend specific
+/frontend/ @ellingtonsp
+
+# Backend specific  
+/backend/ @ellingtonsp
+
+# Documentation
+/docs/ @ellingtonsp
+
+# Scripts
+/scripts/ @ellingtonsp
+
+# Configuration files
+*.json @ellingtonsp
+*.toml @ellingtonsp
+*.yml @ellingtonsp
+*.yaml @ellingtonsp
+
+# Environment files
+.env* @ellingtonsp
+
+# GitHub workflows
+/.github/ @ellingtonsp 

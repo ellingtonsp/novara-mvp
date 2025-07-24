@@ -3,11 +3,11 @@
 
 const STAGING_CONFIG = {
   // Airtable Configuration
-  AIRTABLE_BASE_ID: 'appEOWvLjCn5c7Ght', // Your new staging base
+  AIRTABLE_BASE_ID: 'appEOWvLjCn5c7Ght', // Your staging base
   AIRTABLE_API_KEY: 'patp9wk9fzHxtkVUZ.1ba015773d9bbdc098796035b0a7bfd620edfbf6cd3b5aecc88c0beb5ef6dde7',
   
-  // Update these URLs once you create your staging deployments
-  STAGING_FRONTEND_URL: 'https://YOUR_STAGING_FRONTEND_URL.vercel.app',
+  // Staging Environment URLs (Updated for your setup)
+  STAGING_FRONTEND_URL: 'https://novara-mvp-staging.vercel.app',
   STAGING_BACKEND_URL: 'https://novara-staging-production.up.railway.app',
   
   // Environment Variables for Railway Backend
@@ -105,16 +105,59 @@ async function createTestUser() {
   }
 }
 
+async function testStagingDeployments() {
+  console.log('\n🌐 Testing Staging Environment Deployments...\n');
+  
+  // Test Backend
+  try {
+    console.log('1. Testing staging backend health...');
+    const backendResponse = await fetch(`${STAGING_CONFIG.STAGING_BACKEND_URL}/api/health`);
+    
+    if (backendResponse.ok) {
+      const healthData = await backendResponse.json();
+      console.log('✅ Staging backend is healthy!');
+      console.log(`   Status: ${healthData.status}`);
+      console.log(`   Environment: ${healthData.environment || 'unknown'}`);
+    } else {
+      console.log('❌ Staging backend health check failed');
+      console.log(`   Status: ${backendResponse.status}`);
+    }
+  } catch (error) {
+    console.log('❌ Staging backend unreachable');
+    console.log(`   Error: ${error.message}`);
+    console.log('   💡 Tip: Check Railway deployment status');
+  }
+  
+  // Test Frontend
+  try {
+    console.log('\n2. Testing staging frontend accessibility...');
+    const frontendResponse = await fetch(STAGING_CONFIG.STAGING_FRONTEND_URL);
+    
+    if (frontendResponse.ok) {
+      console.log('✅ Staging frontend is accessible!');
+    } else {
+      console.log('❌ Staging frontend not accessible');
+      console.log(`   Status: ${frontendResponse.status}`);
+    }
+  } catch (error) {
+    console.log('❌ Staging frontend unreachable');
+    console.log(`   Error: ${error.message}`);
+    console.log('   💡 Tip: Check Vercel deployment status');
+  }
+}
+
 console.log('🚀 Staging Environment Configuration');
 console.log('=====================================');
 console.log('Staging Base ID:', STAGING_CONFIG.AIRTABLE_BASE_ID);
 console.log('Frontend URL:', STAGING_CONFIG.STAGING_FRONTEND_URL);
 console.log('Backend URL:', STAGING_CONFIG.STAGING_BACKEND_URL);
+console.log('Git Branch: staging (auto-deploys to staging environment)');
 console.log('');
 
 // Run tests
 testStagingAirtableConnection()
   .then(() => createTestUser())
+  .then(() => testStagingDeployments())
   .catch(console.error);
 
 module.exports = STAGING_CONFIG; 
