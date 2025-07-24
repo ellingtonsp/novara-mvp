@@ -5,9 +5,17 @@ const jwt = require('jsonwebtoken');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const morgan = require('morgan');
+const Sentry = require("@sentry/node");
 require('dotenv').config();
 
 const app = express();
+
+// Initialize Sentry
+Sentry.init({
+  dsn: process.env.SENTRY_DSN,
+  environment: process.env.NODE_ENV,
+  tracesSampleRate: 1.0,
+});
 
 // Override NODE_ENV for staging environment if RAILWAY_ENVIRONMENT is set to staging
 if (process.env.RAILWAY_ENVIRONMENT === 'staging') {
@@ -71,6 +79,9 @@ app.use(helmet({
 }));
 
 // Rate limiting configured above with trustProxy
+
+// Add Sentry middleware
+app.use(Sentry.Handlers.requestHandler());
 
 // Apply rate limiting to all routes
 app.use(limiter);
@@ -2285,5 +2296,8 @@ async function trackFVMAnalytics(analyticsData) {
     throw error;
   }
 }
+
+// Add Sentry error handler
+app.use(Sentry.Handlers.errorHandler());
 
 module.exports = app;
