@@ -4,8 +4,11 @@ WORKDIR /app
 # Copy backend package files for caching
 COPY backend/package*.json ./
 
-# Install production deps
-RUN npm ci --omit=dev
+# Clear npm cache and install production deps with retry logic
+RUN npm cache clean --force && \
+    npm ci --omit=dev --no-audit --no-fund --prefer-offline || \
+    (sleep 5 && npm ci --omit=dev --no-audit --no-fund --prefer-offline) || \
+    (sleep 10 && npm ci --omit=dev --no-audit --no-fund --prefer-offline)
 
 # Copy backend source
 COPY backend ./
