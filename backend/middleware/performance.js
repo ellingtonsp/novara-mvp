@@ -7,7 +7,11 @@ function performanceMiddleware(req, res, next) {
   // Add response time header
   res.on('finish', () => {
     const duration = Date.now() - start;
-    res.setHeader('X-Response-Time', `${duration}ms`);
+    
+    // Only set header if response is still writable
+    if (!res.headersSent) {
+      res.setHeader('X-Response-Time', `${duration}ms`);
+    }
     
     // Log performance metrics
     logger.performance(`${req.method} ${req.url}`, duration, {

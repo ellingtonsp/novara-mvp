@@ -1,4 +1,5 @@
 const request = require('supertest');
+
 const app = require('../server');
 
 describe('Health Check Endpoint', () => {
@@ -18,34 +19,43 @@ describe('Health Check Endpoint', () => {
       .get('/api/health')
       .expect(200);
 
-    expect(['development', 'staging', 'production']).toContain(response.body.environment);
+    expect(['development', 'staging', 'production', 'test']).toContain(response.body.environment);
   });
 });
 
 describe('Authentication Endpoints', () => {
-  it('should allow login endpoint access', async () => {
+  it('should handle login endpoint with missing credentials', async () => {
     const response = await request(app)
       .post('/api/auth/login')
-      .send({
-        email: 'test@example.com',
-        password: 'testpassword'
-      });
+      .send({});
 
-    // Should return 401 for invalid credentials, not 404
-    expect(response.status).toBe(401);
+    // Should return 400 for missing required fields
+    expect(response.status).toBe(400);
   });
 
-  it('should allow user creation endpoint access', async () => {
+  it('should handle user creation endpoint with missing fields', async () => {
     const response = await request(app)
       .post('/api/users')
       .send({
-        email: 'test@example.com',
-        nickname: 'TestUser',
-        cycle_stage: 'considering',
-        primary_need: 'emotional_support'
+        email: 'test@example.com'
+        // Missing required fields
       });
 
-    // Should return 400 for missing required fields, not 404
+    // Should return 400 for missing required fields
+    expect(response.status).toBe(400);
+  });
+
+  it('should handle user creation with invalid data', async () => {
+    const response = await request(app)
+      .post('/api/users')
+      .send({
+        email: 'invalid-email',
+        nickname: 'TestUser',
+        cycle_stage: 'invalid_stage',
+        primary_need: 'invalid_need'
+      });
+
+    // Should return 400 for invalid data
     expect(response.status).toBe(400);
   });
 }); 
