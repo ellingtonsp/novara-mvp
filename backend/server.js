@@ -5,7 +5,6 @@ const jwt = require('jsonwebtoken');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const morgan = require('morgan');
-const Sentry = require("@sentry/node");
 const logger = require('./utils/logger');
 const { performanceMiddleware } = require('./middleware/performance');
 const { 
@@ -20,12 +19,24 @@ require('dotenv').config();
 
 const app = express();
 
-// Initialize Sentry
-Sentry.init({
-  dsn: process.env.SENTRY_DSN,
-  environment: process.env.NODE_ENV,
-  tracesSampleRate: 1.0,
-});
+// Initialize Sentry only if DSN is available
+let Sentry = null;
+if (process.env.SENTRY_DSN) {
+  try {
+    Sentry = require("@sentry/node");
+    Sentry.init({
+      dsn: process.env.SENTRY_DSN,
+      environment: process.env.NODE_ENV,
+      tracesSampleRate: 1.0,
+    });
+    logger.info('Sentry initialized successfully');
+  } catch (error) {
+    logger.warn('Failed to initialize Sentry:', error.message);
+    Sentry = null;
+  }
+} else {
+  logger.info('Sentry DSN not configured, skipping Sentry initialization');
+}
 
 // Initialize Redis
 initializeRedis();
@@ -94,8 +105,10 @@ app.use(securityMonitoring);
 
 // Rate limiting configured above with trustProxy
 
-// Add Sentry middleware
-app.use(Sentry.Handlers.requestHandler());
+// Add Sentry middleware only if Sentry is initialized
+if (Sentry) {
+  app.use(Sentry.Handlers.requestHandler());
+}
 
 // Add performance monitoring
 app.use(performanceMiddleware);
@@ -2385,7 +2398,9 @@ async function trackFVMAnalytics(analyticsData) {
   }
 }
 
-// Add Sentry error handler
-app.use(Sentry.Handlers.errorHandler());
+// Add Sentry error handler only if Sentry is initialized
+if (Sentry) {
+  app.use(Sentry.Handlers.errorHandler());
+}
 
 module.exports = app;
