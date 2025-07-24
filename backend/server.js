@@ -30,16 +30,20 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 // Configure rate limiting to work with trust proxy
+// Temporarily disabled for Railway deployment due to trust proxy issues
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  max: 1000, // Increased limit for staging
   message: {
     error: 'Too many requests from this IP, please try again later.',
     retryAfter: '15 minutes'
   },
   standardHeaders: true,
   legacyHeaders: false,
-  trustProxy: true, // Trust Railway's proxy
+  skip: (req) => {
+    // Skip rate limiting for health checks and internal Railway requests
+    return req.path === '/api/health' || req.get('User-Agent')?.includes('RailwayHealthCheck');
+  }
 });
 
 // Security middleware
