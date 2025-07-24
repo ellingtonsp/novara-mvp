@@ -1,7 +1,7 @@
 // Service Worker for Novara PWA
-const CACHE_NAME = 'novara-v1.0.0';
-const STATIC_CACHE = 'novara-static-v1.0.0';
-const DYNAMIC_CACHE = 'novara-dynamic-v1.0.0';
+const CACHE_VERSION = 'novara-v1.1.0'; // Increment this for cache busting
+const STATIC_CACHE = `novara-static-${CACHE_VERSION}`;
+const DYNAMIC_CACHE = `novara-dynamic-${CACHE_VERSION}`;
 
 // Files to cache immediately
 const STATIC_FILES = [
@@ -22,7 +22,7 @@ const API_CACHE_PATTERNS = [
 
 // Install event - cache static files
 self.addEventListener('install', (event) => {
-  console.log('Service Worker installing...');
+  console.log('Service Worker installing...', CACHE_VERSION);
   
   event.waitUntil(
     caches.open(STATIC_CACHE)
@@ -42,13 +42,14 @@ self.addEventListener('install', (event) => {
 
 // Activate event - clean up old caches
 self.addEventListener('activate', (event) => {
-  console.log('Service Worker activating...');
+  console.log('Service Worker activating...', CACHE_VERSION);
   
   event.waitUntil(
     caches.keys()
       .then((cacheNames) => {
         return Promise.all(
           cacheNames.map((cacheName) => {
+            // Delete ALL old caches to force fresh content
             if (cacheName !== STATIC_CACHE && cacheName !== DYNAMIC_CACHE) {
               console.log('Deleting old cache:', cacheName);
               return caches.delete(cacheName);
