@@ -14,9 +14,9 @@ const ENVIRONMENTS = {
     database: 'sqlite'
   },
   staging: {
-    backend: 'https://novara-staging.up.railway.app',
+    backend: 'https://novara-staging-staging.up.railway.app',
     frontend: 'https://novara-mvp-staging.vercel.app',
-    healthUrl: 'https://novara-staging.up.railway.app/api/health',
+    healthUrl: 'https://novara-staging-staging.up.railway.app/api/health',
     name: 'Staging',
     database: 'airtable'
   },

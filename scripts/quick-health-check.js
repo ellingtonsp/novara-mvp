@@ -8,10 +8,13 @@
 const https = require('https');
 const http = require('http');
 
-// Configuration
-const ENVIRONMENTS = {
-  production: 'https://novara-mvp-production.up.railway.app',
-  staging: 'https://novara-staging.up.railway.app'
+// Import environment configuration
+const { ENVIRONMENTS } = require('./environment-config');
+
+// Map to expected format
+const ENVIRONMENT_URLS = {
+  production: ENVIRONMENTS.production.backend,
+  staging: ENVIRONMENTS.staging.backend
 };
 
 // HTTP request utility
@@ -116,10 +119,10 @@ async function runQuickHealthCheck() {
   const results = {};
   
   // Test production
-  results.production = await testEnvironment('Production', ENVIRONMENTS.production);
+  results.production = await testEnvironment('Production', ENVIRONMENT_URLS.production);
   
   // Test staging
-  results.staging = await testEnvironment('Staging', ENVIRONMENTS.staging);
+  results.staging = await testEnvironment('Staging', ENVIRONMENT_URLS.staging);
   
   // Summary
   console.log('\n📊 Health Check Summary:');
@@ -151,11 +154,11 @@ if (require.main === module) {
   
   switch (command) {
     case 'production':
-      testEnvironment('Production', ENVIRONMENTS.production);
+      testEnvironment('Production', ENVIRONMENT_URLS.production);
       break;
       
     case 'staging':
-      testEnvironment('Staging', ENVIRONMENTS.staging);
+      testEnvironment('Staging', ENVIRONMENT_URLS.staging);
       break;
       
     case 'all':
