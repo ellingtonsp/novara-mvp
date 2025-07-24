@@ -1,0 +1,45 @@
+{
+  "name": "staging-branch-protection",
+  "enforcement": "active",
+  "target": {
+    "branch": {
+      "protected": true,
+      "name": "staging"
+    }
+  },
+  "rules": {
+    "pull_request": {
+      "required": true,
+      "required_approving_review_count": 1,
+      "dismiss_stale_reviews_on_push": true,
+      "require_code_owner_reviews": false
+    },
+    "status_check": {
+      "strict": true,
+      "contexts": []
+    },
+    "required_workflows": [],
+    "required_deployments": [],
+    "required_signatures": {
+      "required": false
+    },
+    "required_conversation_resolution": {
+      "required": false
+    },
+    "required_linear_history": {
+      "required": false
+    },
+    "required_pull_request_reviews": {
+      "required": true,
+      "required_approving_review_count": 1,
+      "dismiss_stale_reviews_on_push": true,
+      "require_code_owner_reviews": false
+    },
+    "deletion": {
+      "protected": true
+    },
+    "force_push": {
+      "protected": false
+    }
+  }
+} 
