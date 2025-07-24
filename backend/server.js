@@ -1284,8 +1284,26 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
       });
     }
 
+    // Validate email format and sanitize
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const sanitizedEmail = email.toString().trim().toLowerCase();
+    
+    if (!emailRegex.test(sanitizedEmail)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Invalid email format' 
+      });
+    }
+
+    if (sanitizedEmail.length > 254) { // RFC 5321 limit
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Email address too long' 
+      });
+    }
+
     // Find user in Airtable
-    const user = await findUserByEmail(email);
+    const user = await findUserByEmail(sanitizedEmail);
     
     if (!user) {
       return res.status(404).json({ 
@@ -1324,9 +1342,44 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
 // Create User (Signup + Auto-login)
 app.post('/api/users', authLimiter, async (req, res) => {
   try {
+    // Validate and sanitize email
+    const rawEmail = req.body.email;
+    if (!rawEmail) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Email is required' 
+      });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const sanitizedEmail = rawEmail.toString().trim().toLowerCase();
+    
+    if (!emailRegex.test(sanitizedEmail)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Invalid email format' 
+      });
+    }
+
+    if (sanitizedEmail.length > 254) { // RFC 5321 limit
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Email address too long' 
+      });
+    }
+
+    // Validate and sanitize nickname
+    const nickname = req.body.nickname ? req.body.nickname.toString().trim() : '';
+    if (nickname.length > 50) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Nickname too long (max 50 characters)' 
+      });
+    }
+
     const userData = {
-      email: req.body.email,
-      nickname: req.body.nickname,
+      email: sanitizedEmail,
+      nickname: nickname,
       confidence_meds: req.body.confidence_meds || 5,
       confidence_costs: req.body.confidence_costs || 5,
       confidence_overall: req.body.confidence_overall || 5,
@@ -1347,7 +1400,7 @@ app.post('/api/users', authLimiter, async (req, res) => {
     }
 
     // Check if user already exists
-    const existingUser = await findUserByEmail(userData.email);
+    const existingUser = await findUserByEmail(sanitizedEmail);
     if (existingUser) {
       return res.status(409).json({ 
         success: false, 
