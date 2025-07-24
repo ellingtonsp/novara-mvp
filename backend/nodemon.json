@@ -1,0 +1,33 @@
+{
+  "watch": [
+    "*.js",
+    "routes/**/*.js",
+    "middleware/**/*.js",
+    "models/**/*.js",
+    "utils/**/*.js",
+    "database/**/*.js"
+  ],
+  "ignore": [
+    "*.db",
+    "*.sqlite",
+    "*.sqlite3",
+    "data/**/*",
+    "logs/**/*",
+    "tmp/**/*",
+    "node_modules/**/*",
+    "test/**/*",
+    "*.test.js",
+    "*.spec.js",
+    ".git/**/*",
+    ".app-ready",
+    "test-*.js",
+    "production-*.js",
+    "scripts/**/*"
+  ],
+  "ext": "js,json",
+  "delay": 1000,
+  "verbose": false,
+  "env": {
+    "NODE_ENV": "development"
+  }
+} 

@@ -21,6 +21,8 @@ const app = express();
 
 // Initialize Sentry only if DSN is available
 let Sentry = null;
+let sentryEnabled = false;
+
 if (process.env.SENTRY_DSN) {
   try {
     Sentry = require("@sentry/node");
@@ -29,10 +31,12 @@ if (process.env.SENTRY_DSN) {
       environment: process.env.NODE_ENV,
       tracesSampleRate: 1.0,
     });
+    sentryEnabled = true;
     logger.info('Sentry initialized successfully');
   } catch (error) {
     logger.warn('Failed to initialize Sentry:', error.message);
     Sentry = null;
+    sentryEnabled = false;
   }
 } else {
   logger.info('Sentry DSN not configured, skipping Sentry initialization');
@@ -60,12 +64,17 @@ logger.startup(`Starting server on port ${port}`, {
   nodeEnv: process.env.NODE_ENV || 'not set'
 });
 
-// Validate PORT is a valid integer
+// Validate PORT is a valid integer (more lenient in development)
 if (process.env.PORT) {
   const portNum = parseInt(process.env.PORT, 10);
   if (isNaN(portNum) || portNum < 0 || portNum > 65535) {
-    console.error(`Invalid PORT value: ${process.env.PORT}. Must be an integer between 0 and 65535.`);
-    process.exit(1);
+    if (process.env.NODE_ENV === 'production') {
+      console.error(`Invalid PORT value: ${process.env.PORT}. Must be an integer between 0 and 65535.`);
+      process.exit(1);
+    } else {
+      console.warn(`Invalid PORT value: ${process.env.PORT}. Using default port ${port}.`);
+      // Don't exit in development, just use default port
+    }
   }
 }
 
@@ -106,7 +115,7 @@ app.use(securityMonitoring);
 // Rate limiting configured above with trustProxy
 
 // Add Sentry middleware only if Sentry is initialized
-if (Sentry) {
+if (sentryEnabled && Sentry && Sentry.Handlers) {
   app.use(Sentry.Handlers.requestHandler());
 }
 
@@ -2398,7 +2407,7 @@ async function trackFVMAnalytics(analyticsData) {
 }
 
 // Add Sentry error handler only if Sentry is initialized
-if (Sentry) {
+if (sentryEnabled && Sentry && Sentry.Handlers) {
   app.use(Sentry.Handlers.errorHandler());
 }
 
