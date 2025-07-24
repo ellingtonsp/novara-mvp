@@ -36,7 +36,7 @@ const tokenCache = new Map<string, { payload: any; timestamp: number }>();
 const CACHE_TTL = 60000; // 1 minute cache
 
 // Helper function to safely decode JWT token with caching
-const decodeTokenSafely = (token: string): any | null => {
+const decodeTokenSafely = (token: string | null): any | null => {
   if (!token || typeof token !== 'string') {
     return null;
   }
@@ -76,7 +76,8 @@ const decodeTokenSafely = (token: string): any | null => {
 };
 
 // Helper function to decode JWT and check expiration
-const isTokenExpired = (token: string): boolean => {
+const isTokenExpired = (token: string | null): boolean => {
+  if (!token) return true;
   const payload = decodeTokenSafely(token);
   if (!payload) {
     return true; // If we can't decode, consider it expired
@@ -87,7 +88,8 @@ const isTokenExpired = (token: string): boolean => {
 };
 
 // Helper function to check if token expires soon (within 1 hour)
-const isTokenExpiringSoon = (token: string): boolean => {
+const isTokenExpiringSoon = (token: string | null): boolean => {
+  if (!token) return true;
   const payload = decodeTokenSafely(token);
   if (!payload) {
     return true;
@@ -157,7 +159,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const checkTokenExpiration = () => {
       const token = localStorage.getItem('token');
-      if (token && isTokenExpiringSoon(token)) {
+      if (token && isTokenExpiringSoon(token as string)) {
         console.log('🔄 Token expiring soon, refreshing...');
         refreshToken();
       }
