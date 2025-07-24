@@ -1286,7 +1286,7 @@ app.get('/api/health', (req, res) => {
     environment: process.env.NODE_ENV || 'production',
     airtable: config.airtable.apiKey ? 'connected' : 'not configured',
     jwt: JWT_SECRET ? 'configured' : 'not configured',
-    version: '1.0.1' // Added to trigger redeploy
+    version: '1.0.2' // Force redeploy with staging environment
   });
 });
 
