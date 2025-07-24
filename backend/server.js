@@ -1309,54 +1309,32 @@ app.get('/', (req, res) => {
   });
 });
 
-// Health Check - Robust version that doesn't depend on external configs
+// Health Check - Ultra-fast version for Railway deployment
 app.get('/api/health', (req, res) => {
-  try {
-    // Basic health check that doesn't depend on external services
-    const healthStatus = {
-      status: 'ok',
-      timestamp: new Date().toISOString(),
-      service: 'Novara API',
-      environment: process.env.NODE_ENV || 'production',
-      version: '1.0.3'
-    };
-    
-    // Safely check Airtable configuration
-    try {
-      if (config && config.airtable && config.airtable.apiKey) {
-        healthStatus.airtable = 'connected';
-      } else {
-        healthStatus.airtable = 'not configured';
-      }
-    } catch (error) {
-      healthStatus.airtable = 'error checking';
-    }
-    
-    // Safely check JWT configuration
-    try {
-      if (JWT_SECRET && JWT_SECRET !== 'your-super-secret-jwt-key-change-this-in-production') {
-        healthStatus.jwt = 'configured';
-      } else {
-        healthStatus.jwt = 'not configured';
-      }
-    } catch (error) {
-      healthStatus.jwt = 'error checking';
-    }
-    
-    res.json(healthStatus);
-  } catch (error) {
-    // Fallback health response if anything fails
-    res.json({
-      status: 'ok',
-      timestamp: new Date().toISOString(),
-      service: 'Novara API',
-      environment: process.env.NODE_ENV || 'production',
-      airtable: 'unknown',
-      jwt: 'unknown',
-      version: '1.0.3',
-      note: 'Basic health check - some services may be unavailable'
-    });
+  // Immediate response - no external dependencies
+  const healthStatus = {
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    service: 'Novara API',
+    environment: process.env.NODE_ENV || 'production',
+    version: '1.0.3',
+    deployment: 'stable'
+  };
+  
+  // Only check external services if they're available (non-blocking)
+  if (typeof config !== 'undefined' && config && config.airtable && config.airtable.apiKey) {
+    healthStatus.airtable = 'connected';
+  } else {
+    healthStatus.airtable = 'checking';
   }
+  
+  if (JWT_SECRET && JWT_SECRET !== 'your-super-secret-jwt-key-change-this-in-production') {
+    healthStatus.jwt = 'configured';
+  } else {
+    healthStatus.jwt = 'checking';
+  }
+  
+  res.json(healthStatus);
 });
 
 // Cache management endpoints
