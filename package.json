@@ -6,11 +6,12 @@
     "start": "cd backend && NODE_ENV=production node server.js",
     "install": "cd backend && npm ci --omit=dev",
     "validate-environments": "node scripts/environment-validator.js",
+    "validate-schema": "node scripts/airtable-schema-validator.js",
     "health-check": "node scripts/environment-health-check.js",
     "health-check:dev": "node scripts/environment-health-check.js development",
     "health-check:staging": "node scripts/environment-health-check.js staging",
     "health-check:production": "node scripts/environment-health-check.js production",
-    "pre-deploy": "npm run validate-environments && npm run health-check:staging && npm run health-check:production",
+    "pre-deploy": "npm run validate-environments && npm run validate-schema && npm run health-check:staging && npm run health-check:production",
     "deploy:staging": "./scripts/deploy-with-validation.sh staging",
     "deploy:production": "./scripts/deploy-with-validation.sh production"
   },
