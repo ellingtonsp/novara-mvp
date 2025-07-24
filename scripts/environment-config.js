@@ -15,7 +15,7 @@ const ENVIRONMENTS = {
   },
   staging: {
     backend: 'https://novara-staging-staging.up.railway.app',
-    frontend: 'https://novara-mvp-staging.vercel.app',
+    frontend: 'https://novara-kq6j43a7j-novara-fertility.vercel.app',
     healthUrl: 'https://novara-staging-staging.up.railway.app/api/health',
     name: 'Staging',
     database: 'airtable'
