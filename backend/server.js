@@ -8,6 +8,14 @@ const morgan = require('morgan');
 const Sentry = require("@sentry/node");
 const logger = require('./utils/logger');
 const { performanceMiddleware } = require('./middleware/performance');
+const { 
+  createSecurityMiddleware, 
+  additionalSecurityHeaders, 
+  validateRequest, 
+  limitRequestSize,
+  securityMonitoring 
+} = require('./middleware/security');
+const { initializeRedis, cacheManager, rateLimiter } = require('./utils/cache');
 require('dotenv').config();
 
 const app = express();
@@ -18,6 +26,9 @@ Sentry.init({
   environment: process.env.NODE_ENV,
   tracesSampleRate: 1.0,
 });
+
+// Initialize Redis
+initializeRedis();
 
 // Override NODE_ENV for staging environment if RAILWAY_ENVIRONMENT is set to staging
 if (process.env.RAILWAY_ENVIRONMENT === 'staging') {
@@ -71,18 +82,12 @@ const limiter = rateLimit({
   }
 });
 
-// Security middleware
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "https://www.googletagmanager.com", "https://www.google-analytics.com"],
-      imgSrc: ["'self'", "data:", "https:"],
-      connectSrc: ["'self'", "https://www.google-analytics.com", "https://analytics.google.com", "https://stats.g.doubleclick.net"],
-    },
-  },
-}));
+// Enhanced security middleware
+app.use(createSecurityMiddleware());
+app.use(additionalSecurityHeaders);
+app.use(validateRequest);
+app.use(limitRequestSize('10mb'));
+app.use(securityMonitoring);
 
 // Rate limiting configured above with trustProxy
 
@@ -94,6 +99,9 @@ app.use(performanceMiddleware);
 
 // Apply rate limiting to all routes
 app.use(limiter);
+
+// Apply Redis-based rate limiting for additional protection
+app.use(rateLimiter.rateLimitMiddleware(15 * 60 * 1000, 1000)); // 1000 requests per 15 minutes
 
 // Stricter rate limiting for auth routes
 const authLimiter = rateLimit({
@@ -1310,8 +1318,36 @@ app.get('/api/health', (req, res) => {
     environment: process.env.NODE_ENV || 'production',
     airtable: config.airtable.apiKey ? 'connected' : 'not configured',
     jwt: JWT_SECRET ? 'configured' : 'not configured',
-    version: '1.0.2' // Force redeploy with staging environment
+    version: '1.0.3' // Force redeploy with staging environment
   });
+});
+
+// Cache management endpoints
+app.get('/api/cache/stats', async (req, res) => {
+  try {
+    const stats = await cacheManager.getStats();
+    res.json({
+      success: true,
+      stats: stats || { message: 'Redis not available' }
+    });
+  } catch (error) {
+    logger.error(error, req);
+    res.status(500).json({ success: false, error: 'Failed to get cache stats' });
+  }
+});
+
+app.post('/api/cache/clear', async (req, res) => {
+  try {
+    const cleared = await cacheManager.clear();
+    res.json({
+      success: true,
+      cleared,
+      message: cleared ? 'Cache cleared successfully' : 'Cache clear failed'
+    });
+  } catch (error) {
+    logger.error(error, req);
+    res.status(500).json({ success: false, error: 'Failed to clear cache' });
+  }
 });
 
 // ============================================================================
