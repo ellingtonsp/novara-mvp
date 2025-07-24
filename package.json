@@ -38,7 +38,8 @@
     "safety:check": "npm run validate:environments && npm run test && npm run health-check",
     "pre-deploy": "npm run validate:environments && npm run validate-schema-comprehensive && npm run health-check:staging && npm run health-check:production",
     "deploy:staging": "./scripts/deploy-with-validation.sh staging",
-    "deploy:production": "./scripts/deploy-with-validation.sh production"
+    "deploy:production": "./scripts/deploy-with-validation.sh production",
+    "sync:env-examples": "node scripts/setup/sync-env-examples.js"
   },
   "dependencies": {
     "node-fetch": "^3.3.2"
