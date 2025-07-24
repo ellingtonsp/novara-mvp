@@ -1,7 +1,9 @@
-// lib/api.ts - Simple direct fix with hardcoded Railway URL
+// lib/api.ts - Environment-aware API URL configuration
 
-// Always use Railway URL - no environment detection
-const API_BASE_URL = 'https://novara-mvp-production.up.railway.app';
+// Use staging URL for non-production environments
+const API_BASE_URL = process.env.NODE_ENV === 'production' 
+  ? 'https://novara-mvp-production.up.railway.app'
+  : 'https://novara-staging-staging.up.railway.app';
 
 // TypeScript interfaces
 export interface User {
