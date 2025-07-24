@@ -74,18 +74,7 @@ describe('NovaraLanding', () => {
       fireEvent.click(cycleStageSelect);
     }
     
-    const cycleStageOptions = [
-      'Just considering IVF',
-      'Preparing for IVF',
-      'In stimulation phase',
-      'Around retrieval',
-      'Transfer stage',
-      'Two-week wait',
-      'Pregnant',
-      'Between cycles'
-    ];
-    
-    // Note: These options may not be immediately visible due to select dropdown behavior
+    // Note: Cycle stage options are in a select dropdown
     // The test verifies the form structure is correct
     expect(screen.getByText(/Where are you in your journey?/)).toBeInTheDocument();
   });
@@ -103,15 +92,7 @@ describe('NovaraLanding', () => {
       fireEvent.click(primaryNeedSelect);
     }
     
-    const primaryNeedOptions = [
-      'Emotional support',
-      'Medication guidance',
-      'Financial planning',
-      'Procedure information',
-      'Community connection'
-    ];
-    
-    // Note: These options may not be immediately visible due to select dropdown behavior
+    // Note: Primary need options are in a select dropdown
     // The test verifies the form structure is correct
     expect(screen.getByText(/What would be most helpful right now?/)).toBeInTheDocument();
   });
