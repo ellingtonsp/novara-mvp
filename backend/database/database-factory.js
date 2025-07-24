@@ -159,7 +159,14 @@ class DatabaseAdapter {
 
     const url = `${config.airtable.baseUrl}/${endpoint}`;
     
+    // Enhanced logging for debugging
     console.log(`🌩️ Production: Making ${method} request to Airtable:`, url);
+    console.log(`🌩️ Base ID: ${config.airtable.baseId}`);
+    console.log(`🌩️ Has API Key: ${!!config.airtable.apiKey}`);
+    
+    if (data && method !== 'GET') {
+      console.log(`🌩️ Request Data:`, JSON.stringify(data, null, 2));
+    }
     
     try {
       const axiosConfig = {
@@ -176,11 +183,20 @@ class DatabaseAdapter {
       }
       
       const response = await axios(axiosConfig);
+      
+      // Enhanced response logging
       console.log(`✅ Production: Airtable ${method} request successful`, response.status);
+      console.log(`✅ Response Status: ${response.status}`);
+      console.log(`✅ Response Data:`, JSON.stringify(response.data, null, 2));
+      
       return response.data;
       
     } catch (error) {
-      console.error(`❌ Production: Airtable ${method} request failed:`, error.response?.data || error.message);
+      // Enhanced error logging
+      console.error(`❌ Production: Airtable ${method} request failed`);
+      console.error(`❌ Error Status: ${error.response?.status}`);
+      console.error(`❌ Error Data:`, JSON.stringify(error.response?.data, null, 2));
+      console.error(`❌ Error Message:`, error.message);
       
       const errorMessage = error.response?.data?.error?.message || error.message;
       throw new Error(`Airtable ${method} failed: ${errorMessage}`);
