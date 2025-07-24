@@ -9,6 +9,11 @@ require('dotenv').config();
 
 const app = express();
 
+// Override NODE_ENV for staging environment if RAILWAY_ENVIRONMENT is set to staging
+if (process.env.RAILWAY_ENVIRONMENT === 'staging') {
+  process.env.NODE_ENV = 'staging';
+}
+
 // Ensure port uses process.env.PORT in production with safe parsing and fallback, plus diagnostic logging
 const port = process.env.PORT ? parseInt(process.env.PORT, 10) : (process.env.NODE_ENV === 'production' ? 8080 : (process.env.NODE_ENV === 'development' ? 3002 : 3000));
 if (process.env.NODE_ENV === 'production' && !process.env.PORT) {
