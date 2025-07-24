@@ -1,4 +1,5 @@
 const SQLiteAdapter = require('./sqlite-adapter');
+const axios = require('axios');
 
 // Database abstraction layer that mimics Airtable API structure
 class DatabaseAdapter {
@@ -85,8 +86,33 @@ class DatabaseAdapter {
   // Handle fetch requests (for checkins endpoint in server.js)
   async fetchCheckins(url, options) {
     if (!this.useLocalDatabase) {
-      // Use original fetch for production
-      return fetch(url, options);
+      // Use axios for production (convert fetch-style to axios-style)
+      console.log('🌩️ Production: Using axios for checkins query:', url);
+      try {
+        const axiosConfig = {
+          method: 'GET',
+          url: url,
+          headers: options?.headers || {}
+        };
+        
+        const response = await axios(axiosConfig);
+        
+        // Return fetch-compatible response object
+        return {
+          ok: response.status >= 200 && response.status < 300,
+          status: response.status,
+          json: async () => response.data
+        };
+      } catch (error) {
+        console.error('❌ Production axios error:', error);
+        
+        // Return fetch-compatible error response
+        return {
+          ok: false,
+          status: error.response?.status || 500,
+          json: async () => error.response?.data || { error: error.message }
+        };
+      }
     }
 
     // Parse Airtable-style URL for local database
@@ -103,6 +129,7 @@ class DatabaseAdapter {
       const maxRecords = urlObj.searchParams.get('maxRecords') || 7;
       
       if (userId) {
+        console.log('🗄️ Local: Fetching checkins for user:', userId);
         const result = await this.localDb.getUserCheckins(userId, parseInt(maxRecords));
         return {
           ok: true,
@@ -112,6 +139,7 @@ class DatabaseAdapter {
     }
 
     // Fallback
+    console.warn('⚠️ Database adapter fallback triggered - no records returned');
     return {
       ok: false,
       json: async () => ({ records: [] })
