@@ -309,10 +309,7 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
         return;
       }
 
-      const API_BASE_URL = import.meta.env.VITE_API_URL ||
-        (import.meta.env.DEV 
-          ? 'http://localhost:3002' 
-          : 'https://novara-mvp-production.up.railway.app');
+      // Use imported API_BASE_URL from environment configuration
       
       // Submit enhanced check-in
       const response = await fetch(`${API_BASE_URL}/api/daily-checkin-enhanced`, {

@@ -4,7 +4,13 @@
   "description": "Novara MVP - Full Stack Application",
   "scripts": {
     "start": "cd backend && NODE_ENV=production node server.js",
-    "install": "cd backend && npm ci --omit=dev"
+    "install": "cd backend && npm ci --omit=dev",
+    "validate-environments": "node scripts/environment-validator.js",
+    "health-check": "node scripts/environment-health-check.js",
+    "health-check:dev": "node scripts/environment-health-check.js development",
+    "health-check:staging": "node scripts/environment-health-check.js staging",
+    "health-check:production": "node scripts/environment-health-check.js production",
+    "pre-deploy": "npm run validate-environments && npm run health-check:staging && npm run health-check:production"
   },
   "dependencies": {
     "node-fetch": "^3.3.2"
