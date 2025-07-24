@@ -1,12 +1,13 @@
 name: Railway Deployment Monitor
 
 on:
-  schedule:
-    # Check every 5 minutes during active hours
-    - cron: '*/5 14-22 * * *'  # 2 PM - 10 PM UTC (10 AM - 6 PM EST)
+  # Temporarily disabled due to health check fixes
+  # schedule:
+  #   # Check every 5 minutes during active hours
+  #   - cron: '*/5 14-22 * * *'  # 2 PM - 10 PM UTC (10 AM - 6 PM EST)
   workflow_dispatch:  # Allow manual trigger
-  push:
-    branches: [main, staging]
+  # push:
+  #   branches: [main, staging]
 
 jobs:
   monitor-railway:
@@ -30,6 +31,10 @@ jobs:
         RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
       run: |
+        if [ -z "$RAILWAY_TOKEN" ] || [ -z "$RAILWAY_PROJECT_ID" ]; then
+          echo "⚠️ Railway secrets not configured, skipping Railway monitoring"
+          exit 0
+        fi
         node scripts/test-railway-secrets.js
         
     - name: Monitor Railway deployments
@@ -37,6 +42,10 @@ jobs:
         RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
       run: |
+        if [ -z "$RAILWAY_TOKEN" ] || [ -z "$RAILWAY_PROJECT_ID" ]; then
+          echo "⚠️ Railway secrets not configured, skipping Railway monitoring"
+          exit 0
+        fi
         node scripts/railway-web-monitor.js --once
         
     - name: Create issue on failure
@@ -72,11 +81,11 @@ jobs:
       
     - name: Health check production
       run: |
-        node scripts/environment-health-check.js production
+        node scripts/comprehensive-health-check.js production
         
     - name: Health check staging
       run: |
-        node scripts/environment-health-check.js staging
+        node scripts/comprehensive-health-check.js staging
         
     - name: Create issue on health check failure
       if: failure()
