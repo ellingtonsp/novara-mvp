@@ -7,6 +7,7 @@
     "install": "cd backend && npm ci --omit=dev",
     "validate-environments": "node scripts/environment-validator.js",
     "validate-schema": "node scripts/airtable-schema-validator.js",
+    "validate-schema-comprehensive": "node scripts/comprehensive-schema-check.js",
     "health-check": "node scripts/environment-health-check.js",
     "health-check:dev": "node scripts/environment-health-check.js development",
     "health-check:staging": "node scripts/environment-health-check.js staging",
