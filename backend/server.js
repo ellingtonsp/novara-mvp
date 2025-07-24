@@ -10,6 +10,15 @@ require('dotenv').config();
 const app = express();
 const port = process.env.PORT || (process.env.NODE_ENV === 'development' ? 3002 : 3000);
 
+// Validate PORT is a valid integer
+if (process.env.PORT) {
+  const portNum = parseInt(process.env.PORT, 10);
+  if (isNaN(portNum) || portNum < 0 || portNum > 65535) {
+    console.error(`Invalid PORT value: ${process.env.PORT}. Must be an integer between 0 and 65535.`);
+    process.exit(1);
+  }
+}
+
 // JWT Secret - make sure to set this in your Railway environment variables
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production';
 

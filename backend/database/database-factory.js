@@ -4,7 +4,6 @@ const SQLiteAdapter = require('./sqlite-adapter');
 class DatabaseAdapter {
   constructor() {
     this.useLocalDatabase = process.env.NODE_ENV === 'development' || 
-                           process.env.NODE_ENV === 'staging' ||
                            process.env.USE_LOCAL_DATABASE === 'true';
     
     if (this.useLocalDatabase) {

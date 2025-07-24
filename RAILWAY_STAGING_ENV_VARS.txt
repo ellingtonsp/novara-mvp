@@ -11,7 +11,7 @@ NODE_ENV=staging
 
 JWT_SECRET=staging_super_secret_jwt_key_different_from_prod
 
-PORT=$PORT
+# PORT is automatically set by Railway - DO NOT override
 
 # === OPTIONAL (BUT RECOMMENDED) ===
 
