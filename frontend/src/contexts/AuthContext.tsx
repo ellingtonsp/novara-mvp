@@ -25,11 +25,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// API Configuration
-    const API_BASE_URL = import.meta.env.VITE_API_URL ||
-      (import.meta.env.DEV 
-        ? 'http://localhost:3002' 
-        : 'https://novara-staging-staging.up.railway.app');
+// API Configuration - Use centralized environment config
+import { API_BASE_URL } from '../lib/environment';
 
 // Cache for decoded tokens to prevent repeated parsing and memory leaks
 const tokenCache = new Map<string, { payload: any; timestamp: number }>();

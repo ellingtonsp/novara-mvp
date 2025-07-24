@@ -1,9 +1,13 @@
-// lib/api.ts - Environment-aware API URL configuration
+// lib/api.ts - Centralized API client using environment configuration
+import { API_BASE_URL, environmentConfig } from './environment';
 
-// Use staging URL for non-production environments
-const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://novara-mvp-production.up.railway.app'
-  : 'https://novara-staging-staging.up.railway.app';
+// Log API configuration in debug mode
+if (environmentConfig.debugMode) {
+  console.log('🔗 API Client Configuration:', {
+    apiUrl: API_BASE_URL,
+    environment: environmentConfig.environment
+  });
+}
 
 // TypeScript interfaces
 export interface User {

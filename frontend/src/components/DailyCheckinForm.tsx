@@ -5,6 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Heart, Clock, CheckCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { trackDailyCheckin, trackInsightGeneration, trackEvent } from '../lib/analytics';
+import { API_BASE_URL } from '../lib/environment';
 
 interface DailyCheckinFormProps {
   onComplete?: () => void;
@@ -155,11 +156,6 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
 
       console.log('📊 Fetching last check-in values...');
       
-      const API_BASE_URL = import.meta.env.VITE_API_URL ||
-        (import.meta.env.DEV 
-          ? 'http://localhost:3002' 
-          : 'https://novara-staging-staging.up.railway.app');
-      
       const response = await fetch(`${API_BASE_URL}/api/checkins/last-values`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -195,11 +191,6 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
       }
 
       console.log('🎯 Fetching personalized questions...');
-      
-      const API_BASE_URL = import.meta.env.VITE_API_URL ||
-        (import.meta.env.DEV 
-          ? 'http://localhost:3002' 
-          : 'https://novara-staging-staging.up.railway.app');
       
       const response = await fetch(`${API_BASE_URL}/api/checkins/questions`, {
         headers: {
