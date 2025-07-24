@@ -1,0 +1,22 @@
+{
+  "deployments": [
+    {
+      "id": "sample-1",
+      "duration": 180000,
+      "status": "success",
+      "service": "novara-staging",
+      "commitMessage": "feat: implement Railway API monitoring",
+      "timestamp": "2025-07-24T17:59:22.603Z",
+      "source": "manual"
+    },
+    {
+      "id": "sample-2",
+      "duration": 150000,
+      "status": "success",
+      "service": "novara-main",
+      "commitMessage": "fix: deployment time tracking",
+      "timestamp": "2025-07-24T17:59:22.604Z",
+      "source": "manual"
+    }
+  ]
+}
