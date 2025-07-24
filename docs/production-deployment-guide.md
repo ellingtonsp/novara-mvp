@@ -116,17 +116,57 @@ Look for URLs in the format:
 - Advanced monitoring
 - Load balancing
 
+## 📋 Production Deployment Checklist
+
+### Pre-Deployment Validation
+- [ ] Run environment validator: `npm run validate-environments`
+- [ ] Run staging health check: `npm run health-check:staging`
+- [ ] Verify all tests pass in staging environment
+- [ ] Check for any hardcoded URLs in components
+- [ ] Validate environment configuration files
+- [ ] Ensure production environment variables are set correctly
+
+### Deployment Process
+- [ ] Merge staging branch to main (if using staging workflow)
+- [ ] Verify Railway production service is configured
+- [ ] Trigger production deployment from Railway dashboard
+- [ ] Monitor build logs for any errors
+- [ ] Wait for deployment to complete
+
+### Post-Deployment Verification
+- [ ] Run production health check: `npm run health-check:production`
+- [ ] Test production backend: `https://novara-mvp-production.up.railway.app/api/health`
+- [ ] Test production frontend: `https://novara-mvp.vercel.app`
+- [ ] Verify environment detection shows "production"
+- [ ] Test authentication endpoints
+- [ ] Validate CORS configuration
+- [ ] Test frontend-backend communication
+- [ ] Verify database connectivity
+- [ ] Check all user flows work correctly
+
+### Success Criteria
+- [ ] Environment validator passes
+- [ ] Production health check passes
+- [ ] Backend responds with 200 OK
+- [ ] Health endpoint returns `{"status":"ok","environment":"production"}`
+- [ ] Frontend loads without errors
+- [ ] No CORS errors in browser console
+- [ ] All API endpoints respond correctly
+- [ ] No critical errors in logs
+
 ## 🚨 Emergency Procedures
 
 ### Rollback Process
 1. Revert to previous git commit
 2. Redeploy automatically
-3. Verify functionality
+3. Run health checks to verify functionality
+4. Monitor for any issues
 
 ### Monitoring Alerts
 - Set up Railway alerts for backend
 - Set up Vercel alerts for frontend
 - Monitor API response times
+- Set up automated health check monitoring
 
 ## 📞 Support Contacts
 - Railway Support: Built-in chat

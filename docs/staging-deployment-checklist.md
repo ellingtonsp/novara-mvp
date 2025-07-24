@@ -15,6 +15,19 @@
 - [x] Database configuration correct (Airtable for staging)
 - [x] Dependencies updated (`package.json`)
 
+### ✅ Environment Validation
+- [ ] Run environment validator: `npm run validate-environments`
+- [ ] Verify no hardcoded URLs in components
+- [ ] Check environment configuration files exist
+- [ ] Validate environment detection logic
+
+### ✅ Health Checks
+- [ ] Run staging health check: `npm run health-check:staging`
+- [ ] Verify backend connectivity: `https://novara-staging-staging.up.railway.app/api/health`
+- [ ] Test frontend accessibility: `https://novara-mvp-git-staging-novara-fertility.vercel.app`
+- [ ] Validate CORS configuration for staging frontend
+- [ ] Check environment detection is working correctly
+
 ### ✅ Testing
 - [x] Local staging environment test passed
 - [x] Health endpoint responds correctly
@@ -38,11 +51,14 @@
 - [ ] Verify health check passes
 
 ### 3. Post-Deployment Verification
-- [ ] Test staging URL: `https://novara-staging-production.up.railway.app`
+- [ ] Run comprehensive health check: `npm run health-check:staging`
+- [ ] Test staging backend URL: `https://novara-staging-staging.up.railway.app`
 - [ ] Verify health endpoint: `/api/health`
 - [ ] Test authentication endpoints
 - [ ] Check CORS with frontend
 - [ ] Verify database connectivity
+- [ ] Test frontend-backend communication
+- [ ] Validate environment detection in health response
 
 ## Environment Variables (Staging)
 
@@ -70,11 +86,14 @@ If deployment fails:
 
 ## Success Criteria
 
-- [ ] Staging URL responds with 200 OK
+- [ ] Environment validator passes: `npm run validate-environments`
+- [ ] Staging health check passes: `npm run health-check:staging`
+- [ ] Staging backend URL responds with 200 OK
 - [ ] Health endpoint returns `{"status":"ok","environment":"staging"}`
 - [ ] Database operations work correctly
 - [ ] Frontend can connect to staging API
 - [ ] No critical errors in logs
+- [ ] All environment configurations validated
 
 ## Monitoring
 

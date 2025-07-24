@@ -10,7 +10,9 @@
     "health-check:dev": "node scripts/environment-health-check.js development",
     "health-check:staging": "node scripts/environment-health-check.js staging",
     "health-check:production": "node scripts/environment-health-check.js production",
-    "pre-deploy": "npm run validate-environments && npm run health-check:staging && npm run health-check:production"
+    "pre-deploy": "npm run validate-environments && npm run health-check:staging && npm run health-check:production",
+    "deploy:staging": "./scripts/deploy-with-validation.sh staging",
+    "deploy:production": "./scripts/deploy-with-validation.sh production"
   },
   "dependencies": {
     "node-fetch": "^3.3.2"
