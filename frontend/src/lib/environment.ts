@@ -72,7 +72,7 @@ if (environmentConfig.debugMode || environmentConfig.isStaging) {
     viteApiUrl: import.meta.env.VITE_API_URL,
     viteEnv: import.meta.env.VITE_ENV,
     timestamp: new Date().toISOString(), // Force cache bust
-    vercelEnv: 'updated' // Force redeploy with new env vars
+    vercelEnv: 'updated-production' // Force redeploy with new env vars
   });
 }
 
