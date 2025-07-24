@@ -9,7 +9,7 @@ import { Heart, Users, Calendar, MessageCircle, ArrowRight, CheckCircle, LogOut,
 import { useAuth } from '../contexts/AuthContext';
 import { apiClient } from '../lib/api';
 import { trackEvent, trackAuthEvent } from '../lib/analytics';
-import { clearAllCaches, forceServiceWorkerUpdate, checkCacheStatus } from '../utils/pwa';
+import { clearAllCaches } from '../utils/pwa';
 import DailyCheckinForm from './DailyCheckinForm';
 import DailyInsightsDisplay from './DailyInsightsDisplay';
 import WelcomeInsight from './WelcomeInsight';
@@ -40,7 +40,6 @@ const sliderThumbStyle = `
 const NovaraLanding = () => {
   const { user, isAuthenticated, isLoading, login, logout } = useAuth();
   const [isClearingCache, setIsClearingCache] = useState(false);
-  const [cacheStatus, setCacheStatus] = useState<any[]>([]);
   
   // Load DM Sans font
   useEffect(() => {
@@ -232,27 +231,7 @@ const NovaraLanding = () => {
     }
   };
 
-  const handleForceUpdate = async () => {
-    setIsClearingCache(true);
-    try {
-      await forceServiceWorkerUpdate();
-      // The page will reload automatically
-    } catch (error) {
-      console.error('Failed to force update:', error);
-      alert('Failed to force update. Please try again.');
-      setIsClearingCache(false);
-    }
-  };
 
-  const handleCheckCacheStatus = async () => {
-    try {
-      const status = await checkCacheStatus();
-      setCacheStatus(status);
-      console.log('Cache status:', status);
-    } catch (error) {
-      console.error('Failed to check cache status:', error);
-    }
-  };
 
   // Mobile Navigation Component
   const MobileNavigation = () => (
