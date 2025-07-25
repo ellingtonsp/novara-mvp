@@ -79,8 +79,8 @@ export const environmentConfig: EnvironmentConfig = {
   debugMode: import.meta.env.VITE_DEBUG === 'true' || getEnvironment() === 'development'
 };
 
-// Log environment configuration (always log in staging for debugging)
-if (environmentConfig.debugMode || environmentConfig.isStaging) {
+// Log environment configuration (always log in staging/preview for debugging)
+if (environmentConfig.debugMode || environmentConfig.isStaging || environmentConfig.isPreview) {
   console.log('🌍 Environment Configuration:', {
     environment: environmentConfig.environment,
     apiUrl: environmentConfig.apiUrl,
@@ -88,8 +88,11 @@ if (environmentConfig.debugMode || environmentConfig.isStaging) {
     mode: import.meta.env.MODE,
     viteApiUrl: import.meta.env.VITE_API_URL,
     viteEnv: import.meta.env.VITE_ENV,
-    timestamp: new Date().toISOString(), // Force redeploy // Force cache bust
-    vercelEnv: 'updated-production' // Force redeploy with new env vars
+    viteVercelEnv: import.meta.env.VITE_VERCEL_ENV,
+    viteVercelUrl: import.meta.env.VITE_VERCEL_URL,
+    viteVercelBranchUrl: import.meta.env.VITE_VERCEL_BRANCH_URL,
+    viteVercelGitCommitRef: import.meta.env.VITE_VERCEL_GIT_COMMIT_REF,
+    timestamp: new Date().toISOString()
   });
 }
 
@@ -97,4 +100,5 @@ if (environmentConfig.debugMode || environmentConfig.isStaging) {
 export const API_BASE_URL = environmentConfig.apiUrl;
 export const IS_DEVELOPMENT = environmentConfig.isDevelopment;
 export const IS_STAGING = environmentConfig.isStaging;
+export const IS_PREVIEW = environmentConfig.isPreview;
 export const IS_PRODUCTION = environmentConfig.isProduction; 
