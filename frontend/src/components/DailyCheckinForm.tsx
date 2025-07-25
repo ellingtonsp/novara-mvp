@@ -309,6 +309,7 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
     // CM-01: Perform sentiment analysis before submission
     const sentimentAnalysisData = {
       mood_today: selectedMoods,
+      journey_reflection_today: formResponses.journey_reflection_today || '',  // NEW: Primary sentiment source
       user_note: formResponses.user_note || '',
       primary_concern_today: formResponses.primary_concern_today || '',
       confidence_today: enhancedCheckinData.confidence_today

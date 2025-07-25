@@ -49,12 +49,58 @@ class SQLiteAdapter {
         financial_concern_today TEXT,
         journey_readiness_today INTEGER,
         top_concern_today TEXT,
+        journey_reflection_today TEXT,  -- NEW: Universal reflection field
+        medication_momentum TEXT,       -- NEW: Positive medication feedback
+        financial_momentum TEXT,        -- NEW: Positive financial feedback  
+        journey_momentum TEXT,          -- NEW: Positive journey feedback
         user_note TEXT,
         date_submitted DATE NOT NULL,
+        sentiment TEXT,                 -- NEW: CM-01 sentiment analysis result
+        sentiment_confidence REAL,      -- NEW: CM-01 sentiment confidence score
+        sentiment_scores TEXT,          -- NEW: CM-01 detailed sentiment scores (JSON)
+        sentiment_processing_time REAL, -- NEW: CM-01 processing time in ms
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users (id)
       );
 
+      -- Migrate existing database to add new columns if they don't exist
+      PRAGMA table_info(daily_checkins);
+    `);
+    
+    // Add new columns if they don't exist (for existing databases)
+    const addColumnIfNotExists = (tableName, columnName, columnType) => {
+      try {
+        this.db.exec(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${columnType}`);
+        console.log(`✅ Added column ${columnName} to ${tableName}`);
+      } catch (error) {
+        if (error.message.includes('duplicate column name')) {
+          // Column already exists, that's fine
+        } else {
+          console.log(`ℹ️ Column ${columnName} may already exist in ${tableName}`);
+        }
+      }
+    };
+    
+    // Add new columns for enhanced questionnaire
+    addColumnIfNotExists('daily_checkins', 'journey_reflection_today', 'TEXT');
+    addColumnIfNotExists('daily_checkins', 'medication_momentum', 'TEXT');
+    addColumnIfNotExists('daily_checkins', 'financial_momentum', 'TEXT');
+    addColumnIfNotExists('daily_checkins', 'journey_momentum', 'TEXT');
+    
+    // Enhanced dimension tracking fields
+    addColumnIfNotExists('daily_checkins', 'medication_confidence_today', 'INTEGER');
+    addColumnIfNotExists('daily_checkins', 'financial_confidence_today', 'INTEGER');
+    addColumnIfNotExists('daily_checkins', 'journey_confidence_today', 'INTEGER');
+    addColumnIfNotExists('daily_checkins', 'medication_emergency_check', 'TEXT');
+    addColumnIfNotExists('daily_checkins', 'financial_emergency_check', 'TEXT');
+    
+    // CM-01 sentiment analysis fields
+    addColumnIfNotExists('daily_checkins', 'sentiment', 'TEXT');
+    addColumnIfNotExists('daily_checkins', 'sentiment_confidence', 'REAL');
+    addColumnIfNotExists('daily_checkins', 'sentiment_scores', 'TEXT');
+    addColumnIfNotExists('daily_checkins', 'sentiment_processing_time', 'REAL');
+
+    this.db.exec(`
       CREATE TABLE IF NOT EXISTS insights (
         id TEXT PRIMARY KEY,
         user_id TEXT NOT NULL,
@@ -172,8 +218,9 @@ class SQLiteAdapter {
       INSERT INTO daily_checkins (id, user_id, mood_today, confidence_today, primary_concern_today,
                                  medication_confidence_today, medication_concern_today, financial_stress_today,
                                  financial_concern_today, journey_readiness_today, top_concern_today,
-                                 user_note, date_submitted)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                 journey_reflection_today, medication_momentum, financial_momentum, journey_momentum,
+                                 user_note, date_submitted, sentiment, sentiment_confidence, sentiment_scores, sentiment_processing_time)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     
     try {
@@ -182,8 +229,12 @@ class SQLiteAdapter {
         checkinData.primary_concern_today, checkinData.medication_confidence_today,
         checkinData.medication_concern_today, checkinData.financial_stress_today,
         checkinData.financial_concern_today, checkinData.journey_readiness_today,
-        checkinData.top_concern_today, checkinData.user_note, 
-        checkinData.date_submitted || new Date().toISOString().split('T')[0]
+        checkinData.top_concern_today, checkinData.journey_reflection_today,
+        checkinData.medication_momentum, checkinData.financial_momentum, checkinData.journey_momentum,
+        checkinData.user_note, 
+        checkinData.date_submitted || new Date().toISOString().split('T')[0],
+        checkinData.sentiment, checkinData.sentiment_confidence, 
+        checkinData.sentiment_scores, checkinData.sentiment_processing_time
       );
       
       // Return in Airtable format

@@ -676,10 +676,18 @@ function analyzeUserPatternsWithContext(checkins, onboardingData, user) {
   const confidences = recent.map(c => c.confidence_today).filter(c => c !== undefined);
   const concerns = recent.map(c => c.primary_concern_today).filter(Boolean);
   
+  // CM-01: Extract sentiment analysis data
+  const sentiments = recent.map(c => ({
+    sentiment: c.sentiment,
+    confidence: c.sentiment_confidence,
+    date: c.date_submitted
+  })).filter(s => s.sentiment);
+  
   return {
     recent_moods: moods,
     recent_confidences: confidences,
     recent_concerns: concerns,
+    recent_sentiments: sentiments, // CM-01: Include sentiment data
     latest_checkin: recent[0],
     avg_recent_confidence: confidences.length > 0 ? confidences.reduce((a,b) => a+b) / confidences.length : null,
     onboarding: onboardingData,
@@ -694,8 +702,44 @@ function generateContextualInsight(analysis, checkins, user) {
     return generateWelcomeInsightFromOnboarding(analysis.onboarding, user);
   }
   
-  const { latest_checkin, recent_moods, recent_confidences, recent_concerns, onboarding, name, avg_recent_confidence } = analysis;
+  const { latest_checkin, recent_moods, recent_confidences, recent_concerns, recent_sentiments, onboarding, name, avg_recent_confidence } = analysis;
   const { confidence_meds, confidence_costs, top_concern: onboarding_concern } = onboarding;
+  
+  // CM-01: PRIORITY - Sentiment-based copy variants
+  if (recent_sentiments && recent_sentiments.length > 0) {
+    const latest_sentiment = recent_sentiments[0];
+    
+    if (latest_sentiment.sentiment === 'positive' && latest_sentiment.confidence >= 0.7) {
+      return {
+        type: 'positive_sentiment_celebration',
+        title: `${name}, your positive energy is shining through! 🎉`,
+        message: `I can feel the hope and strength in your recent check-in. ${latest_checkin.journey_reflection_today ? `"${latest_checkin.journey_reflection_today}" ` : ''}Those positive feelings are real and deserve to be celebrated. This journey has hard moments, but today isn't one of them.`,
+        confidence: 0.95
+      };
+    }
+    
+    if (latest_sentiment.sentiment === 'negative' && latest_sentiment.confidence >= 0.7) {
+      const supportMessage = latest_checkin.journey_reflection_today 
+        ? `"${latest_checkin.journey_reflection_today}" - I hear you. ` 
+        : '';
+      
+      return {
+        type: 'negative_sentiment_support',
+        title: `${name}, tough days are part of this journey`,
+        message: `${supportMessage}The frustration and tiredness you're feeling today are completely valid. IVF asks so much of us - physically, emotionally, financially. ${latest_checkin.medication_concern_today ? `Being "tired of side effects" is incredibly understandable. ` : ''}You're not alone in feeling this way, and these difficult feelings don't diminish your strength.`,
+        confidence: 0.92
+      };
+    }
+    
+    if (latest_sentiment.sentiment === 'neutral' && latest_sentiment.confidence >= 0.5) {
+      return {
+        type: 'neutral_sentiment_acknowledgment', 
+        title: `${name}, steady and thoughtful`,
+        message: `Your recent check-in shows you're taking a measured approach to how you're feeling. ${latest_checkin.journey_reflection_today ? `"${latest_checkin.journey_reflection_today}" ` : ''}Sometimes neutral is exactly where we need to be - not forcing positivity, not overwhelmed by worry, just present with the process.`,
+        confidence: 0.85
+      };
+    }
+  }
   
   console.log('📊 Analyzing returning user patterns:', {
     latest_mood: latest_checkin.mood_today,
@@ -1035,6 +1079,46 @@ function generatePersonalizedMicroInsight(data, user) {
 // DYNAMIC CHECK-IN QUESTION ENGINE
 // ============================================================================
 
+/**
+ * Calculate which dimension to focus on today based on:
+ * 1. Time-based rotation (ensure all dimensions get checked)
+ * 2. Recent trends (confidence changes over time)  
+ * 3. Behavioral signals (frequent mentions of concerns)
+ * 4. Onboarding priorities (initial top concerns)
+ */
+function calculateDimensionFocus(user) {
+  const today = new Date();
+  const daysSinceSignup = Math.floor((today - new Date(user.created_at)) / (1000 * 60 * 60 * 24));
+  
+  // Base rotation: cycle through dimensions every 3 days
+  const rotationCycle = daysSinceSignup % 9; // 9 days = 3 dimensions × 3 days each
+  
+  const dimensions = ['medication', 'financial', 'journey'];
+  const baseDimension = dimensions[Math.floor(rotationCycle / 3)];
+  
+  // Priority overrides based on onboarding concerns
+  const { confidence_meds, confidence_costs, confidence_overall, top_concern } = user;
+  
+  // URGENT: Always check low confidence areas from onboarding
+  if (confidence_meds <= 4) return 'medication';
+  if (confidence_costs <= 4) return 'financial'; 
+  if (confidence_overall <= 4) return 'journey';
+  
+  // HIGH PRIORITY: Check top concern area more frequently
+  if (top_concern) {
+    if (top_concern.toLowerCase().includes('medication') && (rotationCycle % 6 < 2)) return 'medication';
+    if ((top_concern.toLowerCase().includes('cost') || top_concern.toLowerCase().includes('financial')) && (rotationCycle % 6 < 2)) return 'financial';
+  }
+  
+  // FUTURE ENHANCEMENT: Add trend detection here
+  // TODO: Check recent confidence trends from daily_checkins
+  // if (hasDecliningTrend('medication_confidence', 3)) return 'medication';
+  // if (hasDecliningTrend('financial_stress', 3)) return 'financial';
+  
+  // Default to rotation-based dimension
+  return baseDimension;
+}
+
 function generatePersonalizedCheckInQuestions(user) {
   const questions = [
     // Always include baseline questions
@@ -1054,73 +1138,170 @@ function generatePersonalizedCheckInQuestions(user) {
       max: 10,
       required: true,
       priority: 1
+    },
+    // Universal journey reflection - ALWAYS present for comprehensive sentiment capture
+    {
+      id: 'journey_reflection_today',
+      type: 'text',
+      question: 'How are you feeling about your journey today?',
+      placeholder: 'Share anything on your mind - celebrations, worries, thoughts...',
+      required: false,
+      priority: 2,
+      context: 'universal_sentiment',
+      sentiment_target: true  // Primary field for sentiment analysis
     }
   ];
 
-  // Add concern-specific questions based on onboarding
+  // ENHANCED: Calculate which dimension to focus on today
+  const dimensionToFocus = calculateDimensionFocus(user);
+  console.log(`🎯 Today's dimension focus for ${user.email}: ${dimensionToFocus}`);
+
+  // Add concern-specific questions based on ENHANCED dimension focus
   const { confidence_meds, confidence_costs, confidence_overall, top_concern } = user;
 
-  // MEDICATION CONCERNS - if low confidence or specific concern
-  if (confidence_meds <= 4 || (top_concern && top_concern.toLowerCase().includes('medication'))) {
+  // FOCUSED DIMENSION: Always include the calculated focus dimension
+  if (dimensionToFocus === 'medication') {
+    // Always check medication dimension when it's the focus
     questions.push({
       id: 'medication_confidence_today',
       type: 'slider',
-      question: `How confident do you feel about your medication protocol today? (You started at ${confidence_meds}/10)`,
+      question: `How confident are you feeling about your medication protocol today?`,
       min: 1,
       max: 10,
-      required: false,
-      priority: 2,
-      context: 'medication_focus'
-    });
-    
-    questions.push({
-      id: 'medication_concern_today',
-      type: 'text', 
-      question: 'Any specific medication questions or worries today?',
-      placeholder: 'timing, side effects, dosing...',
       required: false,
       priority: 3,
       context: 'medication_focus'
     });
+
+    if (confidence_meds <= 4 || (top_concern && top_concern.toLowerCase().includes('medication'))) {
+      // Low confidence or concern: focus on support
+      questions.push({
+        id: 'medication_concern_today',
+        type: 'text', 
+        question: 'Any specific medication questions or worries today?',
+        placeholder: 'timing, side effects, dosing...',
+        required: false,
+        priority: 4,
+        context: 'medication_focus'
+      });
+    } else {
+      // High/medium confidence: capture what's working or any changes
+      questions.push({
+        id: 'medication_momentum',
+        type: 'text',
+        question: 'How are things going with your medication routine? Any changes?',
+        placeholder: 'routine working well, new concerns, doctor feedback...',
+        required: false,
+        priority: 4,
+        context: 'medication_check'
+      });
+    }
   }
 
-  // FINANCIAL CONCERNS
-  if (confidence_costs <= 4 || (top_concern && (top_concern.toLowerCase().includes('cost') || top_concern.toLowerCase().includes('financial') || top_concern.toLowerCase().includes('money')))) {
+  if (dimensionToFocus === 'financial') {
+    // Always check financial dimension when it's the focus
     questions.push({
-      id: 'financial_stress_today',
+      id: 'financial_confidence_today',
       type: 'slider',
-      question: `How are the financial aspects feeling today? (You started at ${confidence_costs}/10)`,
+      question: `How confident are you feeling about the financial aspects today?`,
       min: 1,
       max: 10,
-      required: false,
-      priority: 2,
-      context: 'financial_focus'
-    });
-    
-    questions.push({
-      id: 'financial_concern_today',
-      type: 'text',
-      question: 'Any new financial concerns or clarity today?',
-      placeholder: 'insurance updates, cost worries...',
       required: false,
       priority: 3,
       context: 'financial_focus'
     });
+
+    if (confidence_costs <= 4 || (top_concern && (top_concern.toLowerCase().includes('cost') || top_concern.toLowerCase().includes('financial')))) {
+      // Low confidence or concern: focus on support
+      questions.push({
+        id: 'financial_concern_today',
+        type: 'text',
+        question: 'Any new financial concerns or updates today?',
+        placeholder: 'insurance updates, cost worries, planning questions...',
+        required: false,
+        priority: 4,
+        context: 'financial_focus'
+      });
+    } else {
+      // High/medium confidence: capture what's working or any changes
+      questions.push({
+        id: 'financial_momentum',
+        type: 'text',
+        question: 'How are the financial aspects feeling? Any updates?',
+        placeholder: 'insurance progress, cost clarity, financial planning...',
+        required: false,
+        priority: 4,
+        context: 'financial_check'
+      });
+    }
   }
 
-  // OVERALL JOURNEY CONCERNS  
-  if (confidence_overall <= 4) {
+  if (dimensionToFocus === 'journey') {
+    // Always check overall journey dimension when it's the focus
     questions.push({
-      id: 'journey_readiness_today',
+      id: 'journey_confidence_today',
       type: 'slider',
-      question: `How ready do you feel for the next steps? (You started at ${confidence_overall}/10)`,
+      question: `How confident are you feeling about your journey overall today?`,
       min: 1,
       max: 10,
       required: false,
-      priority: 2,
+      priority: 3,
       context: 'journey_focus'
     });
+
+    if (confidence_overall <= 4) {
+      // Low confidence: focus on readiness and support
+      questions.push({
+        id: 'journey_readiness_today',
+        type: 'text',
+        question: 'What feels challenging about your journey right now?',
+        placeholder: 'timeline concerns, preparation worries, next steps...',
+        required: false,
+        priority: 4,
+        context: 'journey_focus'
+      });
+    } else {
+      // High/medium confidence: capture what's building strength
+      questions.push({
+        id: 'journey_momentum',
+        type: 'text',
+        question: 'What\'s feeling good about your journey today? Any new developments?',
+        placeholder: 'team support, progress made, positive changes...',
+        required: false,
+        priority: 4,
+        context: 'journey_check'
+      });
+    }
   }
+
+  // LEGACY DIMENSION CHECKS: Keep original logic for any remaining high-priority items
+  if (dimensionToFocus !== 'medication' && confidence_meds <= 3) {
+    // Emergency medication check for very low confidence
+    questions.push({
+      id: 'medication_emergency_check',
+      type: 'text',
+      question: 'Quick medication check - any urgent concerns?',
+      placeholder: 'side effects, timing issues, doctor questions...',
+      required: false,
+      priority: 5,
+      context: 'emergency_check'
+    });
+  }
+
+  if (dimensionToFocus !== 'financial' && confidence_costs <= 3) {
+    // Emergency financial check for very low confidence
+    questions.push({
+      id: 'financial_emergency_check',
+      type: 'text',
+      question: 'Quick financial check - any urgent concerns?',
+      placeholder: 'insurance issues, unexpected costs, planning help...',
+      required: false,
+      priority: 5,
+      context: 'emergency_check'
+    });
+  }
+
+  // Additional checks for specific concerns remain available
 
   // TOP CONCERN FOLLOW-UP (if they specified one)
   if (top_concern && top_concern.trim() !== '') {
@@ -1130,7 +1311,7 @@ function generatePersonalizedCheckInQuestions(user) {
       question: `You mentioned "${top_concern}" was important to you. How is that feeling today?`,
       placeholder: 'better, worse, same...',
       required: false,
-      priority: 2,
+      priority: 4,
       context: 'concern_followup'
     });
   }
@@ -1642,33 +1823,35 @@ app.get('/api/checkins/last-values', authenticateToken, async (req, res) => {
       });
     }
 
-    // Get the most recent check-in for this user using client-side filtering
-    const checkinsUrl = `${config.airtable.baseUrl}/DailyCheckins?sort[0][field]=date_submitted&sort[0][direction]=desc&maxRecords=10`;
+    // Get the most recent check-in for this user
+    let userRecords = [];
     
-    const response = await databaseAdapter.fetchCheckins(checkinsUrl, {
-      headers: {
-        'Authorization': `Bearer ${config.airtable.apiKey}`,
-      }
-    });
-
-    const result = await response.json();
-    
-    if (!response.ok) {
-      console.error('❌ Airtable error fetching last check-in:', result);
-      return res.status(422).json({ 
-        success: false, 
-        error: 'Failed to retrieve last check-in data' 
+    if (databaseAdapter.isUsingLocalDatabase()) {
+      // Use local database method
+      const result = await databaseAdapter.localDb.getUserCheckins(user.id, 1);
+      userRecords = result.records || [];
+    } else {
+      // Use Airtable with filter formula
+      const checkinsUrl = `${config.airtable.baseUrl}/DailyCheckins?filterByFormula=SEARCH('${user.id}', {user_id})&sort[0][field]=date_submitted&sort[0][direction]=desc&maxRecords=1`;
+      
+      const response = await databaseAdapter.fetchCheckins(checkinsUrl, {
+        headers: {
+          'Authorization': `Bearer ${config.airtable.apiKey}`,
+        }
       });
-    }
 
-    // Filter for user's records and get the most recent
-    const userRecords = result.records.filter(record => {
-      const recordUserId = record.fields.user_id;
-      if (Array.isArray(recordUserId)) {
-        return recordUserId.includes(user.id);
+      const result = await response.json();
+      
+      if (!response.ok) {
+        console.error('❌ Airtable error fetching last check-in:', result);
+        return res.status(422).json({ 
+          success: false, 
+          error: 'Failed to retrieve last check-in data' 
+        });
       }
-      return recordUserId === user.id;
-    });
+      
+      userRecords = result.records || [];
+    }
 
     if (userRecords.length > 0) {
       const lastCheckin = userRecords[0].fields;
@@ -1720,7 +1903,8 @@ app.post('/api/checkins', authenticateToken, async (req, res) => {
       primary_concern_today, 
       confidence_today, 
       user_note,
-      sentiment_analysis // CM-01: Sentiment data from frontend
+      sentiment_analysis, // CM-01: Sentiment data from frontend
+      ...additionalFormFields // Capture all additional dynamic form fields
     } = req.body;
 
     // Validation - ensure required fields are present
@@ -1770,6 +1954,22 @@ app.post('/api/checkins', authenticateToken, async (req, res) => {
     if (user_note && user_note.trim() !== '') {
       checkinData.user_note = user_note.trim();
     }
+
+    // Handle all additional form fields from personalized questions
+    Object.entries(additionalFormFields).forEach(([fieldName, fieldValue]) => {
+      if (fieldValue !== null && fieldValue !== undefined) {
+        // Handle text fields
+        if (typeof fieldValue === 'string' && fieldValue.trim() !== '') {
+          checkinData[fieldName] = fieldValue.trim();
+        }
+        // Handle numeric fields (sliders)
+        else if (typeof fieldValue === 'number' && fieldValue >= 0) {
+          checkinData[fieldName] = fieldValue;
+        }
+      }
+    });
+
+    console.log('📝 Dynamic form fields processed:', Object.keys(additionalFormFields));
 
     // CM-01: Add sentiment analysis data if provided
     if (sentiment_analysis) {
@@ -1929,34 +2129,36 @@ app.get('/api/insights/daily', authenticateToken, async (req, res) => {
       });
     }
 
-    // Get recent check-ins (last 7 days) - using client-side filtering
-    const checkinsUrl = `${config.airtable.baseUrl}/DailyCheckins?sort[0][field]=date_submitted&sort[0][direction]=desc&maxRecords=35`;
-    const response = await databaseAdapter.fetchCheckins(checkinsUrl, {
-      headers: {
-        'Authorization': `Bearer ${config.airtable.apiKey}`,
-      }
-    });
-
-    const result = await response.json();
+    // Get recent check-ins for this user (last 7 days)
+    let userRecords = [];
     
-    if (!response.ok) {
-      console.error('❌ Airtable error fetching check-ins for insights:', result);
-      return res.status(422).json({ 
-        success: false, 
-        error: 'Failed to retrieve check-ins for analysis' 
+    if (databaseAdapter.isUsingLocalDatabase()) {
+      // Use local database method
+      const result = await databaseAdapter.localDb.getUserCheckins(user.id, 7);
+      userRecords = result.records || [];
+    } else {
+      // Use Airtable with filter formula
+      const checkinsUrl = `${config.airtable.baseUrl}/DailyCheckins?filterByFormula=SEARCH('${user.id}', {user_id})&sort[0][field]=date_submitted&sort[0][direction]=desc&maxRecords=7`;
+      const response = await databaseAdapter.fetchCheckins(checkinsUrl, {
+        headers: {
+          'Authorization': `Bearer ${config.airtable.apiKey}`,
+        }
       });
+
+      const result = await response.json();
+      
+      if (!response.ok) {
+        console.error('❌ Airtable error fetching check-ins for insights:', result);
+        return res.status(422).json({ 
+          success: false, 
+          error: 'Failed to retrieve check-ins for analysis' 
+        });
+      }
+      
+      userRecords = result.records || [];
     }
 
-    // Filter for user's records and limit to 7
-    const userRecords = result.records.filter(record => {
-      const recordUserId = record.fields.user_id;
-      if (Array.isArray(recordUserId)) {
-        return recordUserId.includes(user.id);
-      }
-      return recordUserId === user.id;
-    }).slice(0, 7);
-
-    console.log(`📊 Insights: Filtered ${userRecords.length} check-ins for user ${user.id} from ${result.records?.length || 0} total records`);
+    console.log(`📊 Insights: Found ${userRecords.length} check-ins for user ${user.id}`);
 
     const checkins = userRecords.map(record => ({
       id: record.id,
