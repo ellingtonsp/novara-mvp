@@ -139,7 +139,7 @@ const NEGATIVE_COPY_VARIANTS: CopyVariant[] = [
  * Implements CM-01 requirement for celebratory copy on positive sentiment
  */
 export function selectCopyVariant(data: InsightCopyData): CopyVariant {
-  const { sentiment, confidence = 0.5, mood_score = 5, user_name, context } = data;
+  const { sentiment, confidence = 0.5, mood_score = 5, user_name } = data;
   
   let variants: CopyVariant[];
   
