@@ -16,6 +16,17 @@ class DatabaseAdapter {
     }
   }
 
+  // Map Airtable table names to SQLite table names
+  mapTableName(airtableTableName) {
+    const tableMap = {
+      'Users': 'users',
+      'DailyCheckins': 'daily_checkins',
+      'Insights': 'insights',
+      'InsightEngagement': 'insight_engagement'
+    };
+    return tableMap[airtableTableName] || airtableTableName.toLowerCase();
+  }
+
   // === AIRTABLE-COMPATIBLE API ===
 
   async airtableRequest(endpoint, method = 'GET', data = null) {
@@ -120,7 +131,7 @@ class DatabaseAdapter {
     const pathParts = urlObj.pathname.split('/');
     const endpoint = pathParts[pathParts.length - 1];
 
-    if (endpoint === 'DailyCheckins') {
+    if (endpoint === 'DailyCheckins' || endpoint === 'daily_checkins') {
       // Extract user ID from filter formula
       const filterFormula = urlObj.searchParams.get('filterByFormula');
       const userIdMatch = filterFormula ? filterFormula.match(/SEARCH\('([^']+)'/) : null;
