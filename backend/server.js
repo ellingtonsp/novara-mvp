@@ -1719,7 +1719,8 @@ app.post('/api/checkins', authenticateToken, async (req, res) => {
       mood_today, 
       primary_concern_today, 
       confidence_today, 
-      user_note 
+      user_note,
+      sentiment_analysis // CM-01: Sentiment data from frontend
     } = req.body;
 
     // Validation - ensure required fields are present
@@ -1770,6 +1771,20 @@ app.post('/api/checkins', authenticateToken, async (req, res) => {
       checkinData.user_note = user_note.trim();
     }
 
+    // CM-01: Add sentiment analysis data if provided
+    if (sentiment_analysis) {
+      checkinData.sentiment = sentiment_analysis.sentiment;
+      checkinData.sentiment_confidence = sentiment_analysis.confidence;
+      checkinData.sentiment_scores = JSON.stringify(sentiment_analysis.scores);
+      checkinData.sentiment_processing_time = sentiment_analysis.processing_time;
+      
+      console.log('🎭 CM-01: Sentiment data added to check-in:', {
+        sentiment: sentiment_analysis.sentiment,
+        confidence: sentiment_analysis.confidence,
+        processing_time: sentiment_analysis.processing_time
+      });
+    }
+
     console.log('📊 Sending to Airtable DailyCheckins:', checkinData);
 
     // Create record in Airtable DailyCheckins table
@@ -1780,7 +1795,7 @@ app.post('/api/checkins', authenticateToken, async (req, res) => {
     console.log('✅ Daily check-in saved successfully:', result.id);
 
     // Return success response with the created record
-    res.status(201).json({
+    const responseData = {
       success: true,
       checkin: {
         id: result.id,
@@ -1789,8 +1804,21 @@ app.post('/api/checkins', authenticateToken, async (req, res) => {
         date_submitted: result.fields.date_submitted,
         created_at: result.fields.created_at
       },
-      message: 'Daily check-in completed successfully! 🌟'
-    });
+      message: sentiment_analysis?.sentiment === 'positive' 
+        ? 'Daily check-in completed successfully! We love your positive energy today! 🎉' 
+        : 'Daily check-in completed successfully! 🌟'
+    };
+
+    // CM-01: Include sentiment data in response if available
+    if (sentiment_analysis) {
+      responseData.sentiment_analysis = {
+        sentiment: sentiment_analysis.sentiment,
+        confidence: sentiment_analysis.confidence,
+        celebration_triggered: sentiment_analysis.sentiment === 'positive'
+      };
+    }
+
+    res.status(201).json(responseData);
 
   } catch (error) {
     console.error('❌ Unexpected error in /api/checkins:', error);

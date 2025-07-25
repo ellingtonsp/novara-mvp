@@ -143,7 +143,7 @@ When starting a new session, ALWAYS:
 - **User prefers the assistant to constantly evaluate the tech stack for risks and technical debt** versus alternative solutions
 - **User will test exclusively themselves** - assistant should provide comprehensive test scripts but not expect to run tests
 - **User prefers GitHub issues for tracking** but is open to Cursor todos
-- **User prefers to stay in the current environment** unless explicitly asked to switch
+- **User prefers to always start with local development environment** unless explicitly instructed to use staging or production
 - **User is not comfortable editing code themselves** - assistant should make all code changes
 - **User prefers the assistant to automatically run necessary local server scripts** when asked to run the app locally
 - **User prefers the assistant to articulate explanations and thought processes** when applying fixes
@@ -298,6 +298,17 @@ validate-feature-docs # Validate feature documentation completeness
 - **📖 Schema Migration**: `docs/airtable-schema-migration.md` - Schema update procedures
 - **📖 Local Options**: `docs/setup-guides/local-database-options.md` - Local database configuration
 
+#### Environment Detection Issues
+- **Problem**: Wrong environment detected (e.g., "staging" in production)
+- **Root Cause**: Newline characters in environment variables or incorrect VITE_ENV usage
+- **Solution**: Use `environmentConfig` from `frontend/src/lib/environment.ts` instead of direct env vars
+- **Check**: Browser console for `🔍 ENVIRONMENT DETECTION DEBUG` logs
+- **Debug**: Verify `VITE_ENV` has no trailing newlines in .env files
+- **Fix**: Update components to use `environmentConfig.environment` instead of `import.meta.env.VITE_VERCEL_ENV`
+- **📖 Complete Guide**: `docs/environment-detection-troubleshooting.md` - Environment detection resolution
+- **📖 Vercel Guide**: `docs/vercel-preview-detection-implementation.md` - Vercel environment detection
+- **🚨 CRITICAL**: Always use `environmentConfig` from environment.ts, never direct env vars in components
+
 #### Deployment Failures
 - **Check**: `railway status` and `vercel ls`
 - **Monitor**: `npm run monitor:deployments`
@@ -416,6 +427,9 @@ npm run performance:production
 - Use environment-specific .env files
 - Validate environment configuration before deployment
 - Rotate secrets regularly
+- **NEVER attempt to modify .env files directly** - user handles all .env file changes manually
+- **ALWAYS provide exact file contents** when .env changes are needed
+- **ALWAYS update all .env.[environment].example files** (development, staging, production) whenever any environment variable is added, changed, or removed—including all Airtable, analytics, and third-party keys. Double-check Airtable keys for continuity and completeness in every update. If the actual Airtable API key and base ID are known, always use the real values in all example files—never leave them blank or as placeholders if the real values are available.
 - **📖 Configuration Guide**: `docs/environment-variables.md` - Environment variable setup and management
 - **📖 Protection Guide**: `docs/environment-configuration-protection.md` - Security best practices
 

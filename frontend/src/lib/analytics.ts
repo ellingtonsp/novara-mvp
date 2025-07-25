@@ -8,12 +8,13 @@ import { environmentConfig } from './environment';
 // PostHog Configuration - Using region-specific host as per Vercel docs
 const POSTHOG_HOST = 'https://us.i.posthog.com';
 
-// Event names as defined in AN-01
+// Event names as defined in AN-01 and CM-01
 export const ANALYTICS_EVENTS = {
   SIGNUP: 'signup',
   CHECKIN_SUBMITTED: 'checkin_submitted',
   INSIGHT_VIEWED: 'insight_viewed',
-  SHARE_ACTION: 'share_action'
+  SHARE_ACTION: 'share_action',
+  SENTIMENT_SCORED: 'sentiment_scored' // CM-01: Sentiment analysis tracking
 } as const;
 
 // Event payload types
@@ -45,6 +46,21 @@ export interface ShareActionEvent {
   share_surface: string;
   destination: string;
   content_id?: string;
+}
+
+export interface SentimentScoredEvent {
+  user_id: string;
+  sentiment: 'positive' | 'neutral' | 'negative';
+  confidence: number;
+  mood_score: number;
+  processing_time_ms: number;
+  text_sources: string[];
+  sentiment_scores: {
+    positive: number;
+    neutral: number;
+    negative: number;
+    compound: number;
+  };
 }
 
 // Vercel-specific environment detection
@@ -294,6 +310,10 @@ export const trackInsightViewed = (payload: InsightViewedEvent): void => {
 
 export const trackShareAction = (payload: ShareActionEvent): void => {
   track(ANALYTICS_EVENTS.SHARE_ACTION, payload);
+};
+
+export const trackSentimentScored = (payload: SentimentScoredEvent): void => {
+  track(ANALYTICS_EVENTS.SENTIMENT_SCORED, payload);
 };
 
 // Enhanced user identification with Vercel context

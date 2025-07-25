@@ -13,15 +13,47 @@ export interface EnvironmentConfig {
 
 // Environment detection with enhanced Vercel preview support
 const getEnvironment = (): string => {
+  // Enhanced debugging for environment detection
+  console.log('🔍 ENVIRONMENT DETECTION DEBUG:', {
+    VITE_ENV: import.meta.env.VITE_ENV,
+    MODE: import.meta.env.MODE,
+    VITE_VERCEL_ENV: import.meta.env.VITE_VERCEL_ENV,
+    NODE_ENV: import.meta.env.NODE_ENV,
+    hostname: typeof window !== 'undefined' ? window.location.hostname : 'server-side'
+  });
+
   // Check for explicit environment variable first
   if (import.meta.env.VITE_ENV) {
+    console.log('🔧 Using explicit VITE_ENV:', import.meta.env.VITE_ENV);
     return import.meta.env.VITE_ENV.trim();
+  }
+  
+  // PRIORITY 1: If MODE is production, always use production regardless of Vercel settings
+  if (import.meta.env.MODE === 'production') {
+    console.log('🔧 Environment Override: MODE is "production", using "production" regardless of VITE_VERCEL_ENV');
+    return 'production';
+  }
+  
+  // PRIORITY 2: Check if we're on the canonical production domain
+  if (typeof window !== 'undefined' && window.location.hostname === 'novara-mvp.vercel.app') {
+    console.log('🔧 Environment Override: On canonical production domain, using "production"');
+    return 'production';
   }
   
   // Use Vercel's automatic environment detection if available
   if (import.meta.env.VITE_VERCEL_ENV) {
     // VITE_VERCEL_ENV can be 'production', 'preview', or 'development'
-    return import.meta.env.VITE_VERCEL_ENV.trim();
+    // But Vercel sometimes incorrectly sets this to 'staging' for production deployments
+    const vercelEnv = import.meta.env.VITE_VERCEL_ENV.trim();
+    
+    // If Vercel says 'staging' but we're on a production deployment, override it
+    if (vercelEnv === 'staging' && import.meta.env.MODE === 'production') {
+      console.log('🔧 Environment Override: Vercel says "staging" but MODE is "production", using "production"');
+      return 'production';
+    }
+    
+    console.log('🔧 Using Vercel environment:', vercelEnv);
+    return vercelEnv;
   }
   
   // Fall back to NODE_ENV
@@ -37,6 +69,19 @@ const getEnvironment = (): string => {
   
   // Check if we're on a vercel.app domain (likely a preview)
   if (typeof window !== 'undefined' && window.location.hostname.includes('.vercel.app')) {
+    // If this is a production deployment (not a preview), treat it as production
+    if (import.meta.env.VITE_VERCEL_ENV === 'production') {
+      return 'production';
+    }
+    // For dynamic URLs that are production deployments, treat as production
+    if (import.meta.env.VITE_VERCEL_ENV === 'production' || 
+        (import.meta.env.VITE_VERCEL_ENV && !import.meta.env.VITE_VERCEL_ENV.includes('preview'))) {
+      return 'production';
+    }
+    // Additional check: if MODE is production, treat as production regardless of VITE_VERCEL_ENV
+    if (import.meta.env.MODE === 'production') {
+      return 'production';
+    }
     return 'preview';
   }
   
@@ -80,7 +125,7 @@ export const environmentConfig: EnvironmentConfig = {
 };
 
 // Enhanced logging for all environments (especially preview for debugging)
-if (environmentConfig.debugMode || environmentConfig.isStaging || environmentConfig.isPreview) {
+if (environmentConfig.debugMode || environmentConfig.isStaging || environmentConfig.isPreview || environmentConfig.isProduction) {
   console.log('🌍 Environment Configuration:', {
     environment: environmentConfig.environment,
     apiUrl: environmentConfig.apiUrl,
@@ -93,6 +138,16 @@ if (environmentConfig.debugMode || environmentConfig.isStaging || environmentCon
     viteVercelBranchUrl: import.meta.env.VITE_VERCEL_BRANCH_URL,
     viteVercelGitCommitRef: import.meta.env.VITE_VERCEL_GIT_COMMIT_REF,
     timestamp: new Date().toISOString()
+  });
+  
+  // Additional debugging for environment detection
+  console.log('🔍 Environment Detection Debug:', {
+    hasViteEnv: !!import.meta.env.VITE_ENV,
+    hasVercelEnv: !!import.meta.env.VITE_VERCEL_ENV,
+    vercelEnvValue: import.meta.env.VITE_VERCEL_ENV,
+    mode: import.meta.env.MODE,
+    hostnameIncludesVercel: typeof window !== 'undefined' ? window.location.hostname.includes('.vercel.app') : false,
+    hostnameIncludesStaging: typeof window !== 'undefined' ? window.location.hostname.includes('staging') : false
   });
 }
 

@@ -13,6 +13,9 @@ This document outlines the best practices for environment-aware development in t
 - Automatically detect environment based on hostname and environment variables
 - Support explicit environment variables for override
 - Provide clear fallbacks for each environment
+- **🚨 CRITICAL**: Always use `environmentConfig` from `environment.ts`, never direct env vars
+- **🚨 CRITICAL**: Check for newline characters in environment variables
+- **🚨 CRITICAL**: Components must use `environmentConfig.environment` not `import.meta.env.VITE_VERCEL_ENV`
 
 ### 3. **Consistent API URLs**
 - All API calls should use the centralized `API_BASE_URL`
@@ -186,8 +189,9 @@ node scripts/environment-health-check.js staging
 **Solution**: Check `frontend/src/lib/environment.ts` configuration
 
 ### **Issue: Environment Not Detected**
-**Symptoms**: Using production URLs in staging
-**Solution**: Verify hostname detection logic in environment config
+**Symptoms**: Using production URLs in staging, wrong environment shown in console
+**Solution**: Verify hostname detection logic in environment config, check for newline characters in env vars
+**Recent Fix**: Updated `App.tsx` to use `environmentConfig` instead of direct `import.meta.env.VITE_VERCEL_ENV`
 
 ### **Issue: CORS Errors**
 **Symptoms**: Browser blocking requests
@@ -218,6 +222,21 @@ When making changes that affect environments:
 4. **Update documentation** in this file
 5. **Notify team** of environment changes
 
+## 🔄 **Recent Fixes & Lessons Learned**
+
+### **2025-07-25: Environment Detection Bug Resolution**
+- **Issue**: Production environment incorrectly detected as "staging"
+- **Root Cause**: Newline character in `VITE_ENV` + direct env var usage in components
+- **Solution**: Updated `App.tsx` to use `environmentConfig` instead of direct env vars
+- **Prevention**: Always use `environmentConfig` from `environment.ts` for environment detection
+- **Documentation**: Added comprehensive troubleshooting guide
+
+### **Key Lessons**
+1. **Never use direct environment variables** for environment detection
+2. **Always check for newline characters** in .env files
+3. **Use centralized environment config** for all environment-related logic
+4. **Test environment detection** in all environments before deployment
+
 ## 📚 **Additional Resources**
 
 - [Environment Configuration](./environment.ts)
@@ -225,6 +244,7 @@ When making changes that affect environments:
 - [API Client](./api.ts)
 - [Railway Environment Setup](./railway-staging-setup.md)
 - [Vercel Environment Setup](./vercel-staging-setup.md)
+- [Environment Detection Troubleshooting](./environment-detection-troubleshooting.md)
 
 ---
 
