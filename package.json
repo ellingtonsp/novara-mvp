@@ -51,7 +51,9 @@
     "validate:deployment": "npm run safety:check && npm run test:deployment-scripts",
     "pre-deploy:build": "cd frontend && npm run build && cd ..",
     "pre-deploy:typescript": "cd frontend && npx tsc --noEmit && cd ..",
-    "pre-deploy:full": "npm run pre-deploy:typescript && npm run pre-deploy:build && npm run validate:deployment"
+    "pre-deploy:full": "npm run pre-deploy:typescript && npm run pre-deploy:build && npm run validate:deployment",
+    "test:demo-ready": "./scripts/test-end-to-end-all-environments.sh",
+    "test:all-environments": "./scripts/test-end-to-end-all-environments.sh"
   },
   "dependencies": {
     "node-fetch": "^3.3.2"
