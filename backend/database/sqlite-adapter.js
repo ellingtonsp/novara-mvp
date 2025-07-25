@@ -34,6 +34,8 @@ class SQLiteAdapter {
         timezone TEXT,
         email_opt_in BOOLEAN DEFAULT 1,
         status TEXT DEFAULT 'active',
+        medication_status TEXT,              -- NEW: Medication status flag
+        medication_status_updated DATETIME, -- NEW: When status was last updated
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );
 
@@ -206,6 +208,34 @@ class SQLiteAdapter {
       id: user.id,
       ...user
     };
+  }
+
+  // NEW: Update user method for medication status and other profile updates
+  async updateUser(userId, updateData) {
+    try {
+      // Build dynamic SQL based on provided fields
+      const fields = Object.keys(updateData);
+      const setClause = fields.map(field => `${field} = ?`).join(', ');
+      const values = fields.map(field => updateData[field]);
+      
+      const stmt = this.db.prepare(`UPDATE users SET ${setClause} WHERE id = ?`);
+      const result = stmt.run(...values, userId);
+      
+      if (result.changes === 0) {
+        throw new Error('User not found or no changes made');
+      }
+      
+      console.log(`✅ SQLite: Updated user ${userId} with:`, updateData);
+      
+      // Return updated user
+      const updatedUser = this.db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+      return {
+        id: updatedUser.id,
+        fields: { ...updatedUser }
+      };
+    } catch (error) {
+      throw new Error(`User update failed: ${error.message}`);
+    }
   }
 
   // === CHECK-IN OPERATIONS ===

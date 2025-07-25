@@ -1,9 +1,10 @@
 // CM-01: Sentiment Analysis Utility
 // VADER-based sentiment classification for positive reflection feature
+// Enhanced for mixed sentiment and critical concern detection
 // Runs client-side with <150ms performance target
 
 export interface SentimentResult {
-  sentiment: 'positive' | 'neutral' | 'negative';
+  sentiment: 'positive' | 'neutral' | 'negative' | 'mixed';  // Added 'mixed'
   confidence: number;
   scores: {
     positive: number;
@@ -12,6 +13,12 @@ export interface SentimentResult {
     compound: number;
   };
   processingTime: number;
+  criticalConcerns?: string[];  // NEW: Track specific critical concerns detected
+  confidenceFactors?: {        // NEW: Track confidence scores that influenced sentiment
+    medication?: number;
+    financial?: number;
+    overall?: number;
+  };
 }
 
 // VADER Lexicon - IVF/Fertility-enhanced positive terms
@@ -48,10 +55,36 @@ const NEGATIVE_WORDS: Record<string, number> = {
   delayed: -1.6, unsuccessful: -2.2, rejected: -2.1, denied: -2.0,
   exhausted: -2.0, drained: -1.9, hopeless: -2.5, defeated: -2.3,
   
+  // NEW: Critical medication/treatment concerns
+  confusing: -2.1, confused: -2.0, unclear: -1.8,
+  complicated: -1.7, uncertain: -1.8, "no idea": -2.1, 
+  "can't figure": -2.2, scary: -2.1,
+  
   // Fertility journey negative phrases
   "not working": -2.1, "so hard": -1.8, "giving up": -2.4,
   "too much": -1.9, "can't handle": -2.2, "feeling lost": -2.1,
-  "broken down": -2.3, "no hope": -2.6, "waste of time": -2.2
+  "broken down": -2.3, "no hope": -2.6, "waste of time": -2.2,
+  
+  // NEW: Medication-specific critical phrases
+  "so confusing": -2.4, "don't understand": -2.3, "makes no sense": -2.5,
+  "too complicated": -2.1, "overwhelming protocol": -2.6, "lost with meds": -2.7
+};
+
+// NEW: Critical concern detection patterns
+const CRITICAL_CONCERN_PATTERNS = {
+  medication: [
+    /confus(ed|ing)/i, /don'?t understand/i, /unclear/i, /complicated/i,
+    /overwhelming.*med/i, /med.*overwhelming/i, /protocol.*confus/i,
+    /lost.*med/i, /scared.*med/i, /worried.*med/i
+  ],
+  financial: [
+    /can'?t afford/i, /too expensive/i, /financial.*stress/i, /money.*worry/i,
+    /cost.*overwhelming/i, /broke/i, /debt/i
+  ],
+  emotional: [
+    /can'?t handle/i, /breaking down/i, /losing hope/i, /giving up/i,
+    /too much.*bear/i, /emotionally.*drained/i
+  ]
 };
 
 // Intensifiers and modifiers
@@ -66,6 +99,25 @@ const NEGATIONS = ['not', 'no', 'never', 'none', 'nobody', 'nothing', 'neither',
 // Punctuation scoring
 const EXCLAMATION_BOOST = 0.292;
 const QUESTION_REDUCTION = -0.18;
+
+/**
+ * NEW: Detect critical concerns in text
+ */
+function detectCriticalConcerns(text: string): string[] {
+  const concerns: string[] = [];
+  const lowerText = text.toLowerCase();
+  
+  Object.entries(CRITICAL_CONCERN_PATTERNS).forEach(([category, patterns]) => {
+    for (const pattern of patterns) {
+      if (pattern.test(lowerText)) {
+        concerns.push(category);
+        break; // Only add category once
+      }
+    }
+  });
+  
+  return concerns;
+}
 
 /**
  * Tokenize text into words and clean them
@@ -131,6 +183,9 @@ export function analyzeSentiment(text: string): SentimentResult {
   const originalText = text;
   const tokens = tokenize(text);
   
+  // NEW: Detect critical concerns first
+  const criticalConcerns = detectCriticalConcerns(text);
+  
   // Find phrases first
   const positivePhrases = findPhrases(text, POSITIVE_WORDS);
   const negativePhrases = findPhrases(text, NEGATIVE_WORDS);
@@ -191,7 +246,8 @@ export function analyzeSentiment(text: string): SentimentResult {
       sentiment: 'neutral',
       confidence: 0,
       scores: { positive: 0, neutral: 1, negative: 0, compound: 0 },
-      processingTime: endTime - startTime
+      processingTime: endTime - startTime,
+      criticalConcerns
     };
   }
   
@@ -226,21 +282,26 @@ export function analyzeSentiment(text: string): SentimentResult {
   const negative = Math.max(0, -compound);
   const neutral = 1 - (positive + negative);
   
-  // Determine sentiment category with confidence
-  let sentiment: 'positive' | 'neutral' | 'negative';
+  // NEW: Enhanced sentiment determination with mixed sentiment detection
+  let sentiment: 'positive' | 'neutral' | 'negative' | 'mixed';
   let confidence: number;
   
-  // CM-01 thresholds: positive > 0.3, negative < -0.1, else neutral
-  // Lowered positive threshold to better capture IVF journey positive moments
-  if (compound >= 0.3) {
+  // Check for mixed sentiment: positive compound but critical concerns detected
+  const hasCriticalConcerns = criticalConcerns.length > 0;
+  
+  if (compound >= 0.2 && hasCriticalConcerns) {
+    // Mixed sentiment: positive outlook but critical concerns
+    sentiment = 'mixed';
+    confidence = 0.85; // High confidence in mixed detection
+  } else if (compound >= 0.3) {
     sentiment = 'positive';
-    confidence = Math.min(compound * 1.5, 1.0); // Scale 0.3-1.0 to 0.0-1.0
+    confidence = Math.min(compound * 1.5, 1.0);
   } else if (compound <= -0.1) {
     sentiment = 'negative';
-    confidence = Math.min(Math.abs(compound) * 10, 1.0); // Scale -0.1 to -1.0 to 0.0-1.0
+    confidence = Math.min(Math.abs(compound) * 10, 1.0);
   } else {
     sentiment = 'neutral';
-    confidence = 1 - Math.abs(compound) * 2; // Higher confidence for values closer to 0
+    confidence = 1 - Math.abs(compound) * 2;
   }
   
   const endTime = performance.now();
@@ -254,20 +315,27 @@ export function analyzeSentiment(text: string): SentimentResult {
       negative: Math.round(negative * 1000) / 1000,
       compound: Math.round(compound * 1000) / 1000
     },
-    processingTime: endTime - startTime
+    processingTime: endTime - startTime,
+    criticalConcerns: criticalConcerns.length > 0 ? criticalConcerns : undefined
   };
 }
 
 /**
  * Analyze sentiment from check-in data
- * Combines mood selection and free text for comprehensive analysis
+ * Enhanced to consider confidence scores as critical factors
  */
 export function analyzeCheckinSentiment(data: {
   mood_today?: string | string[];
   user_note?: string;
   primary_concern_today?: string;
-  journey_reflection_today?: string;  // NEW: Universal reflection field
+  journey_reflection_today?: string;
   confidence_today?: number;
+  medication_confidence_today?: number;  // Critical for mixed sentiment
+  financial_confidence_today?: number;   // Critical for mixed sentiment
+  medication_concern_today?: string;     // Critical concern text
+  financial_concern_today?: string;      // Critical concern text
+  medication_readiness_today?: number;   // NEW: For patients not currently on medications
+  medication_preparation_concern?: string; // NEW: Preparation concerns
 }): SentimentResult {
   let textToAnalyze = '';
   
@@ -286,6 +354,20 @@ export function analyzeCheckinSentiment(data: {
     textToAnalyze += data.primary_concern_today + ' ';
   }
   
+  // NEW: PRIORITY 4: Critical concern text (medication, financial)
+  if (data.medication_concern_today) {
+    textToAnalyze += data.medication_concern_today + ' ';
+  }
+  
+  if (data.financial_concern_today) {
+    textToAnalyze += data.financial_concern_today + ' ';
+  }
+  
+  // NEW: PRIORITY 5: Medication preparation concerns (for patients not on meds)
+  if (data.medication_preparation_concern) {
+    textToAnalyze += data.medication_preparation_concern + ' ';
+  }
+  
   // Add mood context (mood selections can indicate sentiment)
   if (data.mood_today) {
     const moods = Array.isArray(data.mood_today) 
@@ -295,7 +377,66 @@ export function analyzeCheckinSentiment(data: {
     textToAnalyze += moods.join(' ') + ' ';
   }
   
-  // If no text available, infer from confidence level
+  // Get initial sentiment analysis
+  const baseSentiment = analyzeSentiment(textToAnalyze.trim());
+  
+  // NEW: Apply confidence factor analysis for mixed sentiment detection
+  const confidenceFactors: any = {};
+  let hasCriticalConfidenceIssues = false;
+  
+  // Check medication confidence (critical threshold: ≤3)
+  if (data.medication_confidence_today !== undefined) {
+    confidenceFactors.medication = data.medication_confidence_today;
+    if (data.medication_confidence_today <= 3) {
+      hasCriticalConfidenceIssues = true;
+      // Add critical concerns if not already detected
+      if (!baseSentiment.criticalConcerns?.includes('medication')) {
+        baseSentiment.criticalConcerns = [...(baseSentiment.criticalConcerns || []), 'medication'];
+      }
+    }
+  }
+  
+  // NEW: Check medication readiness for patients not currently on medications
+  if (data.medication_readiness_today !== undefined) {
+    confidenceFactors.medication_readiness = data.medication_readiness_today;
+    if (data.medication_readiness_today <= 3) {
+      hasCriticalConfidenceIssues = true;
+      // This is preparation anxiety, not active medication confusion
+      if (!baseSentiment.criticalConcerns?.includes('medication_preparation')) {
+        baseSentiment.criticalConcerns = [...(baseSentiment.criticalConcerns || []), 'medication_preparation'];
+      }
+    }
+  }
+  
+  // Check financial confidence (critical threshold: ≤3)
+  if (data.financial_confidence_today !== undefined) {
+    confidenceFactors.financial = data.financial_confidence_today;
+    if (data.financial_confidence_today <= 3) {
+      hasCriticalConfidenceIssues = true;
+      if (!baseSentiment.criticalConcerns?.includes('financial')) {
+        baseSentiment.criticalConcerns = [...(baseSentiment.criticalConcerns || []), 'financial'];
+      }
+    }
+  }
+  
+  // Check overall confidence
+  if (data.confidence_today !== undefined) {
+    confidenceFactors.overall = data.confidence_today;
+  }
+  
+  // NEW: Override sentiment to mixed if we have critical confidence issues
+  // This should trigger for any case where someone has critical concerns (≤3 confidence)
+  // regardless of their overall text sentiment - this is key for patient safety
+  if (hasCriticalConfidenceIssues) {
+    // Only override if the sentiment isn't already clearly negative
+    // (i.e., don't change pure negative sentiment to mixed)
+    if (baseSentiment.sentiment !== 'negative' || baseSentiment.scores.compound >= -0.3) {
+      baseSentiment.sentiment = 'mixed';
+      baseSentiment.confidence = 0.9; // High confidence in mixed detection
+    }
+  }
+  
+  // If no text available, infer from confidence levels
   if (textToAnalyze.trim().length === 0 && data.confidence_today) {
     const confidence = data.confidence_today;
     if (confidence >= 8) {
@@ -305,9 +446,14 @@ export function analyzeCheckinSentiment(data: {
     } else {
       textToAnalyze = 'okay neutral managing';
     }
+    
+    return analyzeSentiment(textToAnalyze.trim());
   }
   
-  return analyzeSentiment(textToAnalyze.trim());
+  // Add confidence factors to result
+  baseSentiment.confidenceFactors = confidenceFactors;
+  
+  return baseSentiment;
 }
 
 /**

@@ -1158,42 +1158,92 @@ function generatePersonalizedCheckInQuestions(user) {
 
   // Add concern-specific questions based on ENHANCED dimension focus
   const { confidence_meds, confidence_costs, confidence_overall, top_concern } = user;
-
-  // FOCUSED DIMENSION: Always include the calculated focus dimension
-  if (dimensionToFocus === 'medication') {
-    // Always check medication dimension when it's the focus
+  
+  // NEW: Cycle stage update check - ensure cycle stage is current
+  if (dimensionToFocus === 'medication' && shouldCheckCycleStageUpdate(user)) {
     questions.push({
-      id: 'medication_confidence_today',
-      type: 'slider',
-      question: `How confident are you feeling about your medication protocol today?`,
+      id: 'cycle_stage_update',
+      type: 'select',
+      question: 'Is your cycle stage still current?',
+      options: [
+        { value: 'no_change', label: 'No change - still ' + getCycleStageLabel(user.cycle_stage) },
+        { value: 'considering', label: 'Just considering IVF' },
+        { value: 'ivf_prep', label: 'Preparing for IVF' },
+        { value: 'stimulation', label: 'In stimulation phase' },
+        { value: 'retrieval', label: 'Around retrieval' },
+        { value: 'transfer', label: 'Transfer stage' },
+        { value: 'tww', label: 'Two-week wait' },
+        { value: 'pregnant', label: 'Pregnant' },
+        { value: 'between_cycles', label: 'Between cycles' }
+      ],
+      required: false,
+      priority: 2.7,
+      context: 'cycle_stage_update'
+    });
+  }
+
+  if (dimensionToFocus === 'medication') {
+    // NEW: Use cycle stage to determine appropriate medication question
+    const medicationQuestion = getMedicationQuestionForCycleStage(user.cycle_stage);
+    const derivedMedicationStatus = getMedicationStatusFromCycleStage(user.cycle_stage);
+    
+    questions.push({
+      ...medicationQuestion,
       min: 1,
       max: 10,
       required: false,
       priority: 3,
-      context: 'medication_focus'
+      cycle_stage_context: user.cycle_stage,
+      derived_medication_status: derivedMedicationStatus
     });
 
-    if (confidence_meds <= 4 || (top_concern && top_concern.toLowerCase().includes('medication'))) {
-      // Low confidence or concern: focus on support
-      questions.push({
-        id: 'medication_concern_today',
-        type: 'text', 
-        question: 'Any specific medication questions or worries today?',
-        placeholder: 'timing, side effects, dosing...',
-        required: false,
-        priority: 4,
-        context: 'medication_focus'
-      });
+    // Add follow-up question based on cycle stage and confidence
+    if (derivedMedicationStatus === 'taking' || derivedMedicationStatus === 'pregnancy_support') {
+      if (confidence_meds <= 4 || (top_concern && top_concern.toLowerCase().includes('medication'))) {
+        // Low confidence: focus on support
+        questions.push({
+          id: 'medication_concern_today',
+          type: 'text', 
+          question: user.cycle_stage === 'pregnant' ? 
+            'Any specific concerns about your pregnancy medications?' :
+            'Any specific medication questions or worries today?',
+          placeholder: user.cycle_stage === 'pregnant' ? 
+            'prenatal vitamins, hormone support, timing...' :
+            'timing, side effects, dosing...',
+          required: false,
+          priority: 4,
+          context: 'medication_focus'
+        });
+      } else {
+        // High/medium confidence: capture what's working
+        questions.push({
+          id: 'medication_momentum',
+          type: 'text',
+          question: user.cycle_stage === 'pregnant' ?
+            'How are you feeling about your pregnancy medication routine?' :
+            'How are things going with your medication routine? Any changes?',
+          placeholder: user.cycle_stage === 'pregnant' ?
+            'routine working well, doctor feedback, any adjustments...' :
+            'routine working well, new concerns, doctor feedback...',
+          required: false,
+          priority: 4,
+          context: 'medication_check'
+        });
+      }
     } else {
-      // High/medium confidence: capture what's working or any changes
+      // Preparation phase - ask about readiness concerns
       questions.push({
-        id: 'medication_momentum',
+        id: 'medication_preparation_concern',
         type: 'text',
-        question: 'How are things going with your medication routine? Any changes?',
-        placeholder: 'routine working well, new concerns, doctor feedback...',
+        question: derivedMedicationStatus === 'between_cycles' ?
+          'Any thoughts about medications for your next cycle?' :
+          'Any questions or concerns about upcoming medications?',
+        placeholder: derivedMedicationStatus === 'between_cycles' ?
+          'next cycle planning, protocol changes, timing...' :
+          'timeline questions, preparation concerns, what to expect...',
         required: false,
         priority: 4,
-        context: 'medication_check'
+        context: 'medication_preparation'
       });
     }
   }
@@ -2674,6 +2724,184 @@ async function trackFVMAnalytics(analyticsData) {
 // Add Sentry error handler only if Sentry is initialized
 if (sentryEnabled && Sentry && Sentry.Handlers) {
   app.use(Sentry.Handlers.errorHandler());
+}
+
+// NEW: Helper functions for medication status management
+
+/**
+ * Detect if cycle stage may need updating based on user behavior patterns
+ */
+function shouldCheckCycleStageUpdate(user) {
+  // Check if it's been a while since user created account (>30 days)
+  const accountAge = Date.now() - new Date(user.created_at).getTime();
+  const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+  
+  // Suggest cycle stage check if:
+  // 1. Account is old (>30 days) - people progress through stages
+  // 2. User is in transitional stages that typically change quickly
+  return accountAge > thirtyDaysMs || 
+         user.cycle_stage === 'stimulation' ||
+         user.cycle_stage === 'retrieval' ||
+         user.cycle_stage === 'transfer' ||
+         user.cycle_stage === 'tww';
+}
+
+/**
+ * Get human-readable label for cycle stage
+ */
+function getCycleStageLabel(stage) {
+  const labels = {
+    'considering': 'just considering IVF',
+    'ivf_prep': 'preparing for IVF',
+    'stimulation': 'in stimulation phase',
+    'retrieval': 'around retrieval',
+    'transfer': 'transfer stage',
+    'tww': 'two-week wait',
+    'pregnant': 'pregnant',
+    'between_cycles': 'between cycles'
+  };
+  return labels[stage] || stage;
+}
+
+// NEW: Update user cycle stage
+app.patch('/api/users/cycle-stage', authenticateToken, async (req, res) => {
+  try {
+    const { cycle_stage } = req.body;
+    
+    if (!cycle_stage) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'cycle_stage is required' 
+      });
+    }
+
+    // Validate cycle stage value
+    const validStages = ['considering', 'ivf_prep', 'stimulation', 'retrieval', 'transfer', 'tww', 'pregnant', 'between_cycles'];
+    if (!validStages.includes(cycle_stage)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Invalid cycle stage' 
+      });
+    }
+
+    const user = await findUserByEmail(req.user.email);
+    if (!user) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'User not found' 
+      });
+    }
+
+    // Update user cycle stage
+    const updateData = {
+      cycle_stage,
+      cycle_stage_updated: new Date().toISOString()
+    };
+
+    if (config.database.type === 'airtable') {
+      const airtableUrl = `${config.airtable.baseUrl}/Users/${user.id}`;
+      const response = await fetch(airtableUrl, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${config.airtable.apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ fields: updateData })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update user in Airtable');
+      }
+    } else {
+      // SQLite update
+      await databaseAdapter.updateUser(user.id, updateData);
+    }
+
+    console.log(`✅ Updated cycle stage for ${req.user.email}: ${cycle_stage}`);
+
+    // Calculate derived medication status for response
+    const derivedMedicationStatus = getMedicationStatusFromCycleStage(cycle_stage);
+
+    res.json({
+      success: true,
+      message: 'Cycle stage updated successfully',
+      cycle_stage,
+      derived_medication_status: derivedMedicationStatus,
+      cycle_stage_updated: updateData.cycle_stage_updated
+    });
+
+  } catch (error) {
+    console.error('❌ Error updating cycle stage:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Internal server error' 
+    });
+  }
+});
+
+// NEW: Derive medication status from cycle stage for consistency
+function getMedicationStatusFromCycleStage(cycleStage) {
+  const medicationMapping = {
+    'considering': 'not_taking',        // Just considering IVF
+    'ivf_prep': 'starting_soon',        // Preparing for IVF
+    'stimulation': 'taking',            // In stimulation phase - definitely on meds
+    'retrieval': 'taking',              // Around retrieval - still on meds
+    'transfer': 'taking',               // Transfer stage - on support meds
+    'tww': 'taking',                    // Two-week wait - on support meds
+    'pregnant': 'pregnancy_support',     // Pregnant - different med category
+    'between_cycles': 'between_cycles'   // Between cycles - not on cycle meds
+  };
+  
+  return medicationMapping[cycleStage] || 'not_taking';
+}
+
+// NEW: Get medication readiness/confidence question based on cycle stage
+function getMedicationQuestionForCycleStage(cycleStage) {
+  switch (cycleStage) {
+    case 'considering':
+    case 'ivf_prep':
+      return {
+        id: 'medication_readiness_today',
+        type: 'slider',
+        question: 'How prepared do you feel about the medication aspects of IVF?',
+        context: 'medication_preparation'
+      };
+    
+    case 'stimulation':
+    case 'retrieval':
+    case 'transfer':
+    case 'tww':
+      return {
+        id: 'medication_confidence_today',
+        type: 'slider', 
+        question: 'How confident are you feeling about your current medications?',
+        context: 'medication_active'
+      };
+    
+    case 'pregnant':
+      return {
+        id: 'pregnancy_medication_confidence',
+        type: 'slider',
+        question: 'How confident are you feeling about your pregnancy support medications?',
+        context: 'pregnancy_medications'
+      };
+    
+    case 'between_cycles':
+      return {
+        id: 'cycle_preparation_confidence',
+        type: 'slider',
+        question: 'How prepared do you feel for your next cycle medications?',
+        context: 'cycle_preparation'
+      };
+    
+    default:
+      return {
+        id: 'medication_readiness_today',
+        type: 'slider',
+        question: 'How do you feel about the medication aspects of your journey?',
+        context: 'medication_general'
+      };
+  }
 }
 
 module.exports = app;
