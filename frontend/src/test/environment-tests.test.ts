@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, vi } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { 
   EnvironmentTestUtils, 
   developmentConfig, 
@@ -10,11 +10,6 @@ import {
 global.fetch = vi.fn();
 
 describe('Environment Tests', () => {
-  let testUtils: EnvironmentTestUtils;
-
-  beforeAll(() => {
-    testUtils = new EnvironmentTestUtils();
-  });
 
   describe('Development Environment', () => {
     const devUtils = new EnvironmentTestUtils(developmentConfig);
