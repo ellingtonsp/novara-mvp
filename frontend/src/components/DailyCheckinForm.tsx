@@ -428,40 +428,27 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
           console.error('❌ AN-01 DEBUG: Cannot track checkin_submitted - user.id not available');
         }
         
-        // CM-01: Generate sentiment-based insight
-        if (sentimentResult.sentiment === 'positive') {
-          const celebratoryInsight = generateSentimentBasedInsight({
+        // CM-01: Generate sentiment-based insight for ALL sentiment types
+        const sentimentBasedInsight = generateSentimentBasedInsight({
+          sentiment: sentimentResult.sentiment,
+          confidence: sentimentResult.confidence,
+          mood_score: enhancedCheckinData.confidence_today || 5,
+          user_name: user?.nickname || user?.email?.split('@')[0]
+        });
+        
+        setImmediateInsight({
+          title: sentimentBasedInsight.title,
+          message: sentimentBasedInsight.message,
+          action: sentimentBasedInsight.action,
+          enhanced: true,
+          tracking_data: {
             sentiment: sentimentResult.sentiment,
-            confidence: sentimentResult.confidence,
-            mood_score: enhancedCheckinData.confidence_today || 5,
-            user_name: user?.nickname || user?.email?.split('@')[0]
-          });
-          
-          setImmediateInsight({
-            title: celebratoryInsight.title,
-            message: celebratoryInsight.message,
-            action: celebratoryInsight.action,
-            enhanced: true,
-            tracking_data: {
-              sentiment: sentimentResult.sentiment,
-              celebration_triggered: true,
-              copy_variant: celebratoryInsight.sentiment_data.copy_variant_used
-            }
-          });
-          
-          console.log('🎉 CM-01: Celebratory insight displayed for positive sentiment');
-        } else {
-          // Display enhanced insight from backend or default
-          if (responseData.enhanced_insight) {
-            setImmediateInsight(responseData.enhanced_insight);
-          } else {
-            setImmediateInsight({
-              title: 'Enhanced Check-in Complete!',
-              message: 'Thank you for sharing your detailed check-in. Your personalized insights are being prepared.',
-              enhanced: true
-            });
+            celebration_triggered: sentimentResult.sentiment === 'positive',
+            copy_variant: sentimentBasedInsight.sentiment_data.copy_variant_used
           }
-        }
+        });
+        
+        console.log(`🎭 CM-01: ${sentimentResult.sentiment} sentiment insight displayed`);
         
         setShowSuccess(true);
         
@@ -814,9 +801,9 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
                   `
                 }} />
                 <div className="flex justify-between text-xs text-gray-500 mt-1">
-                  <span>Not confident</span>
+                  <span>Low (1)</span>
                   <span className="font-medium text-[#FF6F61]">{formResponses.confidence_today || 5}/10</span>
-                  <span>Very confident</span>
+                  <span>High (10)</span>
                 </div>
               </div>
 
