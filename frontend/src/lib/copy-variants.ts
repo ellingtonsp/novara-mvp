@@ -13,7 +13,7 @@ export interface CopyVariant {
 }
 
 export interface InsightCopyData {
-  sentiment: 'positive' | 'neutral' | 'negative';
+  sentiment: 'positive' | 'neutral' | 'negative' | 'mixed';  // Added 'mixed'
   confidence?: number;
   mood_score?: number;
   user_name?: string;
@@ -21,6 +21,13 @@ export interface InsightCopyData {
     confidence_level?: number;
     moods?: string[];
     has_note?: boolean;
+  };
+  criticalConcerns?: string[];  // NEW: Track critical concerns detected
+  confidenceFactors?: {        // NEW: Track specific confidence issues
+    medication?: number;
+    financial?: number;
+    overall?: number;
+    medication_readiness?: number;  // NEW: For patients not currently on medications
   };
 }
 
@@ -134,17 +141,146 @@ const NEGATIVE_COPY_VARIANTS: CopyVariant[] = [
   }
 ];
 
+// NEW: Mixed sentiment copy variants for complex emotional states
+// Acknowledges positive outlook while addressing specific critical concerns
+const MIXED_COPY_VARIANTS: CopyVariant[] = [
+  {
+    title: "Your optimism shines through, and we hear your concerns",
+    message: "What strikes us most is your ability to maintain hope while being honest about what's challenging. That combination of resilience and awareness is exactly what will serve you well on this journey.",
+    emoji: "💜✨",
+    tone: "supportive",
+    action: {
+      label: "Address specific concerns",
+      type: "targeted_support"
+    }
+  },
+  {
+    title: "Strength and vulnerability, beautifully balanced",
+    message: "You're showing such wisdom—staying positive about your overall journey while naming the specific areas that need attention. This kind of self-awareness is a superpower in fertility care.",
+    emoji: "🌟💙",
+    tone: "supportive",
+    action: {
+      label: "Get clarity on concerns",
+      type: "concern_clarification"
+    }
+  },
+  {
+    title: "Your hope is real, and so are your worries",
+    message: "We see both sides of what you're experiencing—the genuine optimism and the valid concerns. Both are important parts of your story, and both deserve attention and care.",
+    emoji: "🤗⚡",
+    tone: "supportive",
+    action: {
+      label: "Create action plan",
+      type: "mixed_sentiment_planning"
+    }
+  },
+  {
+    title: "Resilient heart, thoughtful mind",
+    message: "Your ability to hold both hopefulness and specific worries shows incredible emotional intelligence. Let's honor both your strength and the areas where you need more support.",
+    emoji: "💪💭",
+    tone: "supportive",
+    action: {
+      label: "Balance hope with action",
+      type: "balanced_approach"
+    }
+  }
+];
+
+// NEW: Specialized mixed sentiment variants for specific concerns
+const MEDICATION_CONCERN_VARIANTS: CopyVariant[] = [
+  {
+    title: "Your positivity is beautiful, but let's clear up that medication confusion",
+    message: "I love seeing your hopeful spirit! And that medication confidence level tells me something important needs attention. Confusion about protocols is completely normal—let's get you the clarity you deserve.",
+    emoji: "💜🔍",
+    tone: "supportive",
+    action: {
+      label: "Get medication clarity",
+      type: "medication_support"
+    }
+  },
+  {
+    title: "Hopeful heart, confused about meds—both are valid",
+    message: "Your optimism about the journey is wonderful, and your medication confusion is totally understandable. Fertility protocols can feel overwhelming. You don't have to figure it out alone.",
+    emoji: "❤️💊",
+    tone: "supportive",
+    action: {
+      label: "Medication Q&A resources",
+      type: "medication_education"
+    }
+  }
+];
+
+const FINANCIAL_CONCERN_VARIANTS: CopyVariant[] = [
+  {
+    title: "Your hope is inspiring, and we understand the financial stress",
+    message: "What resilience you show—maintaining optimism while navigating very real financial concerns. Both your hope and your worry about costs are completely valid parts of this experience.",
+    emoji: "💜💰",
+    tone: "supportive",
+    action: {
+      label: "Financial support resources",
+      type: "financial_assistance"
+    }
+  }
+];
+
+// NEW: Medication preparation variants for patients not currently on medications
+const MEDICATION_PREPARATION_VARIANTS: CopyVariant[] = [
+  {
+    title: "It's natural to feel uncertain about starting medications",
+    message: "Your concerns about upcoming medications are completely understandable. Many patients feel anxious before starting their protocol. This anticipation often feels bigger than the actual experience.",
+    emoji: "💙🌱",
+    tone: "supportive",
+    action: {
+      label: "Medication preparation guide",
+      type: "medication_preparation_support"
+    }
+  },
+  {
+    title: "Preparation anxiety is so common in this journey",
+    message: "Feeling worried about medications you haven't started yet? You're not alone. This shows you're thinking ahead and want to be prepared—that's actually a strength, even when it feels overwhelming.",
+    emoji: "🤗💊",
+    tone: "supportive",
+    action: {
+      label: "What to expect with medications",
+      type: "medication_education_prep"
+    }
+  }
+];
+
 /**
  * Select appropriate copy variant based on sentiment analysis
- * Implements CM-01 requirement for celebratory copy on positive sentiment
+ * Enhanced for mixed sentiment and specific concern targeting
  */
 export function selectCopyVariant(data: InsightCopyData): CopyVariant {
-  const { sentiment, confidence = 0.5, mood_score = 5, user_name } = data;
+  const { 
+    sentiment, 
+    confidence = 0.5, 
+    mood_score = 5, 
+    user_name, 
+    context,
+    criticalConcerns = [],
+    confidenceFactors = {}
+  } = data;
   
   let variants: CopyVariant[];
   
-  // CM-01: Use celebratory variants for positive sentiment
-  if (sentiment === 'positive') {
+  // NEW: Handle mixed sentiment with specialized variants
+  if (sentiment === 'mixed') {
+    // Check for specific concern types and use specialized variants
+    if (criticalConcerns.includes('medication') || 
+        (confidenceFactors.medication !== undefined && confidenceFactors.medication <= 3)) {
+      variants = MEDICATION_CONCERN_VARIANTS;
+    } else if (criticalConcerns.includes('medication_preparation') || 
+               (confidenceFactors.medication_readiness !== undefined && confidenceFactors.medication_readiness <= 3)) {
+      variants = MEDICATION_PREPARATION_VARIANTS;
+    } else if (criticalConcerns.includes('financial') || 
+               (confidenceFactors.financial !== undefined && confidenceFactors.financial <= 3)) {
+      variants = FINANCIAL_CONCERN_VARIANTS;
+    } else {
+      // General mixed sentiment
+      variants = MIXED_COPY_VARIANTS;
+    }
+  } else if (sentiment === 'positive') {
     variants = POSITIVE_COPY_VARIANTS;
   } else if (sentiment === 'negative') {
     variants = NEGATIVE_COPY_VARIANTS;
@@ -168,15 +304,29 @@ export function selectCopyVariant(data: InsightCopyData): CopyVariant {
     }
   }
   
+  // For mixed sentiment, prefer variants that match the specific concern
+  if (sentiment === 'mixed' && variants.length > 1) {
+    // If we have medication concerns and medication variants, prefer those
+    if (variants === MEDICATION_CONCERN_VARIANTS) {
+      // Choose based on severity of medication confidence
+      const medConfidence = confidenceFactors.medication || 5;
+      return medConfidence <= 2 ? variants[0] : variants[1]; // More supportive for very low confidence
+    }
+    
+    // For general mixed sentiment, rotate randomly
+    const randomIndex = Math.floor(Math.random() * variants.length);
+    return variants[randomIndex];
+  }
+  
   // For neutral/negative, rotate randomly to avoid repetition
   const randomIndex = Math.floor(Math.random() * variants.length);
   let selectedVariant = variants[randomIndex];
   
-  // Personalize with user name if available
-  if (user_name && sentiment === 'positive') {
+  // Personalize with user name if available and appropriate
+  if (user_name && (sentiment === 'positive' || sentiment === 'mixed')) {
     selectedVariant = {
       ...selectedVariant,
-      title: selectedVariant.title.replace('You\'re', `${user_name}, you're`),
+      title: selectedVariant.title.replace('Your', `${user_name}, your`),
       message: selectedVariant.message
     };
   }
@@ -186,7 +336,7 @@ export function selectCopyVariant(data: InsightCopyData): CopyVariant {
 
 /**
  * Generate insight copy based on sentiment analysis results
- * Main function called from insight generation system
+ * Enhanced to handle mixed sentiment and critical concerns
  */
 export function generateSentimentBasedInsight(data: InsightCopyData): {
   title: string;
@@ -197,6 +347,8 @@ export function generateSentimentBasedInsight(data: InsightCopyData): {
     confidence: number;
     copy_variant_used: string;
     celebration_triggered: boolean;
+    critical_concerns_detected?: string[];
+    confidence_factors?: Record<string, number>;
   };
 } {
   const variant = selectCopyVariant(data);
@@ -209,7 +361,9 @@ export function generateSentimentBasedInsight(data: InsightCopyData): {
       sentiment: data.sentiment,
       confidence: data.confidence || 0,
       copy_variant_used: variant.tone,
-      celebration_triggered: data.sentiment === 'positive'
+      celebration_triggered: data.sentiment === 'positive',
+      critical_concerns_detected: data.criticalConcerns,
+      confidence_factors: data.confidenceFactors
     }
   };
 }

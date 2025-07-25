@@ -50,7 +50,7 @@ export interface ShareActionEvent {
 
 export interface SentimentScoredEvent {
   user_id: string;
-  sentiment: 'positive' | 'neutral' | 'negative';
+  sentiment: 'positive' | 'neutral' | 'negative' | 'mixed';  // Added 'mixed'
   confidence: number;
   mood_score: number;
   processing_time_ms: number;
@@ -61,6 +61,26 @@ export interface SentimentScoredEvent {
     negative: number;
     compound: number;
   };
+  critical_concerns?: string[];  // NEW: Track critical concerns detected
+  confidence_factors?: {        // NEW: Track confidence factors that influenced sentiment
+    medication?: number;
+    financial?: number;
+    overall?: number;
+  };
+}
+
+export interface InsightFeedbackEvent {
+  user_id: string;
+  insight_id: string;           // Unique ID for the insight shown
+  feedback_type: 'helpful' | 'not_helpful';
+  feedback_text?: string;       // Optional constructive feedback
+  insight_context: {
+    sentiment: 'positive' | 'neutral' | 'negative' | 'mixed';
+    copy_variant_used: string;
+    critical_concerns?: string[];
+    confidence_factors?: Record<string, number>;
+  };
+  timestamp: string;
 }
 
 // Vercel-specific environment detection
@@ -292,6 +312,40 @@ export const track = (event: string, payload: Record<string, any>): void => {
     }
   } else {
     console.log('🎯 AN-01 DEBUG: Skipping PostHog tracking - conditions not met');
+  }
+};
+
+// CM-01: Track insight feedback for continuous improvement
+export const trackInsightFeedback = (payload: InsightFeedbackEvent): void => {
+  if (!isAnalyticsEnabled()) {
+    console.log('📊 Analytics disabled - would track insight_feedback:', payload);
+    return;
+  }
+
+  try {
+    console.log('📊 Tracking insight_feedback event:', payload);
+    
+    // Track with PostHog
+    posthog.capture('insight_feedback', {
+      user_id: payload.user_id,
+      insight_id: payload.insight_id,
+      feedback_type: payload.feedback_type,
+      feedback_text: payload.feedback_text,
+      sentiment: payload.insight_context.sentiment,
+      copy_variant_used: payload.insight_context.copy_variant_used,
+      critical_concerns: payload.insight_context.critical_concerns,
+      confidence_factors: payload.insight_context.confidence_factors,
+      timestamp: payload.timestamp,
+      // Add metadata for analysis
+      $set: {
+        last_insight_feedback: payload.feedback_type,
+        last_feedback_timestamp: payload.timestamp
+      }
+    });
+
+    console.log('✅ insight_feedback event tracked successfully');
+  } catch (error) {
+    console.error('❌ Failed to track insight_feedback event:', error);
   }
 };
 
