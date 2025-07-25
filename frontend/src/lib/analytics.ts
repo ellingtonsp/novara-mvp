@@ -92,7 +92,7 @@ export const track = (event: string, payload: Record<string, any>): void => {
     timestamp: new Date().toISOString()
   };
 
-  if (environmentConfig.isProduction || environmentConfig.isStaging) {
+  if (environmentConfig.isProduction || environmentConfig.isStaging || environmentConfig.isPreview) {
     try {
       posthog.capture(event, enrichedPayload);
       
@@ -131,7 +131,7 @@ export const trackShareAction = (payload: ShareActionEvent): void => {
 
 // Utility functions
 export const identifyUser = (userId: string, userProperties?: Record<string, any>): void => {
-  if (environmentConfig.isProduction || environmentConfig.isStaging) {
+  if (environmentConfig.isProduction || environmentConfig.isStaging || environmentConfig.isPreview) {
     try {
       posthog.identify(userId, userProperties);
       
