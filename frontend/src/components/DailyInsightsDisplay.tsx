@@ -1,10 +1,11 @@
 // DailyInsightsDisplay.tsx - Fixed TypeScript errors
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Lightbulb, Heart, TrendingUp, Brain, X, RefreshCw, ThumbsUp, Bookmark } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { API_BASE_URL } from '../lib/environment';
+import { trackInsightViewed } from '../lib/analytics';
 
 
 
@@ -29,7 +30,7 @@ interface InsightResponse {
 }
 
 const DailyInsightsDisplay: React.FC = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [insight, setInsight] = useState<Insight | null>(null);
   const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -37,6 +38,8 @@ const DailyInsightsDisplay: React.FC = () => {
   const [hasBeenViewed, setHasBeenViewed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [insightViewed, setInsightViewed] = useState(false);
+  const insightRef = useRef<HTMLDivElement>(null);
 
   // Fetch insights when component mounts
   useEffect(() => {
@@ -45,7 +48,45 @@ const DailyInsightsDisplay: React.FC = () => {
     }
   }, [isAuthenticated, isVisible]);
 
-  // Track view engagement when insight is displayed
+  // Track insight view using IntersectionObserver - AN-01 Event Tracking
+  useEffect(() => {
+    if (!insight || !insightRef.current || insightViewed) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
+            // Insight is 50% visible, track the view
+            if (user && insight) {
+              try {
+                trackInsightViewed({
+                  user_id: user.id,
+                  insight_id: `insight_${insight.type}_${Date.now()}`,
+                  insight_type: insight.type,
+                  dwell_ms: 0 // Will be updated when user leaves
+                });
+                setInsightViewed(true);
+              } catch (error) {
+                console.error('Failed to track insight view:', error);
+              }
+            }
+          }
+        });
+      },
+      {
+        threshold: 0.5, // 50% visibility threshold
+        rootMargin: '0px'
+      }
+    );
+
+    observer.observe(insightRef.current);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [insight, user, insightViewed]);
+
+  // Track view engagement when insight is displayed (legacy)
   useEffect(() => {
     if (insight && isVisible && !hasBeenViewed) {
       trackEngagement('viewed');
@@ -277,7 +318,7 @@ const DailyInsightsDisplay: React.FC = () => {
   const colors = getColorScheme(insight.type);
 
   return (
-    <Card className={`w-full mx-auto mb-6 border-2 ${colors.border} ${colors.bg} shadow-sm`}>
+    <Card ref={insightRef} className={`w-full mx-auto mb-6 border-2 ${colors.border} ${colors.bg} shadow-sm`}>
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex items-center space-x-3">
