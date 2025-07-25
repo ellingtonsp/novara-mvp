@@ -1,5 +1,5 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { trackEvent } from '../lib/analytics';
+// import { trackEvent } from '../lib/analytics';
 
 interface Props {
   children: ReactNode;
@@ -27,7 +27,7 @@ export class ErrorBoundary extends Component<Props, State> {
     console.error('ErrorBoundary caught an error:', error, errorInfo);
     
     // Track error in analytics
-    trackEvent('Error', 'boundary_caught', error.message);
+            // trackEvent('Error', 'boundary_caught', error.message);
     
     // Call custom error handler if provided
     if (this.props.onError) {
@@ -104,7 +104,7 @@ export class ErrorBoundary extends Component<Props, State> {
 export const useErrorHandler = () => {
   const handleError = (error: Error, context?: string) => {
     console.error(`Error in ${context || 'component'}:`, error);
-    trackEvent('Error', 'hook_caught', error.message);
+            // trackEvent('Error', 'hook_caught', error.message);
     
     // You could send to error reporting service here
     // Example: Sentry.captureException(error);

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Heart, Clock, CheckCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { trackDailyCheckin, trackInsightGeneration, trackEvent } from '../lib/analytics';
+// import { trackDailyCheckin, trackInsightGeneration, trackEvent } from '../lib/analytics';
 import { API_BASE_URL } from '../lib/environment';
 
 interface DailyCheckinFormProps {
@@ -334,17 +334,17 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
       }
 
       if (response.ok && responseData.success) {
-        // Track enhanced check-in completion
-        trackDailyCheckin(selectedMoods.join(','), (enhancedCheckinData as any).confidence_today || 5);
-        trackEvent('Check-in', 'completed', 'enhanced');
+        // Track enhanced check-in completion - AN-01 Event Tracking
+        // trackDailyCheckin(selectedMoods.join(','), (enhancedCheckinData as any).confidence_today || 5);
+        // trackEvent('Check-in', 'completed', 'enhanced');
         
         // Display enhanced insight
         if (responseData.enhanced_insight) {
           setImmediateInsight(responseData.enhanced_insight);
           
-          // Track enhanced insight delivery
-          trackInsightGeneration(responseData.enhanced_insight.enhanced ? 'enhanced_checkin_micro' : 'checkin_micro');
-          trackEvent('Insights', 'delivered', responseData.enhanced_insight.title);
+          // Track enhanced insight delivery - AN-01 Event Tracking
+          // trackInsightGeneration(responseData.enhanced_insight.enhanced ? 'enhanced_checkin_micro' : 'checkin_micro');
+          // trackEvent('Insights', 'delivered', responseData.enhanced_insight.title);
         } else {
           setImmediateInsight({
             title: 'Enhanced Check-in Complete!',

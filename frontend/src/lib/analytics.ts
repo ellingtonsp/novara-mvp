@@ -5,9 +5,7 @@ import posthog from 'posthog-js';
 import { environmentConfig } from './environment';
 
 // PostHog Configuration
-const POSTHOG_PROJECT = 'novara-prod';
 const POSTHOG_HOST = 'https://app.posthog.com';
-const POSTHOG_COOKIE_DOMAIN = '.novara.health';
 
 // Event names as defined in AN-01
 export const ANALYTICS_EVENTS = {
@@ -66,7 +64,7 @@ export const initializeAnalytics = (): void => {
   try {
     posthog.init(apiKey, {
       api_host: POSTHOG_HOST,
-      loaded: (posthog) => {
+      loaded: () => {
         if (environmentConfig.debugMode) {
           console.log('PostHog initialized successfully');
         }

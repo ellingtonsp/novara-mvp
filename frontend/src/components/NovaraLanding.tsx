@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Heart, Users, Calendar, MessageCircle, ArrowRight, CheckCircle, LogOut, User, Menu, X, RefreshCw } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { apiClient } from '../lib/api';
-import { trackEvent, trackAuthEvent } from '../lib/analytics';
+// import { trackEvent, trackAuthEvent } from '../lib/analytics';
 import { clearAllCaches } from '../utils/pwa';
 import DailyCheckinForm from './DailyCheckinForm';
 import DailyInsightsDisplay from './DailyInsightsDisplay';
@@ -166,8 +166,8 @@ const NovaraLanding = () => {
         login(formData.email, response.data.token, response.data.user);
         
                 // Track onboarding completion
-        trackEvent('Onboarding', 'completed', 'user_registration');
-        trackAuthEvent('register', true);
+        // trackEvent('Onboarding', 'completed', 'user_registration');
+        // trackAuthEvent('register', true);
         
         // Redirect to welcome insight page immediately
         console.log('🎯 Redirecting to welcome insight page');
