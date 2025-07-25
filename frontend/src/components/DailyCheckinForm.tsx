@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Heart, Clock, CheckCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { trackDailyCheckin, trackInsightGeneration, trackEvent } from '../lib/analytics';
+import { trackCheckinSubmitted } from '../lib/analytics';
 import { API_BASE_URL } from '../lib/environment';
 
 interface DailyCheckinFormProps {
@@ -270,6 +270,9 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
       return;
     }
 
+    // Start timing for AN-01 event tracking
+    (window as any).checkinStartTime = Date.now();
+
     console.log('🐛 DEBUG - selectedMoods at submit:', selectedMoods);
     console.log('🐛 DEBUG - selectedMoods.length:', selectedMoods.length);
 
@@ -334,17 +337,56 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
       }
 
       if (response.ok && responseData.success) {
-        // Track enhanced check-in completion
-        trackDailyCheckin(selectedMoods.join(','), (enhancedCheckinData as any).confidence_today || 5);
-        trackEvent('Check-in', 'completed', 'enhanced');
+        // Track check-in submission - AN-01 Event Tracking
+        console.log('🎯 AN-01 DEBUG: About to track checkin_submitted event');
+        console.log('🎯 AN-01 DEBUG: user object:', user);
+        console.log('🎯 AN-01 DEBUG: user.id:', user?.id);
+        console.log('🎯 AN-01 DEBUG: checkinStartTime:', (window as any).checkinStartTime);
+        console.log('🎯 AN-01 DEBUG: current time:', Date.now());
+        console.log('🎯 AN-01 DEBUG: time calculation:', Date.now() - (window as any).checkinStartTime);
+        console.log('🎯 AN-01 DEBUG: PostHog available:', !!(window as any).posthog);
+        console.log('🎯 AN-01 DEBUG: PostHog capture available:', !!(window as any).posthog?.capture);
+        
+        if (user?.id) {
+          const eventPayload = {
+            user_id: user.id,
+            mood_score: enhancedCheckinData.confidence_today || 5,
+            symptom_flags: selectedMoods, // Using selected moods as symptom flags per AN-01 spec
+            time_to_complete_ms: Math.max(0, Date.now() - ((window as any).checkinStartTime || Date.now()))
+          };
+          
+          console.log('🎯 AN-01 DEBUG: trackCheckinSubmitted payload:', eventPayload);
+          
+          // Ensure user is identified before tracking
+          try {
+            if ((window as any).posthog?.identify) {
+              console.log('🎯 AN-01 DEBUG: Identifying user before tracking:', user.id);
+              (window as any).posthog.identify(user.id);
+            }
+          } catch (error) {
+            console.error('❌ AN-01 DEBUG: User identification failed:', error);
+          }
+          
+          // Test direct PostHog call first
+          try {
+            if ((window as any).posthog?.capture) {
+              console.log('🎯 AN-01 DEBUG: Testing direct PostHog capture...');
+              (window as any).posthog.capture('checkin_submitted', eventPayload);
+              console.log('🎯 AN-01 DEBUG: Direct PostHog capture successful');
+            }
+          } catch (error) {
+            console.error('❌ AN-01 DEBUG: Direct PostHog capture failed:', error);
+          }
+          
+          // Then try the wrapper function
+          trackCheckinSubmitted(eventPayload);
+        } else {
+          console.error('❌ AN-01 DEBUG: Cannot track checkin_submitted - user.id not available');
+        }
         
         // Display enhanced insight
         if (responseData.enhanced_insight) {
           setImmediateInsight(responseData.enhanced_insight);
-          
-          // Track enhanced insight delivery
-          trackInsightGeneration(responseData.enhanced_insight.enhanced ? 'enhanced_checkin_micro' : 'checkin_micro');
-          trackEvent('Insights', 'delivered', responseData.enhanced_insight.title);
         } else {
           setImmediateInsight({
             title: 'Enhanced Check-in Complete!',

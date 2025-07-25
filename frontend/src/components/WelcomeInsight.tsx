@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { CheckCircle } from 'lucide-react';
-import { trackInsightGeneration, trackEvent } from '../lib/analytics';
+// import { trackInsightGeneration, trackEvent } from '../lib/analytics';
 import { API_BASE_URL } from '../lib/environment';
 
 
@@ -70,8 +70,8 @@ export default function WelcomeInsight({ onContinue }: WelcomeInsightProps) {
           });
           
           // Track insight delivery
-          trackInsightGeneration('onboarding_micro');
-          trackEvent('Insights', 'delivered', data.micro_insight.title);
+                  // trackInsightGeneration('onboarding_micro');
+        // trackEvent('Insights', 'delivered', data.micro_insight.title);
         } else {
           // Fallback insight
           setInsight({
@@ -98,12 +98,12 @@ export default function WelcomeInsight({ onContinue }: WelcomeInsightProps) {
 
   const handleFeedback = (type: 'up' | 'down') => {
     setFeedbackGiven(type);
-    trackEvent('Feedback', 'submitted', type === 'up' ? 'helpful' : 'not_helpful');
+            // trackEvent('Feedback', 'submitted', type === 'up' ? 'helpful' : 'not_helpful');
   };
 
   const handleContinue = () => {
     if (insight) {
-      trackEvent('Insights', 'opened', 'onboarding_micro');
+              // trackEvent('Insights', 'opened', 'onboarding_micro');
     }
     onContinue();
   };

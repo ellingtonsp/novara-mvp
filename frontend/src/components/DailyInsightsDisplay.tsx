@@ -1,14 +1,16 @@
 // DailyInsightsDisplay.tsx - Fixed TypeScript errors
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Lightbulb, Heart, TrendingUp, Brain, X, RefreshCw, ThumbsUp, Bookmark } from 'lucide-react';
+import { Lightbulb, Heart, TrendingUp, Brain, X, RefreshCw, ThumbsUp, Bookmark, Share } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { API_BASE_URL } from '../lib/environment';
+import { trackInsightViewed, trackShareAction } from '../lib/analytics';
 
 
 
 interface Insight {
+  id?: string; // AN-01 compliant insight_id
   type: string;
   title: string;
   message: string;
@@ -29,7 +31,7 @@ interface InsightResponse {
 }
 
 const DailyInsightsDisplay: React.FC = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [insight, setInsight] = useState<Insight | null>(null);
   const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -37,6 +39,8 @@ const DailyInsightsDisplay: React.FC = () => {
   const [hasBeenViewed, setHasBeenViewed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [insightViewed, setInsightViewed] = useState(false);
+  const insightRef = useRef<HTMLDivElement>(null);
 
   // Fetch insights when component mounts
   useEffect(() => {
@@ -45,7 +49,45 @@ const DailyInsightsDisplay: React.FC = () => {
     }
   }, [isAuthenticated, isVisible]);
 
-  // Track view engagement when insight is displayed
+  // Track insight view using IntersectionObserver - AN-01 Event Tracking
+  useEffect(() => {
+    if (!insight || !insightRef.current || insightViewed) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
+            // Insight is 50% visible, track the view
+            if (user && insight) {
+              try {
+                trackInsightViewed({
+                  user_id: user.id,
+                  insight_id: insight.id || `i_${insight.type}_${Date.now()}`, // AN-01 compliant format
+                  insight_type: insight.type,
+                  dwell_ms: 0 // Will be updated when user leaves
+                });
+                setInsightViewed(true);
+              } catch (error) {
+                console.error('Failed to track insight view:', error);
+              }
+            }
+          }
+        });
+      },
+      {
+        threshold: 0.5, // 50% visibility threshold
+        rootMargin: '0px'
+      }
+    );
+
+    observer.observe(insightRef.current);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [insight, user, insightViewed]);
+
+  // Track view engagement when insight is displayed (legacy)
   useEffect(() => {
     if (insight && isVisible && !hasBeenViewed) {
       trackEngagement('viewed');
@@ -137,6 +179,64 @@ const DailyInsightsDisplay: React.FC = () => {
   const handleSave = (e: React.MouseEvent) => {
     e.stopPropagation();
     trackEngagement('saved');
+  };
+
+  const handleShare = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!insight || !user) return;
+
+    try {
+      // Prepare share data
+      const shareData = {
+        title: insight.title,
+        text: insight.message,
+        url: window.location.href
+      };
+
+      // Try native sharing first (mobile)
+      if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+        await navigator.share(shareData);
+        
+        // Track share action with native share
+        trackShareAction({
+          user_id: user.id,
+          share_surface: 'insight',
+          destination: 'native_share',
+          content_id: `insight_${insight.type}`
+        });
+        
+        console.log('✅ Shared via native share API');
+      } else {
+        // Fallback to clipboard copy
+        const shareText = `${insight.title}\n\n${insight.message}\n\n${window.location.href}`;
+        await navigator.clipboard.writeText(shareText);
+        
+        // Track share action with clipboard
+        trackShareAction({
+          user_id: user.id,
+          share_surface: 'insight',
+          destination: 'clipboard',
+          content_id: `insight_${insight.type}`
+        });
+        
+        // Show success message
+        alert('Insight copied to clipboard! 📋');
+      }
+    } catch (error) {
+      console.error('Share failed:', error);
+      
+      // Track failed share attempt
+      trackShareAction({
+        user_id: user.id,
+        share_surface: 'insight',
+        destination: 'failed',
+        content_id: `insight_${insight.type}`
+      });
+      
+      alert('Share failed. Please try again.');
+    }
   };
 
   // Get icon based on insight type
@@ -277,7 +377,7 @@ const DailyInsightsDisplay: React.FC = () => {
   const colors = getColorScheme(insight.type);
 
   return (
-    <Card className={`w-full mx-auto mb-6 border-2 ${colors.border} ${colors.bg} shadow-sm`}>
+    <Card ref={insightRef} className={`w-full mx-auto mb-6 border-2 ${colors.border} ${colors.bg} shadow-sm`}>
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex items-center space-x-3">
@@ -352,6 +452,13 @@ const DailyInsightsDisplay: React.FC = () => {
               <Bookmark className="w-4 h-4" />
               <span>Save</span>
             </button>
+                         <button
+               onClick={handleShare}
+               className="flex-1 bg-white/80 hover:bg-white text-gray-700 py-3 px-4 rounded-xl font-medium transition-colors active:scale-95 flex items-center justify-center space-x-2"
+             >
+               <Share className="w-4 h-4" />
+               <span>Share</span>
+             </button>
             <button
               onClick={handleRefresh}
               disabled={isRefreshing}

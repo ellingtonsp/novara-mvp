@@ -166,7 +166,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     // Check every 30 minutes (only in production)
     const interval = setInterval(checkTokenExpiration, 30 * 60 * 1000);
-    checkTokenExpiration();
+    
+    // Don't check immediately - wait for the first interval
+    // checkTokenExpiration(); // Removed immediate check
 
     return () => clearInterval(interval);
   }, [user]);
@@ -174,9 +176,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const refreshToken = async (): Promise<boolean> => {
     try {
       const currentUser = localStorage.getItem('user');
-      if (!currentUser) return false;
+      if (!currentUser) {
+        console.log('🔄 No user data found for token refresh');
+        return false;
+      }
 
       const userData = JSON.parse(currentUser);
+      console.log('🔄 Attempting token refresh for:', userData.email);
       
       const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: 'POST',
@@ -197,7 +203,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
       }
       
-      console.error('❌ Token refresh failed:', response.status);
+      console.error('❌ Token refresh failed:', response.status, response.statusText);
       return false;
     } catch (error) {
       console.error('❌ Token refresh error:', error);
@@ -209,7 +215,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     localStorage.setItem('token', authToken);
     localStorage.setItem('user', JSON.stringify(userData));
     setUser(userData);
-    console.log('✅ User logged in successfully');
+    console.log('✅ User logged in successfully with email:', userData.email);
   };
 
   const logout = () => {
