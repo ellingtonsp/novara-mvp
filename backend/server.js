@@ -150,6 +150,7 @@ const allowedOrigins = [
   'https://novara-mvp.vercel.app', // Production frontend
   'https://novara-mvp-staging.vercel.app', // Staging frontend
   'https://novara-mvp-git-staging-novara-fertility.vercel.app', // Vercel staging frontend
+  'https://novara-1txlqsq5z-novara-fertility.vercel.app', // Current Vercel staging frontend
 ];
 
 // Add development origins in non-production environments
@@ -159,6 +160,9 @@ if (process.env.NODE_ENV !== 'production') {
     'http://localhost:3001',  // Alternative frontend port
     'http://localhost:4200'   // Stable frontend port (ensure it's always included)
   );
+  
+  // Add Vercel staging URL pattern for dynamic deployments
+  allowedOrigins.push(/^https:\/\/novara-.*-novara-fertility\.vercel\.app$/);
 }
 
 app.use(cors({
