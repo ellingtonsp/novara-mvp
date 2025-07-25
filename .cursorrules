@@ -88,6 +88,8 @@ railway up
 4. **Assess impact** - what components will be affected?
 5. **Plan rollback** - how can we undo this if needed?
 6. **Validate approach** - is this the best solution for the problem?
+7. **Check roadmap alignment** - does this work support current sprint goals?
+8. **Reference roadmap context** - which epic/story does this work map to?
 
 ### Context Verification Commands
 ```bash
@@ -113,6 +115,8 @@ When starting a new session, ALWAYS:
 6. **Assess current context** - what are we working on and what's the goal?
 7. **Check for active issues** - any ongoing problems or recent changes?
 8. **Validate assumptions** - confirm understanding of current state
+9. **Review roadmap alignment** - check `docs/roadmaps/Novara Product Roadmap.md` for strategic context
+10. **Map work to roadmap** - identify which epic/story the current work supports
 
 ## 🎯 User Preferences & Collaboration Guidelines
 
@@ -457,16 +461,18 @@ npm run performance:production
 ## 🎯 ADVANCED WORKFLOW PATTERNS
 
 ### Feature Development
-1. **Documentation First**: Create feature documentation in `/docs/features/[feature-name]/`
-2. **User Journey Mapping**: Document complete user flows and interactions
-3. **Impact Analysis**: Identify and document downstream dependencies
-4. Create feature branch from `development`
-5. Implement with comprehensive testing
-6. Merge to `development` with PR
-7. Deploy to staging for integration testing
-8. Merge to `staging` for staging environment testing
-9. Merge to `stable` after staging validation
-10. Merge to `main` for production deployment
+1. **Roadmap Alignment**: Check `docs/roadmaps/Novara Product Roadmap.md` for strategic context
+2. **Epic/Story Mapping**: Identify which roadmap epic and story ID the feature supports
+3. **Documentation First**: Create feature documentation in `/docs/features/[feature-name]/`
+4. **User Journey Mapping**: Document complete user flows and interactions
+5. **Impact Analysis**: Identify and document downstream dependencies
+6. Create feature branch from `development`
+7. Implement with comprehensive testing
+8. Merge to `development` with PR
+9. Deploy to staging for integration testing
+10. Merge to `staging` for staging environment testing
+11. Merge to `stable` after staging validation
+12. Merge to `main` for production deployment
 - **📖 Iteration Planning**: `docs/iteration-planning.md` - Feature development planning
 - **📖 Environment Best Practices**: `docs/environment-best-practices.md` - Environment management best practices
 - **📖 Environment Stability**: `docs/environment-stability-plan.md` - Environment stability strategies
@@ -522,6 +528,8 @@ npm run performance:production
 - **Consider downstream impact** of all changes
 - **Test edge cases** in recommendations and scripts
 - **Provide fallback options** for critical operations
+- **Align with roadmap priorities** - ensure work supports current sprint goals
+- **Reference epic/story context** - map all work to specific roadmap items
 
 ### Quality Assurance
 - **Double-check all commands** before suggesting them
@@ -541,6 +549,7 @@ npm run performance:production
 
 ### Core Documentation
 - **📖 Project Requirements**: `docs/Novara PRD.md` - Product requirements document
+- **📖 Product Roadmap**: `docs/roadmaps/Novara Product Roadmap.md` - Strategic roadmap and sprint planning
 - **📖 Session Context**: `docs/session-context-template.md` - AI session context template
 - **📖 GitHub Secrets**: `docs/github-secrets-setup.md` - GitHub secrets configuration
 - **📖 Railway Setup Complete**: `docs/RAILWAY_SETUP_COMPLETE.md` - Railway setup completion guide
