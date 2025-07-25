@@ -230,13 +230,14 @@ export function analyzeSentiment(text: string): SentimentResult {
   let sentiment: 'positive' | 'neutral' | 'negative';
   let confidence: number;
   
-  // CM-01 thresholds: positive > 0.5, negative < -0.05, else neutral
-  if (compound >= 0.5) {
+  // CM-01 thresholds: positive > 0.3, negative < -0.1, else neutral
+  // Lowered positive threshold to better capture IVF journey positive moments
+  if (compound >= 0.3) {
     sentiment = 'positive';
-    confidence = Math.min(compound * 2, 1.0); // Scale 0.5-1.0 to 0.0-1.0
-  } else if (compound <= -0.05) {
+    confidence = Math.min(compound * 1.5, 1.0); // Scale 0.3-1.0 to 0.0-1.0
+  } else if (compound <= -0.1) {
     sentiment = 'negative';
-    confidence = Math.min(Math.abs(compound) * 20, 1.0); // Scale -0.05 to -1.0 to 0.0-1.0
+    confidence = Math.min(Math.abs(compound) * 10, 1.0); // Scale -0.1 to -1.0 to 0.0-1.0
   } else {
     sentiment = 'neutral';
     confidence = 1 - Math.abs(compound) * 2; // Higher confidence for values closer to 0
@@ -265,15 +266,22 @@ export function analyzeCheckinSentiment(data: {
   mood_today?: string | string[];
   user_note?: string;
   primary_concern_today?: string;
+  journey_reflection_today?: string;  // NEW: Universal reflection field
   confidence_today?: number;
 }): SentimentResult {
   let textToAnalyze = '';
   
-  // Combine all text sources
+  // PRIORITY 1: Universal journey reflection (primary sentiment source)
+  if (data.journey_reflection_today) {
+    textToAnalyze += data.journey_reflection_today + ' ';
+  }
+  
+  // PRIORITY 2: Legacy user note (for backward compatibility)
   if (data.user_note) {
     textToAnalyze += data.user_note + ' ';
   }
   
+  // PRIORITY 3: Specific concerns (secondary context)
   if (data.primary_concern_today) {
     textToAnalyze += data.primary_concern_today + ' ';
   }
