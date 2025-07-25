@@ -51,7 +51,7 @@
   - Cleans up old monitoring logs
 
 ### **5. 📋 Root Cause Analysis Documentation**
-**File**: `DEPLOYMENT_FAILURE_ROOT_CAUSE_ANALYSIS.md`
+**File**: `docs/troubleshooting/deployment-failure-root-cause-analysis.md`
 - **Purpose**: Comprehensive documentation of issues found and fixes applied
 - **Impact**: Clear understanding of what was wrong and how it was fixed
 
