@@ -123,7 +123,7 @@ class DatabaseAdapter {
     if (endpoint === 'DailyCheckins') {
       // Extract user ID from filter formula
       const filterFormula = urlObj.searchParams.get('filterByFormula');
-      const userIdMatch = filterFormula.match(/SEARCH\('([^']+)'/);
+      const userIdMatch = filterFormula ? filterFormula.match(/SEARCH\('([^']+)'/) : null;
       const userId = userIdMatch ? userIdMatch[1] : null;
       
       const maxRecords = urlObj.searchParams.get('maxRecords') || 7;
