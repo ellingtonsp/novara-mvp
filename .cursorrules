@@ -34,6 +34,10 @@
 - ALWAYS switch to correct environment: `railway environment staging`
 - ALWAYS select correct service: `railway service novara-staging`
 - NEVER assume Railway context is correct
+- **CRITICAL**: Before `railway up`, verify we're in staging environment and novara-staging service
+- **CRITICAL**: If `railway link` is needed, select "novara-mvp" project, NOT any other project
+- **CRITICAL**: After linking, immediately run `railway environment staging` and `railway service novara-staging`
+- **CRITICAL**: Never run `railway up` without confirming environment and service context
 
 ### DevOps Workflow Enforcement
 - Development → Staging → Production (NEVER skip stages)
@@ -62,12 +66,14 @@
 cd frontend && vercel --target staging
 
 # Staging Backend
+railway status  # VERIFY: Project=novara-mvp, Environment=staging, Service=novara-staging
 railway environment staging
 railway service novara-staging
 railway up
 
 # Production (ONLY after staging validation)
 cd frontend && vercel --prod
+railway status  # VERIFY: Project=novara-mvp, Environment=production, Service=novara-main
 railway environment production
 railway service novara-main
 railway up
@@ -80,6 +86,9 @@ railway up
 2. Check Railway context: `railway status`
 3. Verify environment variables are correct
 4. Confirm user approval for production changes
+5. **CRITICAL**: Verify Railway project is "novara-mvp" and service is correct for environment
+6. **CRITICAL**: For staging: Environment=staging, Service=novara-staging
+7. **CRITICAL**: For production: Environment=production, Service=novara-main
 
 ### Before Any Code Changes
 1. **Understand the goal** - what problem are we solving?
@@ -102,6 +111,9 @@ vercel ls
 
 # Verify environment
 echo $NODE_ENV
+
+# CRITICAL: Pre-deployment Railway verification
+railway status | grep -E "(Environment|Service)" && echo "✅ Railway context verified"
 ```
 
 ## 📋 Session Start Checklist
@@ -295,8 +307,30 @@ validate-feature-docs # Validate feature documentation completeness
 - **📖 Railway Guide**: `docs/railway-deployment-troubleshooting.md` - Railway-specific issues
 - **📖 Safety Checklist**: `docs/deployment-safety-checklist.md` - Pre-deployment validation
 - **📖 Quick Reference**: `docs/deployment-safety-quick-reference.md` - Fast deployment checks
+- **🚨 CRITICAL**: If "Project not found" error, run `railway link` and select "novara-mvp" project
+- **🚨 CRITICAL**: After linking, immediately set correct environment and service before deploying
 
 ### Environment-Specific Debugging
+
+#### Railway Context Troubleshooting
+```bash
+# If "Project not found" error occurs:
+railway link  # Select "novara-mvp" project
+railway environment staging  # Set staging environment
+railway service novara-staging  # Set staging service
+railway status  # Verify context before deployment
+
+# If wrong environment detected:
+railway environment staging  # Force staging environment
+railway service novara-staging  # Force staging service
+railway up  # Deploy to correct environment
+
+# Pre-deployment verification checklist:
+# ✅ Project: novara-mvp
+# ✅ Environment: staging (for staging deployment)
+# ✅ Service: novara-staging (for staging deployment)
+# ✅ Branch: staging (for staging deployment)
+```
 
 #### Local Development
 ```bash
