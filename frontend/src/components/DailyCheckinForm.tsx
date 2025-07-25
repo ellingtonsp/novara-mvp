@@ -4,8 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Heart, Clock, CheckCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { trackDailyCheckin, trackInsightGeneration, trackEvent } from '../lib/analytics';
+import { trackCheckinSubmitted, trackSentimentScored } from '../lib/analytics';
 import { API_BASE_URL } from '../lib/environment';
+import { analyzeCheckinSentiment } from '../lib/sentiment';
+import { generateSentimentBasedInsight } from '../lib/copy-variants';
 
 interface DailyCheckinFormProps {
   onComplete?: () => void;
@@ -270,6 +272,9 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
       return;
     }
 
+    // Start timing for AN-01 event tracking
+    (window as any).checkinStartTime = Date.now();
+
     console.log('🐛 DEBUG - selectedMoods at submit:', selectedMoods);
     console.log('🐛 DEBUG - selectedMoods.length:', selectedMoods.length);
 
@@ -301,6 +306,29 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
     console.log('🐛 DEBUG - enhancedCheckinData.mood_today:', enhancedCheckinData.mood_today);
     console.log('🎯 Submitting enhanced check-in data:', enhancedCheckinData);
 
+    // CM-01: Perform sentiment analysis before submission
+    const sentimentAnalysisData = {
+      mood_today: selectedMoods,
+      user_note: formResponses.user_note || '',
+      primary_concern_today: formResponses.primary_concern_today || '',
+      confidence_today: enhancedCheckinData.confidence_today
+    };
+    
+    const sentimentResult = analyzeCheckinSentiment(sentimentAnalysisData);
+    
+    console.log('🎭 CM-01: Sentiment analysis result:', sentimentResult);
+    
+    // Add sentiment data to check-in payload
+    const checkinWithSentiment = {
+      ...enhancedCheckinData,
+      sentiment_analysis: {
+        sentiment: sentimentResult.sentiment,
+        confidence: sentimentResult.confidence,
+        scores: sentimentResult.scores,
+        processing_time: sentimentResult.processingTime
+      }
+    };
+
     try {
       const token = localStorage.getItem('token');
       if (!token) {
@@ -311,14 +339,14 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
 
       // Use imported API_BASE_URL from environment configuration
       
-      // Submit enhanced check-in
+      // Submit enhanced check-in with sentiment data
       const response = await fetch(`${API_BASE_URL}/api/checkins`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(enhancedCheckinData)
+        body: JSON.stringify(checkinWithSentiment)
       });
 
       const responseData = await response.json();
@@ -334,23 +362,104 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
       }
 
       if (response.ok && responseData.success) {
-        // Track enhanced check-in completion
-        trackDailyCheckin(selectedMoods.join(','), (enhancedCheckinData as any).confidence_today || 5);
-        trackEvent('Check-in', 'completed', 'enhanced');
+        // Track check-in submission - AN-01 Event Tracking
+        console.log('🎯 AN-01 DEBUG: About to track checkin_submitted event');
+        console.log('🎯 AN-01 DEBUG: user object:', user);
+        console.log('🎯 AN-01 DEBUG: user.id:', user?.id);
+        console.log('🎯 AN-01 DEBUG: checkinStartTime:', (window as any).checkinStartTime);
+        console.log('🎯 AN-01 DEBUG: current time:', Date.now());
+        console.log('🎯 AN-01 DEBUG: time calculation:', Date.now() - (window as any).checkinStartTime);
+        console.log('🎯 AN-01 DEBUG: PostHog available:', !!(window as any).posthog);
+        console.log('🎯 AN-01 DEBUG: PostHog capture available:', !!(window as any).posthog?.capture);
         
-        // Display enhanced insight
-        if (responseData.enhanced_insight) {
-          setImmediateInsight(responseData.enhanced_insight);
+        if (user?.id) {
+          const eventPayload = {
+            user_id: user.id,
+            mood_score: enhancedCheckinData.confidence_today || 5,
+            symptom_flags: selectedMoods, // Using selected moods as symptom flags per AN-01 spec
+            time_to_complete_ms: Math.max(0, Date.now() - ((window as any).checkinStartTime || Date.now()))
+          };
           
-          // Track enhanced insight delivery
-          trackInsightGeneration(responseData.enhanced_insight.enhanced ? 'enhanced_checkin_micro' : 'checkin_micro');
-          trackEvent('Insights', 'delivered', responseData.enhanced_insight.title);
+          console.log('🎯 AN-01 DEBUG: trackCheckinSubmitted payload:', eventPayload);
+          
+          // Ensure user is identified before tracking
+          try {
+            if ((window as any).posthog?.identify) {
+              console.log('🎯 AN-01 DEBUG: Identifying user before tracking:', user.id);
+              (window as any).posthog.identify(user.id);
+            }
+          } catch (error) {
+            console.error('❌ AN-01 DEBUG: User identification failed:', error);
+          }
+          
+          // Test direct PostHog call first
+          try {
+            if ((window as any).posthog?.capture) {
+              console.log('🎯 AN-01 DEBUG: Testing direct PostHog capture...');
+              (window as any).posthog.capture('checkin_submitted', eventPayload);
+              console.log('🎯 AN-01 DEBUG: Direct PostHog capture successful');
+            }
+          } catch (error) {
+            console.error('❌ AN-01 DEBUG: Direct PostHog capture failed:', error);
+          }
+          
+          // Then try the wrapper function
+          trackCheckinSubmitted(eventPayload);
+          
+          // CM-01: Track sentiment analysis event
+          const sentimentEventPayload = {
+            user_id: user.id,
+            sentiment: sentimentResult.sentiment,
+            confidence: sentimentResult.confidence,
+            mood_score: enhancedCheckinData.confidence_today || 5,
+            processing_time_ms: sentimentResult.processingTime,
+            text_sources: [
+              ...(sentimentAnalysisData.user_note ? ['user_note'] : []),
+              ...(sentimentAnalysisData.primary_concern_today ? ['primary_concern'] : []),
+              ...(sentimentAnalysisData.mood_today && sentimentAnalysisData.mood_today.length > 0 ? ['mood_selection'] : [])
+            ],
+            sentiment_scores: sentimentResult.scores
+          };
+          
+          console.log('🎭 CM-01: Tracking sentiment_scored event:', sentimentEventPayload);
+          trackSentimentScored(sentimentEventPayload);
         } else {
-          setImmediateInsight({
-            title: 'Enhanced Check-in Complete!',
-            message: 'Thank you for sharing your detailed check-in. Your personalized insights are being prepared.',
-            enhanced: true
+          console.error('❌ AN-01 DEBUG: Cannot track checkin_submitted - user.id not available');
+        }
+        
+        // CM-01: Generate sentiment-based insight
+        if (sentimentResult.sentiment === 'positive') {
+          const celebratoryInsight = generateSentimentBasedInsight({
+            sentiment: sentimentResult.sentiment,
+            confidence: sentimentResult.confidence,
+            mood_score: enhancedCheckinData.confidence_today || 5,
+            user_name: user?.nickname || user?.email?.split('@')[0]
           });
+          
+          setImmediateInsight({
+            title: celebratoryInsight.title,
+            message: celebratoryInsight.message,
+            action: celebratoryInsight.action,
+            enhanced: true,
+            tracking_data: {
+              sentiment: sentimentResult.sentiment,
+              celebration_triggered: true,
+              copy_variant: celebratoryInsight.sentiment_data.copy_variant_used
+            }
+          });
+          
+          console.log('🎉 CM-01: Celebratory insight displayed for positive sentiment');
+        } else {
+          // Display enhanced insight from backend or default
+          if (responseData.enhanced_insight) {
+            setImmediateInsight(responseData.enhanced_insight);
+          } else {
+            setImmediateInsight({
+              title: 'Enhanced Check-in Complete!',
+              message: 'Thank you for sharing your detailed check-in. Your personalized insights are being prepared.',
+              enhanced: true
+            });
+          }
         }
         
         setShowSuccess(true);

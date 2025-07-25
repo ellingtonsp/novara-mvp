@@ -250,7 +250,7 @@ VITE_API_URL=https://novara-mvp-production.up.railway.app
 ### **Documentation**
 - `docs/production-deployment-guide.md` - Complete deployment guide
 - `README.md` - Project overview
-- `PRODUCTION_STATUS_SUMMARY.md` - Current status
+- `docs/troubleshooting/production-status-summary.md` - Current status
 
 ## 🎯 **Common Patterns**
 

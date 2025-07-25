@@ -1,0 +1,613 @@
+# Cursor AI Rules for Novara MVP
+
+> **Mission Statement:** Accelerate fertility patients' access to accurate insights, compassionate support, and effective treatments by delivering high-quality software rapidly and safely.
+
+> **Guiding Principles:**
+> 1. **Patient-First** – Every decision and line of code must ultimately benefit patients.
+> 2. **Velocity × Quality** – Ship quickly **and** safely; speed is pointless without reliability.
+> 3. **Documentation as Leverage** – Clear docs shorten onboarding and unlock autonomy.
+> 4. **Automation over Repetition** – Script anything done twice; humans focus on judgement.
+> 5. **Secure & Private by Default** – Patient data protection is non-negotiable.
+> 6. **Continuous Learning** – Treat failures as feedback loops for improvement.
+
+> **Success Metrics (tracked quarterly):**
+> • Median lead-time from PR merge → patient-visible change ≤ **2 days**
+> • Staging ↔ Production defect escape rate < **2 %**
+> • Mean Time-to-Detect (MTTD) critical issues < **30 min**
+> • Mean Time-to-Restore (MTTR) production < **60 min**
+> • Documentation coverage of new features **100 %**
+
+---
+# Cursor AI Rules for Novara MVP
+# This file helps maintain critical context across AI sessions
+
+## 🚨 CRITICAL DEPLOYMENT RULES
+
+### Environment-Specific Commands
+- NEVER use `vercel --prod` for staging deployments
+- ALWAYS use `vercel --target staging` or staging-specific commands
+- ALWAYS verify environment before deploying
+- NEVER bypass staging → production workflow
+
+### Railway Context Management
+- ALWAYS check `railway status` before any Railway operations
+- ALWAYS switch to correct environment: `railway environment staging`
+- ALWAYS select correct service: `railway service novara-staging`
+- NEVER assume Railway context is correct
+- **CRITICAL**: Before `railway up`, verify we're in staging environment and novara-staging service
+- **CRITICAL**: If `railway link` is needed, select "novara-mvp" project, NOT any other project
+- **CRITICAL**: After linking, immediately run `railway environment staging` and `railway service novara-staging`
+- **CRITICAL**: Never run `railway up` without confirming environment and service context
+
+### DevOps Workflow Enforcement
+- Development → Staging → Production (NEVER skip stages)
+- ALWAYS test on staging before production
+- ALWAYS require explicit user approval for production changes
+- NEVER make production changes without staging validation
+
+## 🔧 Technical Context
+
+### Current Environment URLs
+- **Staging Frontend**: https://novara-bd6xsx1ru-novara-fertility.vercel.app
+- **Staging Backend**: https://novara-staging-staging.up.railway.app
+- **Production Frontend**: https://novara-mvp.vercel.app
+- **Production Backend**: https://novara-mvp-production.up.railway.app
+
+### Railway Project Structure
+- **Project**: novara-mvp
+- **Staging Environment**: staging
+- **Staging Service**: novara-staging
+- **Production Environment**: production
+- **Production Service**: novara-main
+
+### Deployment Commands
+```bash
+# Staging Frontend
+cd frontend && vercel --target staging
+
+# Staging Backend
+railway status  # VERIFY: Project=novara-mvp, Environment=staging, Service=novara-staging
+railway environment staging
+railway service novara-staging
+railway up
+
+# Production (ONLY after staging validation)
+cd frontend && vercel --prod
+railway status  # VERIFY: Project=novara-mvp, Environment=production, Service=novara-main
+railway environment production
+railway service novara-main
+railway up
+```
+
+## 🚨 Safety Checks
+
+### Before Any Deployment
+1. Check current branch: `git branch`
+2. Check Railway context: `railway status`
+3. Verify environment variables are correct
+4. Confirm user approval for production changes
+5. **CRITICAL**: Verify Railway project is "novara-mvp" and service is correct for environment
+6. **CRITICAL**: For staging: Environment=staging, Service=novara-staging
+7. **CRITICAL**: For production: Environment=production, Service=novara-main
+
+### Before Any Code Changes
+1. **Understand the goal** - what problem are we solving?
+2. **Check existing solutions** - is this already implemented elsewhere?
+3. **Review related documentation** - understand current patterns
+4. **Assess impact** - what components will be affected?
+5. **Plan rollback** - how can we undo this if needed?
+6. **Validate approach** - is this the best solution for the problem?
+7. **Check roadmap alignment** - does this work support current sprint goals?
+8. **Reference roadmap context** - which epic/story does this work map to?
+
+### Context Verification Commands
+```bash
+# Verify Railway context
+railway status
+railway domain
+
+# Verify Vercel context
+vercel ls
+
+# Verify environment
+echo $NODE_ENV
+
+# CRITICAL: Pre-deployment Railway verification
+railway status | grep -E "(Environment|Service)" && echo "✅ Railway context verified"
+```
+
+## 📋 Session Start Checklist
+
+When starting a new session, ALWAYS:
+1. Check current working directory
+2. Verify Railway environment and service
+3. Confirm which environment we're working with
+4. Review recent deployment history
+5. Ask user for explicit confirmation before any production changes
+6. **Assess current context** - what are we working on and what's the goal?
+7. **Check for active issues** - any ongoing problems or recent changes?
+8. **Validate assumptions** - confirm understanding of current state
+9. **Review roadmap alignment** - check `docs/roadmaps/Novara Product Roadmap.md` for strategic context
+10. **Map work to roadmap** - identify which epic/story the current work supports
+
+## 🎯 User Preferences & Collaboration Guidelines
+
+### Development Preferences
+- User prefers stable port strategy (4200/9002) for local development
+- User requires strict adherence to DevOps branching strategy
+- User wants comprehensive testing scripts for all changes
+- User prefers automated deployment scripts over manual commands
+- User requires explicit validation before production deployments
+
+### Communication & Workflow Preferences
+- **User prefers the assistant to constantly evaluate the tech stack for risks and technical debt** versus alternative solutions
+- **User will test exclusively themselves** - assistant should provide comprehensive test scripts but not expect to run tests
+- **User prefers GitHub issues for tracking** but is open to Cursor todos
+- **User prefers to always start with local development environment** unless explicitly instructed to use staging or production
+- **User is not comfortable editing code themselves** - assistant should make all code changes
+- **User prefers the assistant to automatically run necessary local server scripts** when asked to run the app locally
+- **User prefers the assistant to articulate explanations and thought processes** when applying fixes
+- **User prefers carefully formatted terminal commands** to avoid syntax or format issues
+
+### Expectation Management
+- **Always provide context** for why a particular approach is recommended
+- **Explain trade-offs** when multiple solutions exist
+- **Flag potential risks** before implementing changes
+- **Suggest alternatives** when current approach has limitations
+- **Provide rollback instructions** for any significant changes
+
+## 🏗️ ARCHITECTURE & TECH STACK
+
+### Frontend (React + TypeScript + Vite)
+- **Framework**: React 18 with TypeScript
+- **Build Tool**: Vite with PWA support
+- **Styling**: Tailwind CSS + shadcn/ui components
+- **State Management**: React Context (AuthContext)
+- **API Client**: Custom fetch wrapper with automatic token refresh
+- **Testing**: Vitest + React Testing Library
+- **Port Strategy**: 4200 (stable, low conflict)
+- **📖 Tech Stack Audit**: `docs/tech-stack-audit-report.md` - Comprehensive technology assessment
+- **📖 Optimization Guide**: `docs/optimization-implementation-guide.md` - Performance optimization strategies
+
+### Backend (Node.js + Express)
+- **Runtime**: Node.js with Express
+- **Database**: SQLite (local) + Airtable (production/staging)
+- **Authentication**: JWT with 90-day expiration
+- **Middleware**: Security, validation, performance monitoring
+- **Testing**: Jest
+- **Port Strategy**: 9002 (stable, low conflict)
+- **📖 Railway Setup**: `docs/railway-environment-setup.md` - Railway backend configuration
+- **📖 Railway API**: `docs/railway-api-setup.md` - Railway API integration
+- **📖 Railway Deployment**: `docs/railway-deployment.md` - Railway deployment procedures
+
+### External Services
+- **Frontend Hosting**: Vercel (with staging environment)
+- **Backend Hosting**: Railway (with staging environment)
+- **Database**: Airtable (production + staging bases)
+- **Monitoring**: Sentry for error tracking
+- **Analytics**: Custom implementation
+- **📖 Vercel Setup**: `docs/vercel-git-branch-setup.md` - Vercel environment configuration
+- **📖 Multi-Environment**: `docs/multi-environment-setup.md` - Complete multi-environment setup
+- **📖 Environment Summary**: `docs/multi-environment-summary.md` - Environment overview
+
+## 🔄 BRANCHING STRATEGY
+
+### Branch Flow
+```
+Feature Branch → development → staging → stable → main
+```
+
+### Environment Mapping
+| Branch | Environment | Database | Auto-Deploy |
+|--------|------------|----------|-------------|
+| `main` | Production | Production Airtable | ✅ |
+| `stable` | Pre-Production | Production Airtable | ❌ |
+| `staging` | Staging | Staging Airtable | ✅ |
+| `development` | Local Dev | Local/Dev Airtable | ❌ |
+
+### Critical Rules
+- NEVER merge directly to `main` (except hotfixes)
+- ALWAYS test in staging before production
+- ALWAYS create PRs for `stable` and `main` merges
+- Hotfixes: Create from `main`, test in staging, merge back to `main`
+- **📖 Branch Protection**: `docs/github-branch-protection-guide.md` - GitHub branch protection setup
+- **📖 Protection Decisions**: `docs/branch-protection-decision-guide.md` - Branch protection strategy
+- **📖 PR Resolution**: `docs/pr-resolution-prompt.md` - Pull request conflict resolution
+
+## 🛠️ AUTOMATION & SCRIPTS
+
+### Available Scripts (npm run)
+```bash
+# Development
+start-dev-stable    # Start local dev with stable ports (4200/9002)
+start-local         # Quick local start
+kill-local-servers  # Clean shutdown of local servers
+
+# Testing & Validation
+test                # Run all tests (frontend + backend)
+health-check        # Comprehensive environment health check
+validate-environments # Validate all environment configurations
+validate-schema     # Validate Airtable schema
+safety:check        # Pre-deployment safety validation
+
+# Monitoring
+monitor:deployments # Track deployment status
+monitor:platforms   # Monitor Railway/Vercel health
+performance         # Performance monitoring
+track:deployments   # Deployment tracking
+
+# Deployment
+deploy:staging      # Deploy to staging with validation
+deploy:production   # Deploy to production with validation
+pre-deploy          # Run all pre-deployment checks
+
+# Feature Documentation
+create-feature-docs # Generate feature documentation template
+validate-feature-docs # Validate feature documentation completeness
+```
+
+### Key Automation Scripts
+- `scripts/start-dev-stable.sh` - Stable local development
+- `scripts/deploy-with-validation.sh` - Safe deployment with checks
+- `scripts/environment-health-check.js` - Comprehensive health monitoring
+- `scripts/railway-web-monitor.js` - Railway failure detection
+- `scripts/performance-monitor.js` - Performance tracking
+- `scripts/create-feature-docs.sh` - Generate feature documentation templates
+- `scripts/validate-feature-docs.js` - Validate feature documentation completeness
+
+## 🔍 TROUBLESHOOTING GUIDES
+
+### Context-Aware Problem Solving
+- **ALWAYS check feature documentation first**: `/docs/features/[feature-name]/` for relevant context
+- **Review downstream impact**: Check `downstream-impact.md` files for affected components
+- **Validate user journey**: Ensure changes don't break documented user flows
+- **Cross-reference dependencies**: Check all related feature documentation
+
+### Systematic Problem Resolution
+- **Start with the simplest explanation** - check obvious issues first
+- **Gather complete context** before proposing solutions
+- **Test assumptions** - don't assume the problem is where it appears to be
+- **Provide multiple diagnostic approaches** - different ways to verify the issue
+- **Document the resolution** - add to troubleshooting guides for future reference
+
+### Common Issues & Solutions
+
+#### Authentication Issues
+- **Problem**: 403 Forbidden errors
+- **Solution**: Automatic token refresh system implemented
+- **Check**: `frontend/src/contexts/AuthContext.tsx` for token management
+- **Debug**: Check browser console for token refresh logs
+- **📖 Complete Guide**: `docs/authentication-improvements.md` - Detailed troubleshooting and implementation
+
+#### Port Conflicts
+- **Problem**: Port 3000 conflicts with other tools
+- **Solution**: Use stable port strategy (4200/9002)
+- **Script**: `./scripts/start-dev-stable.sh`
+- **Fallback**: `./scripts/macos-port-manager.sh`
+- **📖 Port Strategy**: `docs/port-strategy-guide.md` - Complete port management strategy
+- **📖 macOS Guide**: `docs/macos-port-management.md` - macOS-specific port management
+- **📖 Quick Reference**: `docs/macos-quick-reference.md` - Quick port troubleshooting
+
+#### Database Issues
+- **Local**: SQLite database in `backend/data/novara-local.db`
+- **Staging**: Airtable base `appEOWvLjCn5c7Ght`
+- **Production**: Production Airtable base
+- **Debug**: `scripts/detailed-database-diagnostic.js`
+- **📖 Architecture**: `docs/database-architecture-assessment.md` - Database design and optimization
+- **📖 Schema Issues**: `docs/airtable-schema-issues.md` - Common Airtable schema problems
+- **📖 Schema Migration**: `docs/airtable-schema-migration.md` - Schema update procedures
+- **📖 Local Options**: `docs/setup-guides/local-database-options.md` - Local database configuration
+
+#### Environment Detection Issues
+- **Problem**: Wrong environment detected (e.g., "staging" in production)
+- **Root Cause**: Newline characters in environment variables or incorrect VITE_ENV usage
+- **Solution**: Use `environmentConfig` from `frontend/src/lib/environment.ts` instead of direct env vars
+- **Check**: Browser console for `🔍 ENVIRONMENT DETECTION DEBUG` logs
+- **Debug**: Verify `VITE_ENV` has no trailing newlines in .env files
+- **Fix**: Update components to use `environmentConfig.environment` instead of `import.meta.env.VITE_VERCEL_ENV`
+- **📖 Complete Guide**: `docs/environment-detection-troubleshooting.md` - Environment detection resolution
+- **📖 Vercel Guide**: `docs/vercel-preview-detection-implementation.md` - Vercel environment detection
+- **🚨 CRITICAL**: Always use `environmentConfig` from environment.ts, never direct env vars in components
+
+#### Deployment Failures
+- **Check**: `railway status` and `vercel ls`
+- **Monitor**: `npm run monitor:deployments`
+- **Debug**: `scripts/railway-failure-monitor.js`
+- **Recovery**: `scripts/cleanup-failed-deployments.sh`
+- **📖 Troubleshooting**: `docs/deployment-troubleshooting.md` - Comprehensive deployment issue resolution
+- **📖 Railway Guide**: `docs/railway-deployment-troubleshooting.md` - Railway-specific issues
+- **📖 Safety Checklist**: `docs/deployment-safety-checklist.md` - Pre-deployment validation
+- **📖 Quick Reference**: `docs/deployment-safety-quick-reference.md` - Fast deployment checks
+- **🚨 CRITICAL**: If "Project not found" error, run `railway link` and select "novara-mvp" project
+- **🚨 CRITICAL**: After linking, immediately set correct environment and service before deploying
+
+### Environment-Specific Debugging
+
+#### Railway Context Troubleshooting
+```bash
+# If "Project not found" error occurs:
+railway link  # Select "novara-mvp" project
+railway environment staging  # Set staging environment
+railway service novara-staging  # Set staging service
+railway status  # Verify context before deployment
+
+# If wrong environment detected:
+railway environment staging  # Force staging environment
+railway service novara-staging  # Force staging service
+railway up  # Deploy to correct environment
+
+# Pre-deployment verification checklist:
+# ✅ Project: novara-mvp
+# ✅ Environment: staging (for staging deployment)
+# ✅ Service: novara-staging (for staging deployment)
+# ✅ Branch: staging (for staging deployment)
+```
+
+#### Local Development
+```bash
+# Start with stable ports
+./scripts/start-dev-stable.sh
+
+# Validate local setup
+npm run validate:environments
+
+# Test local environment
+./scripts/test-local-environment.sh
+```
+- **📖 Complete Guide**: `docs/local-development-guide.md` - Full local development setup
+- **📖 Port Management**: `docs/local-development-ports.md` - Port configuration details
+- **📖 Issues Resolved**: `docs/development-issues-resolved.md` - Common development problems
+- **📖 Troubleshooting**: `docs/troubleshooting/local-development-issues.md` - Local development fixes
+
+#### Staging Environment
+```bash
+# Check staging health
+npm run health-check:staging
+
+# Test staging endpoints
+./scripts/test-staging-enhanced-logging.js
+
+# Monitor staging performance
+npm run performance:staging
+```
+- **📖 Setup Guide**: `docs/staging-environment-setup.md` - Complete staging environment configuration
+- **📖 Environment Guide**: `docs/environment-staging-guide.md` - Staging environment management
+- **📖 Local Staging**: `docs/setup-guides/local-staging-environment.md` - Local staging setup
+- **📖 Deployment Checklist**: `docs/staging-deployment-checklist.md` - Staging deployment procedures
+
+#### Production Environment
+```bash
+# Check production health
+npm run health-check:production
+
+# Test production endpoints
+./scripts/test-production-fix.js
+
+# Monitor production performance
+npm run performance:production
+```
+- **📖 Deployment Guide**: `docs/production-deployment-guide.md` - Production deployment procedures
+- **📖 Optimization Guide**: `docs/production-optimization-guide.md` - Production performance optimization
+- **📖 Quick Fixes**: `docs/quick-fix-reference.md` - Production issue resolution
+
+## 📊 MONITORING & OBSERVABILITY
+
+### Health Checks
+- **Environment Health**: `npm run health-check`
+- **Schema Validation**: `npm run validate-schema-comprehensive`
+- **Performance Monitoring**: `npm run performance`
+- **Deployment Tracking**: `npm run track:deployments`
+- **📖 Monitoring Guide**: `docs/deployment-monitoring-guide.md` - Comprehensive monitoring setup
+- **📖 Railway Health**: `docs/railway-health-check-guide.md` - Railway-specific health monitoring
+
+### Key Metrics to Monitor
+- API response times
+- Authentication success rates
+- Database connection health
+- Deployment success rates
+- Error rates by environment
+
+### Alerting
+- Railway service failures
+- Vercel deployment failures
+- High error rates
+- Performance degradation
+
+## 🔐 SECURITY & BEST PRACTICES
+
+### Authentication
+- JWT tokens with 90-day expiration
+- Automatic token refresh (1 hour before expiry)
+- Secure token storage in browser
+- Automatic logout on refresh failure
+- **📖 Detailed Guide**: `docs/authentication-improvements.md` - Complete token management system documentation
+
+### Environment Variables
+- NEVER commit secrets to git
+- Use environment-specific .env files
+- Validate environment configuration before deployment
+- Rotate secrets regularly
+- **NEVER attempt to modify .env files directly** - user handles all .env file changes manually
+- **ALWAYS provide exact file contents** when .env changes are needed
+- **ALWAYS update all .env.[environment].example files** (development, staging, production) whenever any environment variable is added, changed, or removed—including all Airtable, analytics, and third-party keys. Double-check Airtable keys for continuity and completeness in every update. If the actual Airtable API key and base ID are known, always use the real values in all example files—never leave them blank or as placeholders if the real values are available.
+- **📖 Configuration Guide**: `docs/environment-variables.md` - Environment variable setup and management
+- **📖 Protection Guide**: `docs/environment-configuration-protection.md` - Security best practices
+
+### API Security
+- Input validation on all endpoints
+- Rate limiting on sensitive endpoints
+- CORS configuration for production
+- Error handling without information leakage
+
+## 🚀 PERFORMANCE OPTIMIZATION
+
+### Frontend
+- Code splitting with Vite
+- PWA caching strategies
+- Optimized bundle size
+- Lazy loading of components
+
+### Backend
+- Database query optimization
+- Caching strategies
+- Connection pooling
+- Response compression
+
+### Monitoring
+- Performance budgets
+- Bundle size tracking
+- API response time monitoring
+- User experience metrics
+
+## 📝 DOCUMENTATION STANDARDS
+
+### Feature Documentation (MANDATORY)
+- **Feature Folders**: Create `/docs/features/[feature-name]/` for each new feature
+- **User Journey Documentation**: Document complete user flows and interactions
+- **Functional Logic**: Document business logic, data flow, and technical implementation
+- **Downstream Impact Analysis**: Document dependencies and affected components
+- **Testing Requirements**: Document test scenarios and validation criteria
+- **Deployment Considerations**: Document environment-specific requirements
+
+### Feature Documentation Structure
+```
+/docs/features/[feature-name]/
+├── README.md                    # Feature overview and quick reference
+├── user-journey.md             # Complete user flow documentation
+├── functional-logic.md         # Business logic and technical implementation
+├── api-endpoints.md           # API changes and new endpoints
+├── database-schema.md         # Database changes and data models
+├── testing-scenarios.md       # Test cases and validation criteria
+├── deployment-notes.md        # Environment-specific considerations
+└── downstream-impact.md       # Affected components and dependencies
+```
+
+### Code Documentation
+- JSDoc comments for all functions
+- README files for all major components
+- API documentation in `/docs/api-docs/`
+- Architecture decisions in `/docs/`
+- **📖 API Testing**: `docs/api-endpoint-testing-guide.md` - API endpoint testing procedures
+- **📖 User Testing**: `docs/user-testing-script-template.md` - User testing script templates
+- **📖 Frontend Testing**: `docs/frontend-environment-testing.md` - Frontend environment testing system
+- **📖 Testing Pitfalls**: `docs/frontend-testing-pitfalls-guide.md` - Common testing issues and solutions
+- **📖 Cursor AI Context**: `docs/cursor-ai-context.md` - AI assistant context management
+- **📖 Cursor Troubleshooting**: `docs/cursor-ai-troubleshooting-guide.md` - AI assistant troubleshooting
+
+### Testing Documentation
+- Test scripts for all user journeys
+- Expected vs actual results
+- Troubleshooting steps
+- Success/failure criteria
+
+### Deployment Documentation
+- Environment setup guides
+- Deployment checklists
+- Rollback procedures
+- Monitoring dashboards
+
+## 🎯 ADVANCED WORKFLOW PATTERNS
+
+### Feature Development
+1. **Roadmap Alignment**: Check `docs/roadmaps/Novara Product Roadmap.md` for strategic context
+2. **Epic/Story Mapping**: Identify which roadmap epic and story ID the feature supports
+3. **Documentation First**: Create feature documentation in `/docs/features/[feature-name]/`
+4. **User Journey Mapping**: Document complete user flows and interactions
+5. **Impact Analysis**: Identify and document downstream dependencies
+6. Create feature branch from `development`
+7. Implement with comprehensive testing
+8. Merge to `development` with PR
+9. Deploy to staging for integration testing
+10. Merge to `staging` for staging environment testing
+11. Merge to `stable` after staging validation
+12. Merge to `main` for production deployment
+- **📖 Iteration Planning**: `docs/iteration-planning.md` - Feature development planning
+- **📖 Environment Best Practices**: `docs/environment-best-practices.md` - Environment management best practices
+- **📖 Environment Stability**: `docs/environment-stability-plan.md` - Environment stability strategies
+
+### Hotfix Process
+1. Create hotfix branch from `main`
+2. Implement minimal fix with tests
+3. Test in staging environment
+4. Merge directly to `main` after validation
+5. Cherry-pick to `stable` and `staging`
+
+### Release Process
+1. Feature freeze on `stable` branch
+2. Comprehensive testing in staging
+3. Performance and security validation
+4. User acceptance testing
+5. Production deployment with monitoring
+6. Post-deployment validation
+
+## 🔄 CONTINUOUS IMPROVEMENT
+
+### Regular Reviews
+- Weekly performance analysis
+- Monthly security audits
+- Quarterly architecture reviews
+- Annual tech stack evaluation
+
+### Metrics to Track
+- Deployment frequency
+- Lead time for changes
+- Mean time to recovery
+- Change failure rate
+- User satisfaction scores
+
+### Automation Goals
+- Zero-downtime deployments
+- Automated rollback procedures
+- Self-healing infrastructure
+- Predictive failure detection
+
+## 🤝 COLLABORATION OPTIMIZATION
+
+### Proactive Communication
+- **Always explain the "why"** behind recommendations and decisions
+- **Provide multiple options** when possible, with pros/cons for each
+- **Flag potential issues early** rather than waiting for them to surface
+- **Suggest improvements** even when not explicitly asked
+- **Acknowledge limitations** of current approaches and suggest alternatives
+
+### Problem Prevention
+- **Validate assumptions** before making changes
+- **Check for conflicts** with existing features or documentation
+- **Consider downstream impact** of all changes
+- **Test edge cases** in recommendations and scripts
+- **Provide fallback options** for critical operations
+- **Align with roadmap priorities** - ensure work supports current sprint goals
+- **Reference epic/story context** - map all work to specific roadmap items
+
+### Quality Assurance
+- **Double-check all commands** before suggesting them
+- **Verify file paths** and ensure they exist
+- **Test logic** in recommendations before presenting
+- **Cross-reference documentation** to ensure consistency
+- **Validate environment assumptions** before making changes
+
+### Feedback Integration
+- **Learn from past issues** and adjust recommendations accordingly
+- **Adapt to user preferences** as they evolve
+- **Improve documentation** based on recurring questions
+- **Optimize workflows** based on actual usage patterns
+- **Maintain context** across sessions for better continuity
+
+## 📚 COMPREHENSIVE DOCUMENTATION INDEX
+
+### Core Documentation
+- **📖 Project Requirements**: `docs/Novara PRD.md` - Product requirements document
+- **📖 Product Roadmap**: `docs/roadmaps/Novara Product Roadmap.md` - Strategic roadmap and sprint planning
+- **📖 Session Context**: `docs/session-context-template.md` - AI session context template
+- **📖 GitHub Secrets**: `docs/github-secrets-setup.md` - GitHub secrets configuration
+- **📖 Railway Setup Complete**: `docs/RAILWAY_SETUP_COMPLETE.md` - Railway setup completion guide
+
+### Feature Documentation
+- **📁 Feature Documentation**: `/docs/features/` - Complete feature documentation index
+- **📖 User Journey Templates**: `docs/user-testing-script-template.md` - User journey documentation templates
+- **📖 API Testing**: `docs/api-endpoint-testing-guide.md` - API endpoint testing procedures
+
+### Quick References
+- **📖 Deployment Quick Ref**: `docs/deployment-quick-reference.md` - Fast deployment commands
+- **📖 Environment Config**: `docs/environment-configuration.md` - Environment configuration details
+- **📖 Environment Setup**: `docs/environment-setup-guide.md` - Environment setup procedures 
