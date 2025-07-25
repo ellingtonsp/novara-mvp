@@ -10,23 +10,11 @@ Implement foundational product-analytics instrumentation so Product & Growth tea
 
 ## **2 User Story**
 
-> As a
+> As a **Product Manager**
 > 
-
-> I want
+> I want **event tracking for signup, check-in submitted, insight viewed, and share action**
 > 
-> 
-> *signup*
-> 
-> *check-in submitted*
-> 
-> *insight viewed*
-> 
-> *share action*
-> 
-
-> so that
-> 
+> so that **I can analyse activation & retention funnels and make data-driven roadmap decisions.**
 
 ---
 
@@ -172,5 +160,4 @@ Create PostHog dashboard **“Activation & Retention”** with:
 
 ---
 
-> Next:
->
+> Next: After release, watch the D1 funnel for ≥50 % completion within first week. Use findings to reprioritize Sprint 2 churn-risk stories.
