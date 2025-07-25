@@ -48,7 +48,10 @@
     "cicd:test": "./scripts/deployment-cleanup-and-testing.sh",
     "monitor:deployments": "npm run track:deployments",
     "test:deployment-scripts": "bash -n scripts/deploy-staging.sh && bash -n scripts/deploy-production.sh",
-    "validate:deployment": "npm run safety:check && npm run test:deployment-scripts"
+    "validate:deployment": "npm run safety:check && npm run test:deployment-scripts",
+    "pre-deploy:build": "cd frontend && npm run build && cd ..",
+    "pre-deploy:typescript": "cd frontend && tsc --noEmit && cd ..",
+    "pre-deploy:full": "npm run pre-deploy:typescript && npm run pre-deploy:build && npm run validate:deployment"
   },
   "dependencies": {
     "node-fetch": "^3.3.2"

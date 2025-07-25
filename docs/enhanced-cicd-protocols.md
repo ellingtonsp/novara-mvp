@@ -50,6 +50,9 @@ npm run validate:environments
 - [ ] Health checks pass
 - [ ] Deployment scripts exist and are valid
 - [ ] Monitoring tools are active
+- [ ] **CRITICAL: Run local production build** (`cd frontend && npm run build`)
+- [ ] **CRITICAL: Validate TypeScript compilation** (`tsc --noEmit`)
+- [ ] **CRITICAL: Test files are production-ready** (no unused variables)
 
 ## 🧹 Deployment Cleanup Procedures
 
@@ -168,6 +171,22 @@ npm run health-check:production
 ```
 
 ## 🚨 Failure Response Procedures
+
+### TypeScript Build Error Response (CRITICAL)
+**Common Issue:** `'variableName' is declared but its value is never read.`
+
+**Immediate Actions:**
+1. **Check build logs** for specific TypeScript errors
+2. **Run local build** to reproduce: `cd frontend && npm run build`
+3. **Fix unused variables** in test files and source code
+4. **Validate TypeScript compilation:** `tsc --noEmit`
+5. **Test fix locally** before re-deploying
+
+**Prevention:**
+- Always run `npm run build` locally before deployment
+- Use `tsc --noEmit` to catch compilation errors
+- Remove unused imports and variables
+- Test files must be production-ready
 
 ### Build Failure Response
 1. **Immediate Actions:**
