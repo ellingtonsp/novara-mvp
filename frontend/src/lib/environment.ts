@@ -15,13 +15,13 @@ export interface EnvironmentConfig {
 const getEnvironment = (): string => {
   // Check for explicit environment variable first
   if (import.meta.env.VITE_ENV) {
-    return import.meta.env.VITE_ENV;
+    return import.meta.env.VITE_ENV.trim();
   }
   
   // Use Vercel's automatic environment detection if available
   if (import.meta.env.VITE_VERCEL_ENV) {
     // VITE_VERCEL_ENV can be 'production', 'preview', or 'development'
-    return import.meta.env.VITE_VERCEL_ENV;
+    return import.meta.env.VITE_VERCEL_ENV.trim();
   }
   
   // Fall back to NODE_ENV

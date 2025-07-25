@@ -100,17 +100,18 @@ export const apiClient = {
     // Track signup event if successful - AN-01 Event Tracking
     if (response.success && response.data) {
       try {
-        trackSignup({
-          user_id: response.data.user.id,
-          signup_method: 'email',
-          referrer: document.referrer || undefined
-        });
-
-        // Identify user in PostHog
+        // Identify user in PostHog FIRST
         identifyUser(response.data.user.id, {
           email: response.data.user.email,
           nickname: response.data.user.nickname,
           signup_date: response.data.user.created_at
+        });
+
+        // Then track the signup event
+        trackSignup({
+          user_id: response.data.user.id,
+          signup_method: 'email',
+          referrer: document.referrer || undefined
         });
       } catch (error) {
         console.error('Failed to track signup event:', error);
@@ -199,9 +200,23 @@ export const apiClient = {
       'good': 7,
       'okay': 5,
       'not_great': 3,
-      'terrible': 1
+      'terrible': 1,
+      // Handle comma-separated moods by taking the first one
+      'hopeful': 8,
+      'optimistic': 9,
+      'frustrated': 3,
+      'anxious': 2,
+      'tired': 4,
+      'excited': 9,
+      'calm': 7,
+      'overwhelmed': 2,
+      'confident': 8,
+      'uncertain': 4
     };
-    return moodScores[mood.toLowerCase()] || 5; // Default to neutral
+    
+    // Handle comma-separated moods (e.g., "hopeful, frustrated")
+    const firstMood = mood.split(',')[0].trim().toLowerCase();
+    return moodScores[firstMood] || 5; // Default to neutral
   },
 
   async getRecentCheckins(limit: number = 7): Promise<ApiResponse<any>> {

@@ -2,14 +2,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Lightbulb, Heart, TrendingUp, Brain, X, RefreshCw, ThumbsUp, Bookmark } from 'lucide-react';
+import { Lightbulb, Heart, TrendingUp, Brain, X, RefreshCw, ThumbsUp, Bookmark, Share } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { API_BASE_URL } from '../lib/environment';
-import { trackInsightViewed } from '../lib/analytics';
+import { trackInsightViewed, trackShareAction } from '../lib/analytics';
 
 
 
 interface Insight {
+  id?: string; // AN-01 compliant insight_id
   type: string;
   title: string;
   message: string;
@@ -61,7 +62,7 @@ const DailyInsightsDisplay: React.FC = () => {
               try {
                 trackInsightViewed({
                   user_id: user.id,
-                  insight_id: `insight_${insight.type}_${Date.now()}`,
+                  insight_id: insight.id || `i_${insight.type}_${Date.now()}`, // AN-01 compliant format
                   insight_type: insight.type,
                   dwell_ms: 0 // Will be updated when user leaves
                 });
@@ -178,6 +179,64 @@ const DailyInsightsDisplay: React.FC = () => {
   const handleSave = (e: React.MouseEvent) => {
     e.stopPropagation();
     trackEngagement('saved');
+  };
+
+  const handleShare = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!insight || !user) return;
+
+    try {
+      // Prepare share data
+      const shareData = {
+        title: insight.title,
+        text: insight.message,
+        url: window.location.href
+      };
+
+      // Try native sharing first (mobile)
+      if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+        await navigator.share(shareData);
+        
+        // Track share action with native share
+        trackShareAction({
+          user_id: user.id,
+          share_surface: 'insight',
+          destination: 'native_share',
+          content_id: `insight_${insight.type}`
+        });
+        
+        console.log('✅ Shared via native share API');
+      } else {
+        // Fallback to clipboard copy
+        const shareText = `${insight.title}\n\n${insight.message}\n\n${window.location.href}`;
+        await navigator.clipboard.writeText(shareText);
+        
+        // Track share action with clipboard
+        trackShareAction({
+          user_id: user.id,
+          share_surface: 'insight',
+          destination: 'clipboard',
+          content_id: `insight_${insight.type}`
+        });
+        
+        // Show success message
+        alert('Insight copied to clipboard! 📋');
+      }
+    } catch (error) {
+      console.error('Share failed:', error);
+      
+      // Track failed share attempt
+      trackShareAction({
+        user_id: user.id,
+        share_surface: 'insight',
+        destination: 'failed',
+        content_id: `insight_${insight.type}`
+      });
+      
+      alert('Share failed. Please try again.');
+    }
   };
 
   // Get icon based on insight type
@@ -393,6 +452,13 @@ const DailyInsightsDisplay: React.FC = () => {
               <Bookmark className="w-4 h-4" />
               <span>Save</span>
             </button>
+                         <button
+               onClick={handleShare}
+               className="flex-1 bg-white/80 hover:bg-white text-gray-700 py-3 px-4 rounded-xl font-medium transition-colors active:scale-95 flex items-center justify-center space-x-2"
+             >
+               <Share className="w-4 h-4" />
+               <span>Share</span>
+             </button>
             <button
               onClick={handleRefresh}
               disabled={isRefreshing}
