@@ -1,0 +1,107 @@
+---
+description: Development workflow and local environment setup
+globs: ["backend/**/*.js", "frontend/**/*.tsx", "scripts/**/*.sh"]
+alwaysApply: false
+---
+
+# Development Workflow
+
+## Local Development Setup
+- **Use stable ports**: Frontend 4200, Backend 9002
+- **Avoid conflict ports**: 3000, 3001, 3002 (high conflict rate)
+- **Use SQLite for local database**
+
+## Key Commands
+```bash
+# Start stable development environment
+./scripts/start-dev-stable.sh
+
+# Run tests (non-hanging)
+npm test
+npm run test:fast
+npm run test:full
+
+# Health checks
+npm run health-check
+npm run performance
+
+# BugBot validation
+npm run bugbot:local        # Check environment before development
+npm run bugbot:pre-deploy   # Validate before deployment
+npm run bugbot:post-deploy  # Validate after deployment
+```
+
+## Port Strategy
+- **Frontend**: 4200 (stable, <5% conflict)
+- **Backend**: 9002 (stable, <5% conflict)
+- **Avoid**: 3000-3002 (90% conflict probability)
+
+## Testing Guidelines
+- Use timeouts to prevent hanging tests
+- Mock external services in tests
+- Test both frontend and backend components
+- Validate environment configurations
+
+## Development Best Practices
+- Always use stable port strategy
+- Document all changes
+- Test locally before committing
+- **ENFORCE SUSTAINABLE BRANCH STRATEGY** (see below)
+- Run BugBot validation before and after deployments
+- Check generated BugBot reports for issues
+- Address BugBot-identified errors before proceeding
+
+## 🌿 SUSTAINABLE BRANCH STRATEGY (MANDATORY)
+
+### **🚨 CRITICAL RULE: NO DIRECT MAIN COMMITS**
+- **NEVER** commit directly to `main` branch
+- **NEVER** commit directly to `staging` branch
+- **ALWAYS** use feature branches for all changes
+
+### **✅ CORRECT Workflow (MANDATORY)**
+```bash
+# 1. Start from development branch
+git checkout development
+
+# 2. Create feature branch for EVERY change
+git checkout -b feature/AN-02-churn-risk-flag
+# OR
+git checkout -b fix/checkin-counting-issue
+# OR  
+git checkout -b docs/railway-cli-update
+
+# 3. Make changes and commit
+git add .
+git commit -m "feat: Add churn risk flagging system"
+
+# 4. Push feature branch
+git push origin feature/AN-02-churn-risk-flag
+
+# 5. Create PR: feature → development
+# 6. After PR approval: development → staging → stable → main
+```
+
+### **❌ FORBIDDEN Actions**
+- Direct commits to `main`
+- Direct commits to `staging` 
+- Working directly on integration branches
+- Bypassing PR review process
+- Merging without testing in staging
+
+### **🎯 Branch Naming Conventions**
+- `feature/EPIC-ID-description` (e.g., `feature/AN-02-churn-risk`)
+- `fix/issue-description` (e.g., `fix/checkin-counting`)
+- `docs/update-description` (e.g., `docs/railway-cli`)
+- `hotfix/critical-issue` (emergency fixes only)
+
+### **🔄 Progressive Integration Flow**
+1. **Feature Branch** → `development` (via PR)
+2. **Development** → `staging` (auto-deploy to staging env)
+3. **Staging** → `stable` (after staging tests pass)
+4. **Stable** → `main` (auto-deploy to production)
+
+### **🚨 Enforcement**
+- **ALWAYS** challenge user if they suggest direct main commits
+- **ALWAYS** require feature branch creation for any changes
+- **ALWAYS** follow progressive integration workflow
+- **NEVER** allow workflow bypasses
