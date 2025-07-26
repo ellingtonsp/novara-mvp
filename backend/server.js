@@ -2798,7 +2798,11 @@ app.patch('/api/users/cycle-stage', authenticateToken, async (req, res) => {
       cycle_stage_updated: new Date().toISOString()
     };
 
-    if (config.database.type === 'airtable') {
+    if (databaseAdapter.isUsingLocalDatabase()) {
+      // SQLite update
+      await databaseAdapter.updateUser(user.id, updateData);
+    } else {
+      // Airtable update
       const airtableUrl = `${config.airtable.baseUrl}/Users/${user.id}`;
       const response = await fetch(airtableUrl, {
         method: 'PATCH',
@@ -2812,9 +2816,6 @@ app.patch('/api/users/cycle-stage', authenticateToken, async (req, res) => {
       if (!response.ok) {
         throw new Error('Failed to update user in Airtable');
       }
-    } else {
-      // SQLite update
-      await databaseAdapter.updateUser(user.id, updateData);
     }
 
     console.log(`✅ Updated cycle stage for ${req.user.email}: ${cycle_stage}`);
@@ -2832,6 +2833,79 @@ app.patch('/api/users/cycle-stage', authenticateToken, async (req, res) => {
 
   } catch (error) {
     console.error('❌ Error updating cycle stage:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Internal server error' 
+    });
+  }
+});
+
+// NEW: Update user medication status
+app.patch('/api/users/medication-status', authenticateToken, async (req, res) => {
+  try {
+    const { medication_status } = req.body;
+    
+    if (!medication_status) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'medication_status is required' 
+      });
+    }
+
+    // Validate medication status value
+    const validStatuses = ['taking', 'starting_soon', 'not_taking', 'between_cycles', 'finished_treatment', 'pregnancy_support'];
+    if (!validStatuses.includes(medication_status)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Invalid medication status' 
+      });
+    }
+
+    const user = await findUserByEmail(req.user.email);
+    if (!user) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'User not found' 
+      });
+    }
+
+    // Update user medication status
+    const updateData = {
+      medication_status,
+      medication_status_updated: new Date().toISOString()
+    };
+
+    if (databaseAdapter.isUsingLocalDatabase()) {
+      // SQLite update
+      await databaseAdapter.updateUser(user.id, updateData);
+    } else {
+      // Airtable update
+      const airtableUrl = `${config.airtable.baseUrl}/Users/${user.id}`;
+      const response = await fetch(airtableUrl, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${config.airtable.apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ fields: updateData })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update user in Airtable');
+      }
+    }
+
+    console.log(`✅ Updated medication status for ${req.user.email}: ${medication_status}`);
+
+    res.json({
+      success: true,
+      message: 'Medication status updated successfully',
+      medication_status,
+      medication_status_updated: updateData.medication_status_updated
+    });
+
+  } catch (error) {
+    console.error('❌ Error updating medication status:', error);
     res.status(500).json({ 
       success: false, 
       error: 'Internal server error' 

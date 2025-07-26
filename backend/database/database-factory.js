@@ -77,12 +77,24 @@ class DatabaseAdapter {
     }
   }
 
+  // === USER OPERATIONS ===
+
   async findUserByEmail(email) {
     if (!this.useLocalDatabase) {
       return this.originalFindUserByEmail(email);
     }
     
     return await this.localDb.findUserByEmail(email);
+  }
+
+  // NEW: Update user method for medication status and other profile updates
+  async updateUser(userId, updateData) {
+    if (!this.useLocalDatabase) {
+      // For production Airtable, we'll need to handle this differently
+      throw new Error('User updates not implemented for Airtable yet');
+    }
+    
+    return await this.localDb.updateUser(userId, updateData);
   }
 
   async getUserCheckins(userId, filterFormula, sortOptions, maxRecords) {
