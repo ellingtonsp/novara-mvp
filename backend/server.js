@@ -15,6 +15,7 @@ const {
   securityMonitoring 
 } = require('./middleware/security');
 const { initializeRedis, cacheManager, rateLimiter } = require('./utils/cache');
+const compression = require('compression');
 require('dotenv').config();
 
 const app = express();
@@ -175,7 +176,32 @@ app.use(cors({
   optionsSuccessStatus: 204
 }));
 
-app.use(express.json());
+app.use(helmet());
+app.use(compression());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Add error handling for malformed JSON
+app.use((err, req, res, next) => {
+  if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+    console.error('Malformed JSON request:', err.message);
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid JSON format',
+      details: 'Request body contains malformed JSON'
+    });
+  }
+  next(err);
+});
+
+// Request logging middleware (if performance monitoring is disabled)
+if (!process.env.DISABLE_PERFORMANCE_MONITORING) {
+  app.use(performanceMonitoring);
+}
+
+// Rate limiting
+app.use('/api/auth/', authLimiter);
+app.use('/api/', generalLimiter);
 
 // Database Configuration - Unified local/production adapter
 const { databaseAdapter, airtableRequest, findUserByEmail } = require('./database/database-factory');
@@ -1843,11 +1869,47 @@ app.get('/api/users/me', authenticateToken, async (req, res) => {
         confidence_meds: user.confidence_meds,
         confidence_costs: user.confidence_costs,
         confidence_overall: user.confidence_overall,
+        medication_status: user.medication_status,
+        medication_status_updated: user.medication_status_updated,
         created_at: user.created_at
       }
     });
   } catch (error) {
     console.error('Get current user error:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Internal server error' 
+    });
+  }
+});
+
+// Alias for user profile (same as /api/users/me for API consistency)
+app.get('/api/users/profile', authenticateToken, async (req, res) => {
+  try {
+    const user = await findUserByEmail(req.user.email);
+    
+    if (!user) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'User not found' 
+      });
+    }
+
+    res.json({ 
+      success: true,
+      email: user.email,
+      nickname: user.nickname,
+      confidence_meds: user.confidence_meds,
+      confidence_costs: user.confidence_costs,
+      confidence_overall: user.confidence_overall,
+      medication_status: user.medication_status,
+      medication_status_updated: user.medication_status_updated,
+      primary_need: user.primary_need,
+      cycle_stage: user.cycle_stage,
+      created_at: user.created_at
+    });
+  } catch (error) {
+    console.error('Get user profile error:', error);
     res.status(500).json({ 
       success: false, 
       error: 'Internal server error' 
@@ -2906,9 +2968,17 @@ app.patch('/api/users/medication-status', authenticateToken, async (req, res) =>
 
   } catch (error) {
     console.error('❌ Error updating medication status:', error);
+    console.error('❌ Error details:', {
+      message: error.message,
+      stack: error.stack?.split('\n')[0],
+      user: req.user?.email,
+      updateData,
+      isLocalDatabase: databaseAdapter.isUsingLocalDatabase()
+    });
     res.status(500).json({ 
       success: false, 
-      error: 'Internal server error' 
+      error: 'Internal server error',
+      debug: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
