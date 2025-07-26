@@ -1,0 +1,46 @@
+---
+description: Monitoring, observability, and performance tracking
+globs: ["scripts/monitoring/**/*.js", "scripts/**/*monitor*.js"]
+alwaysApply: false
+---
+
+# Monitoring & Observability
+
+## Health Checks
+- **Environment Health**: `npm run health-check`
+- **Schema Validation**: `npm run validate-schema-comprehensive`
+- **Performance Monitoring**: `npm run performance`
+- **Deployment Tracking**: `npm run track:deployments`
+- **📖 Monitoring Guide**: `docs/deployment-monitoring-guide.md` - Comprehensive monitoring setup
+- **📖 Railway Health**: `docs/railway-health-check-guide.md` - Railway-specific health monitoring
+
+## Key Metrics to Monitor
+- API response times
+- Authentication success rates
+- Database connection health
+- Deployment success rates
+- Error rates by environment
+
+## Alerting & Notifications
+- **Performance alerts**: Response time thresholds
+- **Error rate alerts**: 5xx error percentage
+- **Deployment alerts**: Success/failure notifications
+- **Health check alerts**: Service availability
+
+## Monitoring Tools
+- **Railway monitoring**: Built-in health checks and logs
+- **Vercel monitoring**: Frontend performance and errors
+- **Sentry**: Error tracking and performance monitoring
+- **Custom scripts**: Environment-specific monitoring
+
+## Performance Monitoring
+- **Response time tracking**: API endpoint performance
+- **Database query optimization**: Slow query detection
+- **Frontend performance**: Bundle size and load times
+- **User experience metrics**: Page load times and interactions
+
+## Troubleshooting
+- **Health check failures**: Check service status and logs
+- **Performance issues**: Monitor response times and resource usage
+- **Deployment failures**: Review deployment logs and rollback procedures
+- **Error tracking**: Use Sentry for detailed error analysis

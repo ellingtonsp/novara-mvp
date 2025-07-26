@@ -1,0 +1,44 @@
+---
+description: Development workflow and local environment setup
+globs: ["backend/**/*.js", "frontend/**/*.tsx", "scripts/**/*.sh"]
+alwaysApply: false
+---
+
+# Development Workflow
+
+## Local Development Setup
+- **Use stable ports**: Frontend 4200, Backend 9002
+- **Avoid conflict ports**: 3000, 3001, 3002 (high conflict rate)
+- **Use SQLite for local database**
+
+## Key Commands
+```bash
+# Start stable development environment
+./scripts/start-dev-stable.sh
+
+# Run tests (non-hanging)
+npm test
+npm run test:fast
+npm run test:full
+
+# Health checks
+npm run health-check
+npm run performance
+```
+
+## Port Strategy
+- **Frontend**: 4200 (stable, <5% conflict)
+- **Backend**: 9002 (stable, <5% conflict)
+- **Avoid**: 3000-3002 (90% conflict probability)
+
+## Testing Guidelines
+- Use timeouts to prevent hanging tests
+- Mock external services in tests
+- Test both frontend and backend components
+- Validate environment configurations
+
+## Development Best Practices
+- Always use stable port strategy
+- Document all changes
+- Test locally before committing
+- Follow established branching strategy

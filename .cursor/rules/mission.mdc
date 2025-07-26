@@ -1,0 +1,29 @@
+---
+description: Core mission and guiding principles for Novara MVP
+globs: 
+alwaysApply: true
+---
+
+# Novara MVP Mission & Guiding Principles
+
+## Mission Statement
+Novara MVP is a patient-first fertility journey companion that provides personalized support, insights, and guidance throughout the IVF process.
+
+## Core Values
+- **Patient-First**: Every decision must benefit patients directly
+- **Velocity × Quality**: Fast iteration without compromising patient safety
+- **Documentation as Leverage**: Comprehensive docs enable faster development
+- **Safety Above All**: Patient data protection is non-negotiable
+
+## Success Metrics (Quarterly)
+- **Lead Time**: < 2 weeks from idea to production
+- **Defect Rate**: < 5% of deployments require hotfixes
+- **MTTD**: < 30 minutes to detect issues
+- **MTTR**: < 2 hours to resolve critical issues
+
+## Guiding Principles
+- **Patient Safety First**: Never compromise patient data or experience
+- **Documentation Driven**: Every feature must be documented before implementation
+- **Test Everything**: Comprehensive testing for all user journeys
+- **Deploy Safely**: Always use staging → production workflow
+- **Monitor Continuously**: Real-time monitoring and alerting

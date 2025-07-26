@@ -1,0 +1,37 @@
+---
+description: Database configuration and isolation rules
+globs: 
+alwaysApply: true
+---
+
+# Database Configuration & Isolation
+
+## Critical Database Rules
+- **NEVER share database IDs between environments**
+- **ALWAYS use SQLite for local development**
+- **ALWAYS validate database ID before operations**
+
+## Environment-Specific Database IDs
+- **Staging**: `appEOWvLjCn5c7Ght`
+- **Production**: `app5QWCcVbCnVg2Gg`
+- **Local**: SQLite file at `backend/data/novara-local.db`
+
+## Database Validation Steps
+1. Check `AIRTABLE_BASE_ID` matches environment
+2. Verify `NODE_ENV` is set correctly
+3. Confirm `USE_LOCAL_DATABASE=true` for local development
+4. Test database connectivity
+
+## Local Development
+```bash
+# Use SQLite for local development
+USE_LOCAL_DATABASE=true npm run local
+
+# Database file location
+backend/data/novara-local.db
+```
+
+## Troubleshooting
+- If database errors occur, check environment variables
+- Verify database permissions for SQLite file
+- Ensure proper database isolation between environments

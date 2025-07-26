@@ -38,7 +38,7 @@ jobs:
         id: check-failures
         run: |
           # Check if there are any alerts in the log
-          if grep -q "🚨 ALERT" logs/deployment-monitor.log; then
+          if grep -q "🚨 ALERT" scripts/logs/deployment-monitor.log; then
             echo "::warning::Deployment issues detected - check logs"
             echo "failures=true" >> $GITHUB_OUTPUT
           else
@@ -50,7 +50,7 @@ jobs:
         if: always()
         with:
           name: deployment-monitor-logs
-          path: logs/
+          path: scripts/logs/
           retention-days: 7
           
       # Removed automatic GitHub issue creation to reduce noise
@@ -66,9 +66,9 @@ jobs:
           echo "**Status:** ${{ steps.check-failures.outputs.failures == 'true' && '⚠️ Issues Detected' || '✅ All Healthy' }}" >> deployment-status.md
           echo "" >> deployment-status.md
           
-          if [ -f logs/deployment-status.json ]; then
+          if [ -f scripts/logs/deployment-status.json ]; then
             echo "### Environment Status:" >> deployment-status.md
-            cat logs/deployment-status.json | jq -r 'to_entries[] | "- **\(.key)**: \(.value.overall)"' >> deployment-status.md
+            cat scripts/logs/deployment-status.json | jq -r 'to_entries[] | "- **\(.key)**: \(.value.overall)"' >> deployment-status.md
           fi
           
           echo "" >> deployment-status.md

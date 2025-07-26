@@ -1,0 +1,42 @@
+---
+description: Documentation standards and requirements
+globs: ["docs/**/*.md", "README.md"]
+alwaysApply: false
+---
+
+# Documentation Standards
+
+## Mandatory Documentation
+- **Every feature** must have documentation in `/docs/features/[feature-name]/`
+- **Every bug fix** must be documented with root cause and solution
+- **Every deployment** must have deployment notes
+- **All API endpoints** must be documented
+
+## Feature Documentation Structure
+```
+/docs/features/[feature-name]/
+├── README.md (overview)
+├── api-endpoints.md
+├── database-schema.md
+├── deployment-notes.md
+├── testing-guide.md
+└── user-journey.md
+```
+
+## Code Documentation
+- Use JSDoc for backend functions
+- Add TypeScript interfaces for frontend components
+- Document complex business logic
+- Include usage examples
+
+## Testing Documentation
+- Document test scenarios and expected outcomes
+- Include setup and teardown instructions
+- Document test data requirements
+- Maintain test coverage reports
+
+## Deployment Documentation
+- Document environment-specific configurations
+- Include rollback procedures
+- Document monitoring and alerting setup
+- Maintain deployment checklists

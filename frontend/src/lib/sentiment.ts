@@ -194,7 +194,35 @@ export function analyzeSentiment(text: string): SentimentResult {
   
   // Score phrases
   [...positivePhrases, ...negativePhrases].forEach(phraseMatch => {
-    sentimentScores.push(phraseMatch.score);
+    let phraseScore = phraseMatch.score;
+    
+    // Check if phrase is negated (look for negation words before the phrase)
+    const phraseStart = phraseMatch.start;
+    const phraseTokens = tokenize(phraseMatch.phrase);
+    let isNegated = false;
+    
+    // Convert character position to word position
+    const wordsBeforePhrase = originalText.substring(0, phraseStart).split(/\s+/).filter(w => w.length > 0);
+    const phraseWordIndex = wordsBeforePhrase.length;
+    
+    // Look for negations in the 3 words before the phrase
+    for (let i = Math.max(0, phraseWordIndex - 3); i < phraseWordIndex; i++) {
+      if (i < tokens.length && NEGATIONS.includes(tokens[i])) {
+        isNegated = true;
+        break;
+      }
+    }
+    
+    if (isNegated) {
+      // Flip the sentiment for negated phrases
+      if (phraseScore > 0) {
+        phraseScore = -Math.abs(phraseScore) * 2.0; // Strong negative flip
+      } else if (phraseScore < 0) {
+        phraseScore = Math.abs(phraseScore) * 0.5; // Weak positive flip
+      }
+    }
+    
+    sentimentScores.push(phraseScore);
   });
   
   // Score individual words (skip words that are part of phrases)
@@ -232,8 +260,15 @@ export function analyzeSentiment(text: string): SentimentResult {
       }
       
       if (isNegated) {
-        wordScore *= -0.74; // VADER negation factor
+        // For negation, we want to flip the sentiment more strongly
+        if (wordScore > 0) {
+          wordScore = -Math.abs(wordScore) * 2.0; // Much stronger negative flip
+        } else if (wordScore < 0) {
+          wordScore = Math.abs(wordScore) * 0.5; // Weaker positive flip
+        }
       }
+      
+
       
       sentimentScores.push(wordScore);
     }
@@ -296,7 +331,7 @@ export function analyzeSentiment(text: string): SentimentResult {
   } else if (compound >= 0.3) {
     sentiment = 'positive';
     confidence = Math.min(compound * 1.5, 1.0);
-  } else if (compound <= -0.1) {
+  } else if (compound <= -0.05) {
     sentiment = 'negative';
     confidence = Math.min(Math.abs(compound) * 10, 1.0);
   } else {

@@ -1,0 +1,37 @@
+---
+description: Security best practices and authentication rules
+globs: ["backend/**/*.js", "frontend/**/*.tsx"]
+alwaysApply: true
+---
+
+# Security & Authentication
+
+## Critical Security Rules
+- **NEVER commit secrets to git**
+- **ALWAYS update all .env.[environment].example files**
+- **ALWAYS validate environment variables**
+- **ALWAYS use HTTPS in production**
+
+## Authentication System
+- **JWT-based authentication** with automatic token refresh
+- **Token lifespan**: 90 days (extended from 30)
+- **Automatic refresh**: Every 30 minutes and 1 hour before expiration
+- **Graceful fallback**: Automatic logout on refresh failure
+
+## Environment Variable Security
+- Store secrets in Railway environment variables
+- Use `.env.example` files for documentation
+- Never hardcode API keys or tokens
+- Validate all required variables on startup
+
+## API Security
+- Input validation on all endpoints
+- Rate limiting for API requests
+- CORS configuration for frontend access
+- Security headers and middleware
+
+## Data Protection
+- Encrypt sensitive data in transit
+- Validate user permissions
+- Log security events
+- Regular security audits

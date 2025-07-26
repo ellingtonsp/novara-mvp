@@ -1,19 +1,19 @@
 # Novara Product Roadmap  
-*(v2025-07-24)*
+*(v2025-07-26)*
 
 ---
 
 ## 🌱 Sprint 1  —  “Instrument & Retain”  (2 weeks, ≈20 SP)
 
-| Epic | ID | Story (Done = all true) | SP |
-|------|----|-------------------------|----|
+| Epic | ID | Story (Status) | SP |
+|------|----|----------------|----|
 | **E1 Advanced Analytics** | **AN-01** | ✅ Event tracking for signup, check-in, insight view & share → PostHog funnels | 5 |
-| **E2 Insight Polish** | **CM-01** | Positive-reflection NLP so good-day check-ins feel recognised | 3 |
-| | **ON-01** | Auto-detect “speed-tapper” → switch to 3-field onboarding | 3 |
-| | **VP-01** | ROI banner: “5× check-ins → 15 % ↑ med-adherence” under logo | 2 |
-| **E3 Growth Loops** | **GR-01** | Welcome micro-insight email within 10 min of signup | 2 |
-| | **ON-02** | Delay push-permission prompt until after first insight | 2 |
-| **E4 Compliance Hardening** | **CO-01** | Encrypt all PII at rest (Postgres AES-256) + key-rotation doc | 5 |
+| **E2 Insight Polish** | **CM-01** | ✅ Positive-reflection NLP so good-day check-ins feel recognised | 3 |
+| | **ON-01** | 🟡 Auto-detect “speed-tapper” → switch to 3-field onboarding | 3 |
+| | **VP-01** | ⬜ ROI banner: “5× check-ins → 15 % ↑ med-adherence” under logo | 2 |
+| **E3 Growth Loops** | **GR-01** | 🟡 Welcome micro-insight email within 10 min of signup | 2 |
+| | **ON-02** | ⬜ Delay push-permission prompt until after first insight | 2 |
+| **E4 Compliance Hardening** | **CO-01** | 🟡 Encrypt all PII at rest (Postgres AES-256) + key-rotation doc | 5 |
 
 **Sprint Goal:** Prove we can measure activation, delight early adopters, and answer HIPAA questions.
 
@@ -55,3 +55,13 @@
 4. **Earn Trust** – HIPAA-ready storage and transparent data messaging.  
 
 > **Rule of Thumb:** If a proposed feature doesn’t boost activation, retention, or compliance, it parks in Icebox.
+
+---
+
+### Emerging Themes from Iteration (July 2025)
+
+1. **Developer Productivity & Stability** — Investment in non-hanging scripts, Cursor Rules automation, and port-conflict mitigation drastically improved local dev speed.
+2. **Observability by Default** — Health-check endpoints, structured logging, and performance monitoring surfaced early regressions (e.g., `compression` module, `performanceMonitoring` crash).
+3. **Security & Data Governance** — Roadmap now enforces PII encryption, environment isolation, and secret-management policies across all environments.
+4. **Roadmap-Driven AI Alignment** — Cursor Rules now encode sprint priorities, ensuring every task maps to an Epic/Story and is validated against roadmap goals.
+5. **Technical Debt Reduction** — Database schema migrations, local SQLite reliability fixes, and removal of flaky dependencies (e.g., missing `compression`) are critical to sustain velocity into Sprint 2.

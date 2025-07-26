@@ -1,0 +1,102 @@
+---
+description: User preferences and collaboration guidelines
+globs: 
+alwaysApply: true
+---
+
+# Collaboration & User Preferences
+
+## Development Preferences
+- **User prefers stable port strategy** (4200/9002) for local development
+- **User requires strict adherence** to DevOps branching strategy
+- **User wants comprehensive testing scripts** for all changes
+- **User prefers automated deployment scripts** over manual commands
+- **User requires explicit validation** before production deployments
+- **User prefers streamlined solutions** - avoid presenting multiple options unless specifically requested
+- **User prefers non-hanging scripts** - all scripts should terminate properly with timeouts
+
+## Communication & Workflow Preferences
+- **User prefers the assistant to constantly evaluate the tech stack** for risks and technical debt
+- **User will test exclusively themselves** - provide comprehensive test scripts
+- **User prefers GitHub issues for tracking** but is open to cursor todos
+- **User prefers to stay in the current environment** unless explicitly requested to change
+- **User prefers the assistant to make all code changes** - user is not comfortable editing code themselves
+- **User prefers the assistant to automatically run necessary local server scripts** when asked to run the app locally
+- **User prefers the assistant to articulate explanations and thought processes** when applying fixes
+
+## Quality Assurance
+- **Always challenge the user** if they suggest something against conventions
+- **Maintain a bug report document** for any issues noticed (classify as S, M, or L)
+- **Clean up code incrementally** to minimize risk of breakage
+- **Document features fully** in dedicated folders for better context understanding
+
+## Problem Prevention
+- **Reference cursor rules at the start of every chat**
+- **Follow established DevOps plan** with proper branching strategy
+- **Use environment-specific configuration** for API endpoints
+- **Ensure all future work considers downstream impact**
+- **Format terminal commands carefully** to avoid syntax issues
+- **ALWAYS align work with current sprint priorities** from roadmap
+- **MAP all work to specific epic/story IDs** for strategic context
+
+## Expectation Management
+- **Always provide context** for why a particular approach is recommended
+- **Explain trade-offs** when multiple solutions exist
+- **Flag potential risks** before implementing changes
+- **Suggest alternatives** when current approach has limitations
+- **Provide rollback instructions** for any significant changes
+
+## Proactive Communication
+- **Always explain the "why"** behind recommendations and decisions
+- **Provide multiple options** when possible, with pros/cons for each
+- **Flag potential issues early** rather than waiting for them to surface
+- **Suggest improvements** even when not explicitly asked
+- **Acknowledge limitations** of current approaches and suggest alternatives
+
+## Problem Prevention
+- **Validate assumptions** before making changes
+- **Check for conflicts** with existing features or documentation
+- **Consider downstream impact** of all changes
+- **Test edge cases** in recommendations and scripts
+- **Provide fallback options** for critical operations
+- **Align with roadmap priorities** - ensure work supports current sprint goals
+- **Reference epic/story context** - map all work to specific roadmap items
+
+## Quality Assurance
+- **Double-check all commands** before suggesting them
+- **Verify file paths** and ensure they exist
+- **Test logic** in recommendations before presenting
+- **Cross-reference documentation** to ensure consistency
+- **Validate environment assumptions** before making changes
+
+## Feedback Integration
+- **Learn from past issues** and adjust recommendations accordingly
+- **Adapt to user preferences** as they evolve
+- **Improve documentation** based on recurring questions
+- **Optimize workflows** based on actual usage patterns
+- **Maintain context** across sessions for better continuity
+
+## Session Start Checklist
+When starting a new session, ALWAYS:
+1. Check current working directory
+2. Verify Railway environment and service
+3. **CRITICAL**: Verify database configuration matches environment
+4. Confirm which environment we're working with
+5. Review recent deployment history
+6. Ask user for explicit confirmation before any production changes
+7. **Assess current context** - what are we working on and what's the goal?
+8. **Check for active issues** - any ongoing problems or recent changes?
+9. **Validate assumptions** - confirm understanding of current state
+10. **Review roadmap alignment** - check `docs/roadmaps/Novara Product Roadmap.md` for strategic context
+11. **Map work to roadmap** - identify which epic/story the current work supports
+12. **Validate sprint priorities** - ensure work aligns with current sprint goals
+
+## Before Any Code Changes
+1. **Understand the goal** - what problem are we solving?
+2. **Check existing solutions** - is this already implemented elsewhere?
+3. **Review related documentation** - understand current patterns
+4. **Assess impact** - what components will be affected?
+5. **Plan rollback** - how can we undo this if needed?
+6. **Validate approach** - is this the best solution for the problem?
+7. **Check roadmap alignment** - does this work support current sprint goals?
+8. **Reference roadmap context** - which epic/story does this work map to?

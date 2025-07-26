@@ -1,0 +1,80 @@
+---
+description: Comprehensive troubleshooting guides and common issues
+globs: ["backend/**/*.js", "frontend/**/*.tsx", "scripts/**/*.sh"]
+alwaysApply: false
+---
+
+# Troubleshooting & Problem Resolution
+
+## Context-Aware Problem Solving
+- **ALWAYS check feature documentation first**: `/docs/features/[feature-name]/` for relevant context
+- **Review downstream impact**: Check `downstream-impact.md` files for affected components
+- **Validate user journey**: Ensure changes don't break documented user flows
+- **Cross-reference dependencies**: Check all related feature documentation
+
+## Systematic Problem Resolution
+- **Start with the simplest explanation** - check obvious issues first
+- **Gather complete context** before proposing solutions
+- **Test assumptions** - don't assume the problem is where it appears to be
+- **Provide multiple diagnostic approaches** - different ways to verify the issue
+- **Document the resolution** - add to troubleshooting guides for future reference
+
+## Common Issues & Solutions
+
+### Test Hanging Issues
+```bash
+# Use non-hanging test commands
+npm test          # Quick tests (~10 seconds)
+npm run test:fast # Ultra-fast tests (~7 seconds)
+npm run test:full # Complete test suite
+```
+
+### Authentication Issues
+- Check JWT token expiration
+- Verify environment variables
+- Test token refresh mechanism
+- Check user session state
+
+### Port Conflicts
+```bash
+# Use stable port strategy
+./scripts/start-dev-stable.sh  # Ports 4200/9002
+./scripts/fix-local-dev.sh     # Clean up conflicts
+```
+
+### Database Issues
+- Verify database ID matches environment
+- Check SQLite file permissions
+- Validate environment variables
+- Test database connectivity
+
+### Environment Detection Issues
+```bash
+# Validate environment configuration
+npm run validate-environments
+npm run health-check
+```
+
+### Deployment Failures
+- Check Railway context: `railway status`
+- Verify environment variables
+- Test health endpoints
+- Review deployment logs
+
+## Debugging Commands
+```bash
+# Local development fixes
+./scripts/fix-local-dev.sh
+
+# Environment validation
+npm run validate-environments
+
+# Health checks
+npm run health-check
+npm run performance
+
+# Railway troubleshooting
+railway link
+railway status
+railway logs
+```

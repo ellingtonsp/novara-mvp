@@ -1,0 +1,41 @@
+---
+description: Critical deployment rules and safety checks
+globs: 
+alwaysApply: true
+---
+
+# Deployment Rules & Safety
+
+## Critical Deployment Rules
+- **NEVER bypass staging → production workflow**
+- **ALWAYS verify Railway context before deployment**
+- **ALWAYS get explicit user approval for production changes**
+- **ALWAYS run health checks after deployment**
+
+## Environment URLs
+- **Production**: https://novara-backend-production.up.railway.app
+- **Staging**: https://novara-backend-staging.up.railway.app
+- **Frontend**: https://novara-mvp.vercel.app
+
+## Database Isolation
+- **Staging**: `appEOWvLjCn5c7Ght`
+- **Production**: `app5QWCcVbCnVg2Gg`
+- **Local**: SQLite only
+
+## Deployment Commands
+```bash
+# Check current Railway context
+railway status
+
+# Deploy to staging
+railway up --service novara-backend-staging
+
+# Deploy to production (requires explicit approval)
+railway up --service novara-backend-production
+```
+
+## Safety Checks
+- Verify `NODE_ENV` is correct
+- Confirm database ID matches environment
+- Test health endpoints after deployment
+- Monitor error rates post-deployment

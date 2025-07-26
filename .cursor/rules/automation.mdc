@@ -1,0 +1,61 @@
+---
+description: Available automation scripts and npm commands
+globs: ["scripts/**/*.sh", "scripts/**/*.js", "package.json"]
+alwaysApply: false
+---
+
+# Automation & Scripts
+
+## Available Scripts (npm run)
+```bash
+# Development
+start-dev-stable    # Start local dev with stable ports (4200/9002)
+start-local         # Quick local start
+kill-local-servers  # Clean shutdown of local servers
+
+# Testing & Validation
+test                # Run quick test suite (no hanging, ~10 seconds)
+test:fast           # Ultra-fast tests (backend + frontend build, ~7 seconds)
+test:full           # Run full test suite (frontend + backend)
+health-check        # Comprehensive environment health check
+validate-environments # Validate all environment configurations
+validate-schema     # Validate Airtable schema
+safety:check        # Run all safety checks
+
+# Monitoring & Performance
+performance         # Performance monitoring and analysis
+monitor:deployments # Track deployment status
+track:deployments   # Monitor deployment metrics
+
+# Documentation
+docs:generate       # Generate feature documentation
+docs:validate       # Validate documentation completeness
+```
+
+## Key Automation Scripts
+
+### Development Scripts
+- `./scripts/start-dev-stable.sh` - Stable port development environment
+- `./scripts/fix-local-dev.sh` - Fix common local development issues
+- `./scripts/macos-port-manager.sh` - macOS-specific port management
+
+### Testing Scripts
+- `./scripts/test-quick.js` - Comprehensive test suite with timeouts
+- `./scripts/test-staging-enhanced-logging.js` - Staging environment testing
+- `./scripts/test-production-fix.js` - Production environment testing
+
+### Deployment Scripts
+- `./scripts/deploy-production-now.sh` - Simple production deployment
+- `./scripts/deploy-production-final.sh` - Robust production deployment
+- `./scripts/deploy-staging-backend.sh` - Staging backend deployment
+
+### Monitoring Scripts
+- `./scripts/monitoring/deployment-health-monitor.js` - Deployment health monitoring
+- `./scripts/monitoring/comprehensive-health-check.js` - Comprehensive health checks
+- `./scripts/monitoring/performance-monitor.js` - Performance monitoring
+
+## Script Features
+- **Non-hanging scripts**: All scripts terminate properly with timeouts
+- **Safety-first scripts**: Built-in validation and error handling
+- **Environment-aware**: Automatically detect and use correct environment
+- **Comprehensive logging**: Detailed logs for debugging and monitoring

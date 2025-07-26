@@ -8,6 +8,7 @@ on:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       
@@ -31,12 +32,14 @@ jobs:
         continue-on-error: true
       
       - name: Run frontend tests
-        run: npm run test:frontend
+        run: cd frontend && npm test --run --reporter=verbose
         continue-on-error: true
+        timeout-minutes: 10
       
       - name: Run backend tests
-        run: npm run test:backend
+        run: cd backend && npm test --run
         continue-on-error: true
+        timeout-minutes: 10
       
       - name: Build frontend
         run: cd frontend && npm run build
@@ -79,8 +82,9 @@ jobs:
         run: npm ci
       
       - name: Run tests
-        run: npm test || echo "Tests failed - continuing with deployment"
+        run: npm test --run || echo "Tests failed - continuing with deployment"
         continue-on-error: true
+        timeout-minutes: 15
       
       - name: Build frontend
         run: cd frontend && npm run build || echo "Frontend build failed - continuing"

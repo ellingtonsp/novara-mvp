@@ -1,0 +1,54 @@
+---
+description: Technical architecture and tech stack details
+globs: ["backend/**/*.js", "frontend/**/*.tsx", "package.json"]
+alwaysApply: false
+---
+
+# Technical Architecture & Tech Stack
+
+## Frontend (React + TypeScript + Vite)
+- **Framework**: React 18 with TypeScript
+- **Build Tool**: Vite with PWA support
+- **Styling**: Tailwind CSS + shadcn/ui components
+- **State Management**: React Context (AuthContext)
+- **API Client**: Custom fetch wrapper with automatic token refresh
+- **Testing**: Vitest + React Testing Library
+- **Port Strategy**: 4200 (stable, low conflict)
+- **📖 Tech Stack Audit**: `docs/tech-stack-audit-report.md` - Comprehensive technology assessment
+- **📖 Optimization Guide**: `docs/optimization-implementation-guide.md` - Performance optimization strategies
+
+## Backend (Node.js + Express)
+- **Runtime**: Node.js with Express framework
+- **Database**: SQLite (local) + Airtable (staging/production)
+- **Authentication**: JWT with automatic token refresh
+- **Validation**: Input validation middleware
+- **Logging**: Structured logging with Winston
+- **Testing**: Jest + Supertest
+- **Port Strategy**: 9002 (stable, low conflict)
+
+## External Services
+- **Frontend Hosting**: Vercel with automatic deployments
+- **Backend Hosting**: Railway with containerized deployments
+- **Database**: Airtable for staging and production
+- **Error Tracking**: Sentry for monitoring and alerting
+- **Analytics**: Custom analytics system with Airtable
+
+## Branching Strategy
+- **Feature Branch** → **development** → **staging** → **stable** → **main** → **production**
+- **Environment Mapping**:
+  - `development` branch → Local development
+  - `staging` branch → Staging environment
+  - `stable` branch → Pre-production testing
+  - `main` branch → Production environment
+
+## Performance Optimization
+- **Frontend**: Code splitting, lazy loading, PWA caching
+- **Backend**: Database query optimization, caching strategies
+- **Infrastructure**: CDN, compression, HTTP/2
+- **Monitoring**: Real-time performance tracking
+
+## Continuous Improvement
+- **Automated testing**: Comprehensive test suites
+- **Deployment automation**: CI/CD pipelines
+- **Monitoring**: Health checks and alerting
+- **Documentation**: Comprehensive feature documentation
