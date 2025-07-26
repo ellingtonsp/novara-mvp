@@ -198,7 +198,7 @@ export function analyzeSentiment(text: string): SentimentResult {
     
     // Check if phrase is negated (look for negation words before the phrase)
     const phraseStart = phraseMatch.start;
-    const phraseTokens = tokenize(phraseMatch.phrase);
+    // const phraseTokens = tokenize(phraseMatch.phrase); // Unused variable
     let isNegated = false;
     
     // Convert character position to word position

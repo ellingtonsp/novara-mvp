@@ -115,11 +115,11 @@ const NovaraLanding = () => {
   const [loginEmail, setLoginEmail] = useState('');
   const [justSignedUp, setJustSignedUp] = useState(false);
   
-  // ON-01: Speed-tapper detection state
-  const [isSpeedTapper, setIsSpeedTapper] = useState(false);
-  const [tapTimes, setTapTimes] = useState<number[]>([]);
-  const [currentStep, setCurrentStep] = useState(1);
-  const [showSimplifiedForm, setShowSimplifiedForm] = useState(false);
+  // ON-01: Speed-tapper detection state (commented out for future implementation)
+  // const [isSpeedTapper, setIsSpeedTapper] = useState(false);
+  // const [tapTimes, setTapTimes] = useState<number[]>([]);
+  // const [currentStep, setCurrentStep] = useState(1);
+  // const [showSimplifiedForm, setShowSimplifiedForm] = useState(false);
   
   const [formData, setFormData] = useState({
     email: '',
