@@ -4,8 +4,8 @@
 // Tests Railway backend, Vercel frontend, Airtable database, and bug fixes
 
 const STAGING_CONFIG = {
-  BACKEND_URL: 'https://novara-staging-production.up.railway.app',
-  FRONTEND_URL: 'https://novara-mvp-staging.vercel.app', 
+  BACKEND_URL: 'https://novara-staging-staging.up.railway.app',
+  FRONTEND_URL: 'https://novara-jd58qir8x-novara-fertility.vercel.app', 
   AIRTABLE_BASE_ID: 'appEOWvLjCn5c7Ght',
   AIRTABLE_API_KEY: 'patp9wk9fzHxtkVUZ.1ba015773d9bbdc098796035b0a7bfd620edfbf6cd3b5aecc88c0beb5ef6dde7'
 };
