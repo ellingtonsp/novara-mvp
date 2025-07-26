@@ -1,16 +1,45 @@
 #!/bin/bash
 # Novara MVP - Production Deployment Script
-# Deploys both frontend and backend to production environment with safety checks
+# DEPRECATED: This script is deprecated. Use the new unified deployment system.
+# 
+# New usage:
+#   ./scripts/deploy.sh production --force
+#   node scripts/deploy-orchestrator.js production --force
 
-echo "🚀 Deploying to Production Environment..."
-echo "========================================="
+echo "⚠️ DEPRECATED SCRIPT WARNING"
+echo "============================"
+echo "This script is deprecated and will be removed in a future version."
+echo "Please use the new unified deployment system:"
+echo ""
+echo "  ./scripts/deploy.sh production --force"
+echo "  OR"
+echo "  node scripts/deploy-orchestrator.js production --force"
+echo ""
+echo "The new system provides:"
+echo "  ✅ Better error handling and rollback"
+echo "  ✅ Consistent deployment process"
+echo "  ✅ Comprehensive logging and monitoring"
+echo "  ✅ Automated health checks"
+echo ""
+read -p "Do you want to continue with the new deployment system? (y/N): " continue_new
+
+if [[ "$continue_new" == "y" || "$continue_new" == "Y" ]]; then
+    echo "Redirecting to new deployment system..."
+    exec "$(dirname "$0")/../deploy.sh" production --force
+fi
+
+echo "Deployment cancelled."
+exit 1
+
+# Legacy deployment code below (kept for reference but disabled)
+exit 1
 
 # Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+RED='\x1b[0;31m'
+GREEN='\x1b[0;32m'
+YELLOW='\x1b[1;33m'
+BLUE='\x1b[0;34m'
+NC='\x1b[0m' # No Color
 
 # Function to check if command exists
 command_exists() {
