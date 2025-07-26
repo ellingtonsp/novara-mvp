@@ -2455,11 +2455,25 @@ app.post('/api/analytics/events', authenticateToken, async (req, res) => {
   try {
     const { event_type, event_data = {} } = req.body;
     
-    // Validate required event_type field
+    // CRITICAL: Comprehensive validation to prevent undefined event_type
     if (!event_type || typeof event_type !== 'string' || event_type.trim() === '') {
+      console.warn('🚨 Analytics validation failed: Invalid event_type:', { 
+        event_type, 
+        type: typeof event_type,
+        isUndefined: event_type === undefined,
+        isNull: event_type === null,
+        isEmpty: event_type === '',
+        trimmed: event_type?.trim?.() === ''
+      });
+      
       return res.status(400).json({
         success: false,
-        error: 'event_type is required and must be a non-empty string'
+        error: 'event_type is required and must be a non-empty string',
+        details: {
+          received: event_type,
+          type: typeof event_type,
+          valid: false
+        }
       });
     }
     
@@ -2475,68 +2489,43 @@ app.post('/api/analytics/events', authenticateToken, async (req, res) => {
     }
 
     // Create comprehensive event record for Airtable
-    const analyticsData = {
+    const analyticsEvent = {
       user_id: [user.id],
-      event_type,
+      event_type: event_type.trim(), // Ensure clean string
       event_timestamp: new Date().toISOString().split('T')[0],
       date: new Date().toISOString().split('T')[0],
-      event_data: JSON.stringify(event_data) // Store as JSON string
+      event_data: JSON.stringify(event_data)
     };
 
-    // Add event-specific fields for easier querying
-    if (event_data.confidence_scores) {
-      analyticsData.confidence_scores = JSON.stringify(event_data.confidence_scores);
-    }
-    if (event_data.insight_type) {
-      analyticsData.insight_type = event_data.insight_type;
-    }
-    if (event_data.insight_title) {
-      analyticsData.insight_title = event_data.insight_title;
-    }
-    if (event_data.insight_id) {
-      analyticsData.insight_id = event_data.insight_id;
-    }
-    if (event_data.feedback_type) {
-      analyticsData.feedback_type = event_data.feedback_type;
-    }
-    if (event_data.feedback_context) {
-      analyticsData.feedback_context = event_data.feedback_context;
-    }
-    if (event_data.mood_selected && Array.isArray(event_data.mood_selected)) {
-      analyticsData.mood_selected = event_data.mood_selected;
-    }
-    if (event_data.confidence_level) {
-      analyticsData.confidence_level = event_data.confidence_level;
-    }
-    if (event_data.concern_mentioned !== undefined) {
-      analyticsData.concern_mentioned = event_data.concern_mentioned;
-    }
+    console.log('🎯 FVM Analytics event tracked:', analyticsEvent);
 
-    console.log('🎯 FVM Analytics event tracked:', analyticsData);
-
-    // Save to Airtable FVMAnalytics table
+    // Save to database
     const result = await airtableRequest('FMVAnalytics', 'POST', {
-      fields: analyticsData
+      fields: analyticsEvent
     });
-
-    console.log('✅ Analytics event saved to Airtable:', result.id);
-
-    res.json({
-      success: true,
-      message: 'Analytics event tracked successfully',
-      event: {
-        id: result.id,
-        user_id: user.id,
-        event_type,
-        timestamp: analyticsData.event_timestamp
-      }
-    });
-
+    
+    if (result.success || result.id) {
+      console.log('✅ Analytics event saved to Airtable:', result.id);
+      res.json({
+        success: true,
+        message: 'Analytics event tracked successfully',
+        event_id: result.id,
+        event_type: event_type
+      });
+    } else {
+      console.error('❌ Error saving analytics event:', result.error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to save analytics event',
+        details: result.error
+      });
+    }
   } catch (error) {
     console.error('❌ Error tracking analytics event:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Internal server error' 
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error during analytics tracking',
+      details: error.message
     });
   }
 });

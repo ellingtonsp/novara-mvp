@@ -165,9 +165,15 @@ async function testMicroInsights() {
 
 async function testAnalyticsTracking() {
   const analyticsData = {
-    event_type: 'test_event',
+    event_type: 'test_event', // Ensure this is always defined
     event_data: { test: true, timestamp: new Date().toISOString() }
   };
+
+  // Validate analyticsData before sending
+  if (!analyticsData.event_type || typeof analyticsData.event_type !== 'string') {
+    logTest('Analytics Tracking', false, 'Invalid event_type in test data', analyticsData);
+    return false;
+  }
 
   const result = await apiCall('/api/analytics/events', 'POST', analyticsData, true);
   
