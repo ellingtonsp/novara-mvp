@@ -196,7 +196,7 @@ app.use((err, req, res, next) => {
 
 // Request logging middleware (if performance monitoring is disabled)
 if (!process.env.DISABLE_PERFORMANCE_MONITORING) {
-  app.use(performanceMonitoring);
+  app.use(performanceMiddleware);
 }
 
 // Rate limiting
