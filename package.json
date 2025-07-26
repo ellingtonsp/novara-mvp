@@ -53,10 +53,11 @@
     "pre-deploy:typescript": "cd frontend && npx tsc --noEmit && cd ..",
     "pre-deploy:full": "npm run pre-deploy:typescript && npm run pre-deploy:build && npm run validate:deployment",
     "test:demo-ready": "./scripts/test-end-to-end-all-environments.sh",
-    "test:all-environments": "./scripts/test-end-to-end-all-environments.sh"
+    "test:all-environments": "./scripts/test-end-to-end-all-environments.sh",
+    "validate-database-config": "./scripts/validate-database-configuration.sh"
   },
   "dependencies": {
     "axios": "^1.11.0",
-    "node-fetch": "^3.3.2"
+    "node-fetch": "^2.7.0"
   }
 }
