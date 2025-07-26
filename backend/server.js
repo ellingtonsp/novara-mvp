@@ -127,7 +127,10 @@ app.use(performanceMiddleware);
 app.use(limiter);
 
 // Apply Redis-based rate limiting for additional protection
-app.use(rateLimiter.rateLimitMiddleware(15 * 60 * 1000, 1000)); // 1000 requests per 15 minutes
+// Rate limiting with Redis (disabled in production due to trust proxy issues)
+if (process.env.NODE_ENV !== 'production') {
+  app.use(rateLimiter.rateLimitMiddleware(15 * 60 * 1000, 1000)); // 1000 requests per 15 minutes
+}
 
 // Stricter rate limiting for auth routes
 const authLimiter = rateLimit({
@@ -137,6 +140,10 @@ const authLimiter = rateLimit({
     error: 'Too many authentication attempts, please try again later.',
     retryAfter: '15 minutes'
   },
+  skip: (req) => {
+    // Skip rate limiting for health checks and internal Railway requests
+    return req.path === '/api/health' || req.get('User-Agent')?.includes('RailwayHealthCheck');
+  }
 });
 
 // General rate limiting for API routes
@@ -147,6 +154,10 @@ const generalLimiter = rateLimit({
     error: 'Too many API requests, please try again later.',
     retryAfter: '15 minutes'
   },
+  skip: (req) => {
+    // Skip rate limiting for health checks and internal Railway requests
+    return req.path === '/api/health' || req.get('User-Agent')?.includes('RailwayHealthCheck');
+  }
 });
 
 // Logging middleware
