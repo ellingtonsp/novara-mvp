@@ -51,6 +51,42 @@ npm run bugbot:post-deploy  # Validate after deployment
 - Check generated BugBot reports for issues
 - Address BugBot-identified errors before proceeding
 
+## 🚨 MANDATORY FEATURE DEVELOPMENT PROCEDURE
+
+### **Step 1: Feature Initiation**
+```bash
+# ALWAYS start from development branch
+git checkout development
+git pull origin development
+
+# Create feature branch with proper naming
+git checkout -b feature/EPIC-ID-description
+# Example: git checkout -b feature/ON-01-speed-tapper-detection
+```
+
+### **Step 2: Documentation First**
+- Create comprehensive feature documentation in `docs/features/`
+- Include: README.md, user-journey.md, api-endpoints.md, functional-logic.md, database-schema.md, deployment-notes.md
+- Map to roadmap Epic/Story ID
+- Define acceptance criteria and success metrics
+
+### **Step 3: Implementation**
+- Follow established patterns from existing features
+- Implement incrementally with commits after each major component
+- Include unit tests and integration tests
+- Validate against acceptance criteria
+
+### **Step 4: Testing & Validation**
+- Run comprehensive test suite
+- Validate with BugBot
+- Test in local environment
+- Ensure no regressions
+
+### **Step 5: PR & Deployment**
+- Create PR: feature → development
+- Follow progressive integration: development → staging → stable → main
+- Update roadmap status after completion
+
 ## 🌿 SUSTAINABLE BRANCH STRATEGY (MANDATORY)
 
 ### **🚨 CRITICAL RULE: NO DIRECT MAIN COMMITS**
