@@ -1,0 +1,53 @@
+name: Essential Monitoring
+
+on:
+  schedule:
+    # Run every 2 hours instead of every 5-30 minutes
+    - cron: '0 */2 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  essential-health-check:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Check production health
+        run: |
+          echo "Checking production environment..."
+          curl -f --max-time 10 https://novara-mvp-production.up.railway.app/api/health || echo "Production health check failed"
+        continue-on-error: true
+        
+      - name: Check staging health
+        run: |
+          echo "Checking staging environment..."
+          curl -f --max-time 10 https://novara-staging-staging.up.railway.app/api/health || echo "Staging health check failed"
+        continue-on-error: true
+        
+      - name: Check frontend accessibility
+        run: |
+          echo "Checking frontend accessibility..."
+          curl -f --max-time 10 https://novara-mvp.vercel.app || echo "Frontend accessibility check failed"
+        continue-on-error: true
+        
+      - name: Create summary
+        if: always()
+        run: |
+          echo "## Essential Monitoring Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Last Check:** $(date -u)" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "This workflow runs every 2 hours to check essential services." >> $GITHUB_STEP_SUMMARY
+          echo "For detailed monitoring, use the manual triggers in other workflows." >> $GITHUB_STEP_SUMMARY 

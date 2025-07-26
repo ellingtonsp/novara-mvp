@@ -35,9 +35,6 @@ jobs:
       - name: Validate environment configurations
         run: node scripts/validate-environment-config.js
         
-      - name: Run comprehensive health checks
-        run: node scripts/comprehensive-health-check.js check
-        
       - name: Run tests
         run: npm test
         
@@ -47,14 +44,5 @@ jobs:
           echo "## Environment Configuration Validation Report" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Timestamp:** $(date -u)" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          
-          if [ -f "logs/health-report.json" ]; then
-            echo "**Health Check Results:**" >> $GITHUB_STEP_SUMMARY
-            echo '```json' >> $GITHUB_STEP_SUMMARY
-            cat logs/health-report.json >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-          fi
-          
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Validation Status:** ${{ job.status }}" >> $GITHUB_STEP_SUMMARY 

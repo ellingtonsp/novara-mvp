@@ -1,0 +1,230 @@
+{
+  "timestamp": "2025-07-25T00:07:53.201Z",
+  "summary": {
+    "total": 30,
+    "passed": 29,
+    "failed": 0,
+    "warnings": 1,
+    "successRate": "96.67"
+  },
+  "environment": {
+    "branch": "staging",
+    "nodeVersion": "v24.4.1",
+    "platform": "darwin"
+  },
+  "tests": [
+    {
+      "name": "Current Branch Detection",
+      "passed": true,
+      "message": "Current branch: staging",
+      "warning": false,
+      "timestamp": "2025-07-25T00:07:50.979Z"
+    },
+    {
+      "name": "Branch Environment Match",
+      "passed": true,
+      "message": "Branch matches staging environment",
+      "warning": false,
+      "timestamp": "2025-07-25T00:07:50.979Z"
+    },
+    {
+      "name": "Railway Context",
+      "passed": true,
+      "message": "Railway context is accessible",
+      "warning": false,
+      "timestamp": "2025-07-25T00:07:53.085Z"
+    },
+    {
+      "name": "Railway Environment",
+      "passed": true,
+      "message": "Railway is in staging environment",
+      "warning": false,
+      "timestamp": "2025-07-25T00:07:53.085Z"
+    },
+    {
+      "name": "Environment File: frontend/.env.staging",
+      "passed": true,
+      "message": "Environment file exists",
+      "warning": false,
+      "timestamp": "2025-07-25T00:07:53.085Z"
+    },
+    {
+      "name": "Environment File: backend/env.staging.example",
+      "passed": true,
+      "message": "Environment file exists",
+      "warning": false,
+      "timestamp": "2025-07-25T00:07:53.085Z"
+    },
+    {
+      "name": "Environment File: frontend/.env.production",
+      "passed": true,
+      "message": "Environment file exists",
+      "warning": false,
+      "timestamp": "2025-07-25T00:07:53.085Z"
+    },
+    {
+      "name": "Environment File: backend/env.production.example",
+      "passed": true,
+      "message": "Environment file exists",
+      "warning": false,
+      "timestamp": "2025-07-25T00:07:53.085Z"
+    },
+    {
+      "name": "Deployment Script: scripts/deploy-staging.sh",
+      "passed": true,
+      "message": "Script file exists",
+      "warning": false,
+      "timestamp": "2025-07-25T00:07:53.085Z"
+    },
+    {
+      "name": "Script Syntax: scripts/deploy-staging.sh",
+      "passed": true,
+      "message": "Script syntax is valid",
+      "warning": false,
+      "timestamp": "2025-07-25T00:07:53.092Z"
+    },
+    {
+      "name": "Deployment Script: scripts/deploy-production.sh",
+      "passed": true,
+      "message": "Script file exists",
+      "warning": false,
+      "timestamp": "2025-07-25T00:07:53.092Z"
+    },
+    {
+      "name": "Script Syntax: scripts/deploy-production.sh",
+      "passed": true,
+      "message": "Script syntax is valid",
+      "warning": false,
+      "timestamp": "2025-07-25T00:07:53.099Z"
+    },
+    {
+      "name": "Deployment Script: scripts/deploy-with-validation.sh",
+      "passed": true,
+      "message": "Script file exists",
+      "warning": false,
+      "timestamp": "2025-07-25T00:07:53.099Z"
+    },
+    {
+      "name": "Script Syntax: scripts/deploy-with-validation.sh",
+      "passed": true,
+      "message": "Script syntax is valid",
+      "warning": false,
+      "timestamp": "2025-07-25T00:07:53.106Z"
+    },
+    {
+      "name": "Monitoring Script: scripts/environment-health-check.js",
+      "passed": true,
+      "message": "Script file exists",
+      "warning": false,
+      "timestamp": "2025-07-25T00:07:53.107Z"
+    },
+    {
+      "name": "Script Execution: scripts/environment-health-check.js",
+      "passed": true,
+      "message": "Script appears to be valid JavaScript",
+      "warning": false,
+      "timestamp": "2025-07-25T00:07:53.107Z"
+    },
+    {
+      "name": "Monitoring Script: scripts/simple-deployment-tracker.js",
+      "passed": true,
+      "message": "Script file exists",
+      "warning": false,
+      "timestamp": "2025-07-25T00:07:53.107Z"
+    },
+    {
+      "name": "Script Execution: scripts/simple-deployment-tracker.js",
+      "passed": true,
+      "message": "Script appears to be valid JavaScript",
+      "warning": false,
+      "timestamp": "2025-07-25T00:07:53.107Z"
+    },
+    {
+      "name": "Monitoring Script: scripts/performance-monitor.js",
+      "passed": true,
+      "message": "Script file exists",
+      "warning": false,
+      "timestamp": "2025-07-25T00:07:53.107Z"
+    },
+    {
+      "name": "Script Execution: scripts/performance-monitor.js",
+      "passed": true,
+      "message": "Script appears to be valid JavaScript",
+      "warning": false,
+      "timestamp": "2025-07-25T00:07:53.108Z"
+    },
+    {
+      "name": "Monitoring Script: scripts/railway-web-monitor.js",
+      "passed": true,
+      "message": "Script file exists",
+      "warning": false,
+      "timestamp": "2025-07-25T00:07:53.108Z"
+    },
+    {
+      "name": "Script Execution: scripts/railway-web-monitor.js",
+      "passed": true,
+      "message": "Script appears to be valid JavaScript",
+      "warning": false,
+      "timestamp": "2025-07-25T00:07:53.110Z"
+    },
+    {
+      "name": "Git Status Clean",
+      "passed": false,
+      "message": "Uncommitted changes detected",
+      "warning": true,
+      "timestamp": "2025-07-25T00:07:53.124Z"
+    },
+    {
+      "name": "Package Script: safety:check",
+      "passed": true,
+      "message": "Script exists in package.json",
+      "warning": false,
+      "timestamp": "2025-07-25T00:07:53.124Z"
+    },
+    {
+      "name": "Package Script: health-check",
+      "passed": true,
+      "message": "Script exists in package.json",
+      "warning": false,
+      "timestamp": "2025-07-25T00:07:53.124Z"
+    },
+    {
+      "name": "Package Script: validate:environments",
+      "passed": true,
+      "message": "Script exists in package.json",
+      "warning": false,
+      "timestamp": "2025-07-25T00:07:53.124Z"
+    },
+    {
+      "name": "Package Script: deploy:staging",
+      "passed": true,
+      "message": "Script exists in package.json",
+      "warning": false,
+      "timestamp": "2025-07-25T00:07:53.124Z"
+    },
+    {
+      "name": "Package Script: deploy:production",
+      "passed": true,
+      "message": "Script exists in package.json",
+      "warning": false,
+      "timestamp": "2025-07-25T00:07:53.124Z"
+    },
+    {
+      "name": "Health Check Execution",
+      "passed": true,
+      "message": "Health check script runs successfully",
+      "warning": false,
+      "timestamp": "2025-07-25T00:07:53.161Z"
+    },
+    {
+      "name": "Deployment Tracker",
+      "passed": true,
+      "message": "Deployment tracker runs successfully",
+      "warning": false,
+      "timestamp": "2025-07-25T00:07:53.201Z"
+    }
+  ],
+  "recommendations": [
+    "Review warnings and address critical issues"
+  ]
+}

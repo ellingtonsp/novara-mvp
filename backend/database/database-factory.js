@@ -16,6 +16,17 @@ class DatabaseAdapter {
     }
   }
 
+  // Map Airtable table names to SQLite table names
+  mapTableName(airtableTableName) {
+    const tableMap = {
+      'Users': 'users',
+      'DailyCheckins': 'daily_checkins',
+      'Insights': 'insights',
+      'InsightEngagement': 'insight_engagement'
+    };
+    return tableMap[airtableTableName] || airtableTableName.toLowerCase();
+  }
+
   // === AIRTABLE-COMPATIBLE API ===
 
   async airtableRequest(endpoint, method = 'GET', data = null) {
@@ -66,12 +77,57 @@ class DatabaseAdapter {
     }
   }
 
+  // === USER OPERATIONS ===
+
   async findUserByEmail(email) {
     if (!this.useLocalDatabase) {
       return this.originalFindUserByEmail(email);
     }
     
     return await this.localDb.findUserByEmail(email);
+  }
+
+  // NEW: Update user method for medication status and other profile updates
+  async updateUser(userId, updateData) {
+    if (!this.useLocalDatabase) {
+      // Airtable update for staging/production using axios
+      const config = {
+        airtable: {
+          apiKey: process.env.AIRTABLE_API_KEY,
+          baseId: process.env.AIRTABLE_BASE_ID,
+          baseUrl: `https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}`
+        }
+      };
+      
+      const airtableUrl = `${config.airtable.baseUrl}/Users/${userId}`;
+      
+      console.log(`🔄 Updating user ${userId} in Airtable:`, updateData);
+      
+      try {
+        const response = await axios.patch(airtableUrl, {
+          fields: updateData 
+        }, {
+          headers: {
+            'Authorization': `Bearer ${config.airtable.apiKey}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        console.log('✅ Airtable update successful:', response.data.fields);
+        return response.data;
+      } catch (error) {
+        console.error('❌ Airtable update failed:', {
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          error: error.response?.data || error.message,
+          userId,
+          updateData
+        });
+        throw new Error(`Failed to update user in Airtable: ${error.response?.status} ${error.response?.statusText} - ${error.response?.data || error.message}`);
+      }
+    }
+    
+    return await this.localDb.updateUser(userId, updateData);
   }
 
   async getUserCheckins(userId, filterFormula, sortOptions, maxRecords) {
@@ -120,10 +176,10 @@ class DatabaseAdapter {
     const pathParts = urlObj.pathname.split('/');
     const endpoint = pathParts[pathParts.length - 1];
 
-    if (endpoint === 'DailyCheckins') {
+    if (endpoint === 'DailyCheckins' || endpoint === 'daily_checkins') {
       // Extract user ID from filter formula
       const filterFormula = urlObj.searchParams.get('filterByFormula');
-      const userIdMatch = filterFormula.match(/SEARCH\('([^']+)'/);
+      const userIdMatch = filterFormula ? filterFormula.match(/SEARCH\('([^']+)'/) : null;
       const userId = userIdMatch ? userIdMatch[1] : null;
       
       const maxRecords = urlObj.searchParams.get('maxRecords') || 7;
@@ -197,7 +253,7 @@ class DatabaseAdapter {
     };
 
     try {
-      const response = await fetch(
+      const response = await axios.get(
         `${config.airtable.baseUrl}/Users?filterByFormula={email}='${email}'`,
         {
           headers: {
@@ -206,7 +262,7 @@ class DatabaseAdapter {
         }
       );
       
-      const result = await response.json();
+      const result = response.data;
       
       if (result.records && result.records.length > 0) {
         return {

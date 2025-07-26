@@ -1,32 +1,67 @@
 import { useEffect } from 'react'
 import { AuthProvider } from './contexts/AuthContext'
 import NovaraLanding from './components/NovaraLanding'
-import { AnalyticsWrapper, initGA, getAnalyticsConfig } from './lib/analytics'
+import { initializeAnalytics } from './lib/analytics'
 import { ErrorBoundary } from './components/ErrorBoundary'
-import { initializePWA } from './utils/pwa'
+import { initializePWA, checkCacheStatus, clearAllCaches } from './utils/pwa'
+import { environmentConfig } from './lib/environment'
 import './App.css'
 
 function App() {
-  // Initialize analytics on app load - Production deployment with GA4
-  // Environment: VITE_GA_MEASUREMENT_ID should be G-QP9XJD6QFS
-  // Triggering redeploy with environment variable
-  const analyticsConfig = getAnalyticsConfig();
-  if (analyticsConfig.shouldTrack && analyticsConfig.gaMeasurementId) {
-    initGA(analyticsConfig.gaMeasurementId);
-  }
-
-  // Initialize PWA features
+  // Initialize PostHog analytics on app load - AN-01 Event Tracking Instrumentation
   useEffect(() => {
-    initializePWA().then((capabilities) => {
-      console.log('PWA initialized with capabilities:', capabilities);
+    console.log('🚀 AN-01 DEBUG: App.tsx - About to initialize analytics');
+    console.log('🚀 AN-01 DEBUG: Current environment:', environmentConfig.environment);
+    console.log('🚀 AN-01 DEBUG: API Key present:', !!import.meta.env.VITE_POSTHOG_API_KEY);
+    console.log('🚀 AN-01 DEBUG: API Key length:', import.meta.env.VITE_POSTHOG_API_KEY?.length || 0);
+    console.log('🚀 AN-01 DEBUG: API Key prefix:', import.meta.env.VITE_POSTHOG_API_KEY?.substring(0, 4) || 'none');
+    console.log('🚀 AN-01 DEBUG: PostHog Host:', import.meta.env.VITE_POSTHOG_HOST);
+    console.log('🚀 AN-01 DEBUG: Hostname:', window.location.hostname);
+    console.log('🚀 AN-01 DEBUG: All env vars:', {
+      VITE_VERCEL_ENV: import.meta.env.VITE_VERCEL_ENV,
+      VITE_POSTHOG_API_KEY: import.meta.env.VITE_POSTHOG_API_KEY ? 'present' : 'missing',
+      VITE_POSTHOG_HOST: import.meta.env.VITE_POSTHOG_HOST,
+      VITE_API_URL: import.meta.env.VITE_API_URL,
+      NODE_ENV: import.meta.env.NODE_ENV,
+      MODE: import.meta.env.MODE
     });
+    
+    try {
+      initializeAnalytics();
+      console.log('🚀 AN-01 DEBUG: Analytics initialization completed');
+    } catch (error) {
+      console.error('🚀 AN-01 DEBUG: Analytics initialization failed:', error);
+    }
+  }, []);
+
+  // Initialize PWA features and check cache status
+  useEffect(() => {
+    const initializeApp = async () => {
+      const capabilities = await initializePWA();
+      console.log('PWA initialized with capabilities:', capabilities);
+      
+      // Check cache status and clear outdated caches
+      try {
+        const cacheStatus = await checkCacheStatus();
+        const hasOutdatedCache = cacheStatus.some(cache => !cache.isCurrentVersion);
+        
+        if (hasOutdatedCache) {
+          console.log('Outdated cache detected, clearing...');
+          await clearAllCaches();
+          console.log('Cache cleared due to version mismatch');
+        }
+      } catch (error) {
+        console.error('Failed to check cache status:', error);
+      }
+    };
+    
+    initializeApp();
   }, []);
 
   return (
     <ErrorBoundary>
       <AuthProvider>
         <NovaraLanding />
-        <AnalyticsWrapper />
       </AuthProvider>
     </ErrorBoundary>
   )

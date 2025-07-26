@@ -1,5 +1,8 @@
 // PWA Utility Functions
 
+// Cache version for forcing updates
+const CACHE_VERSION = 'novara-v1.1.0';
+
 // Register service worker
 export async function registerServiceWorker() {
   if ('serviceWorker' in navigator) {
@@ -30,6 +33,76 @@ export async function registerServiceWorker() {
     }
   }
   return null;
+}
+
+// Clear all caches
+export async function clearAllCaches() {
+  if ('caches' in window) {
+    try {
+      const cacheNames = await caches.keys();
+      await Promise.all(
+        cacheNames.map(cacheName => {
+          console.log('Deleting cache:', cacheName);
+          return caches.delete(cacheName);
+        })
+      );
+      console.log('All caches cleared');
+      return true;
+    } catch (error) {
+      console.error('Failed to clear caches:', error);
+      return false;
+    }
+  }
+  return false;
+}
+
+// Force service worker update
+export async function forceServiceWorkerUpdate() {
+  if ('serviceWorker' in navigator) {
+    try {
+      // Unregister current service worker
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(
+        registrations.map(registration => registration.unregister())
+      );
+      
+      // Clear all caches
+      await clearAllCaches();
+      
+      // Reload the page to register new service worker
+      window.location.reload();
+      return true;
+    } catch (error) {
+      console.error('Failed to force service worker update:', error);
+      return false;
+    }
+  }
+  return false;
+}
+
+// Check if cache needs clearing (for debugging)
+export async function checkCacheStatus() {
+  if ('caches' in window) {
+    try {
+      const cacheNames = await caches.keys();
+      const cacheInfo = await Promise.all(
+        cacheNames.map(async (cacheName) => {
+          const cache = await caches.open(cacheName);
+          const keys = await cache.keys();
+          return {
+            name: cacheName,
+            size: keys.length,
+            isCurrentVersion: cacheName.includes(CACHE_VERSION)
+          };
+        })
+      );
+      return cacheInfo;
+    } catch (error) {
+      console.error('Failed to check cache status:', error);
+      return [];
+    }
+  }
+  return [];
 }
 
 // Show update notification

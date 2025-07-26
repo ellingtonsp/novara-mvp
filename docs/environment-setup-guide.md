@@ -46,19 +46,19 @@ Create environment-specific configuration files in the `backend/` directory:
 #### **Development Environment**
 ```bash
 cd backend
-cp env.development.example .env.development
+cp env-examples/env.example .env.development
 ```
 
 #### **Staging Environment**
 ```bash
 cd backend
-cp env.staging.example .env.staging
+cp env-examples/env.example .env.staging
 ```
 
 #### **Production Environment**
 ```bash
 cd backend
-cp env.production.example .env.production
+cp env-examples/env.example .env.production
 ```
 
 ### **Step 2: Frontend Environment Files**
@@ -68,19 +68,19 @@ Create environment-specific configuration files in the `frontend/` directory:
 #### **Development Environment**
 ```bash
 cd frontend
-cp env.development.example .env.development
+cp env-examples/env.example .env.development
 ```
 
 #### **Staging Environment**
 ```bash
 cd frontend
-cp env.staging.example .env.staging
+cp env-examples/env.example .env.staging
 ```
 
 #### **Production Environment**
 ```bash
 cd frontend
-cp env.production.example .env.production
+cp env-examples/env.example .env.production
 ```
 
 ## 📦 **Dependencies Installation**
@@ -225,8 +225,8 @@ rm backend/data/novara-local.db
 ./scripts/validate-dev.sh
 
 # Recreate environment files
-cp backend/env.development.example backend/.env.development
-cp frontend/env.development.example frontend/.env.development
+cp env-examples/backend/env.development.example backend/.env.development
+cp env-examples/frontend/env.development.example frontend/.env.development
 ```
 
 #### **Dependency Issues**

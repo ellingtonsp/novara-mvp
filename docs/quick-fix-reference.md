@@ -149,9 +149,13 @@ try {
 
 ### **Environment Detection**
 ```typescript
-const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://novara-mvp-production.up.railway.app'
-  : 'http://localhost:3000';
+// ✅ CORRECT: Use environmentConfig
+import { environmentConfig } from './lib/environment';
+const environment = environmentConfig.environment;
+const apiUrl = environmentConfig.apiUrl;
+
+// ❌ WRONG: Don't use direct env vars
+const environment = import.meta.env.VITE_VERCEL_ENV;
 ```
 
 ---
