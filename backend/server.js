@@ -2120,9 +2120,12 @@ app.post('/api/checkins', authenticateToken, async (req, res) => {
 
     console.log('📊 Sending to Airtable DailyCheckins:', checkinData);
 
+    // Filter data to only include fields that exist in production schema
+    const filteredCheckinData = filterForProductionSchema('DailyCheckins', checkinData);
+
     // Create record in Airtable DailyCheckins table
     const result = await airtableRequest('DailyCheckins', 'POST', {
-      fields: checkinData
+      fields: filteredCheckinData
     });
 
     console.log('✅ Daily check-in saved successfully:', result.id);
@@ -2451,6 +2454,14 @@ app.post('/api/insights/engagement', authenticateToken, async (req, res) => {
 app.post('/api/analytics/events', authenticateToken, async (req, res) => {
   try {
     const { event_type, event_data = {} } = req.body;
+    
+    // Validate required event_type field
+    if (!event_type || typeof event_type !== 'string' || event_type.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        error: 'event_type is required and must be a non-empty string'
+      });
+    }
     
     console.log(`📈 FVM Event tracked: ${event_type}`, event_data);
 
@@ -3067,6 +3078,51 @@ function getMedicationQuestionForCycleStage(cycleStage) {
         context: 'medication_general'
       };
   }
+}
+
+// Airtable schema validation - only send fields that exist in production
+const PRODUCTION_AIRTABLE_SCHEMA = {
+  DailyCheckins: [
+    'user_id',
+    'mood_today', 
+    'confidence_today',
+    'primary_concern_today',
+    'user_note',
+    'date_submitted',
+    'medication_confidence_today',
+    'medication_concern_today',
+    'financial_stress_today',
+    'financial_concern_today',
+    'journey_readiness_today',
+    'top_concern_today',
+    'sentiment',
+    'sentiment_confidence', 
+    'sentiment_scores',
+    'sentiment_processing_time',
+    'created_at'
+  ]
+};
+
+// Function to filter fields based on production schema
+function filterForProductionSchema(tableName, data) {
+  if (!PRODUCTION_AIRTABLE_SCHEMA[tableName]) {
+    console.warn(`⚠️ No schema defined for table: ${tableName}, sending all fields`);
+    return data;
+  }
+  
+  const allowedFields = PRODUCTION_AIRTABLE_SCHEMA[tableName];
+  const filteredData = {};
+  
+  Object.entries(data).forEach(([key, value]) => {
+    if (allowedFields.includes(key)) {
+      filteredData[key] = value;
+    } else {
+      console.log(`🚫 Filtered out field '${key}' (not in production schema)`);
+    }
+  });
+  
+  console.log(`✅ Filtered data for ${tableName}:`, Object.keys(filteredData));
+  return filteredData;
 }
 
 module.exports = app;
