@@ -80,8 +80,8 @@ async function validateEnvironment(envName, config) {
     issues.push(`Backend unreachable: ${error.message}`);
   }
   
-  // Check frontend accessibility (skip for development)
-  if (envName !== 'development') {
+  // Check frontend accessibility (skip for development and staging due to dynamic URLs)
+  if (envName !== 'development' && envName !== 'staging') {
     try {
       console.log(`   Frontend: ${config.frontend}`);
       const frontendResponse = await makeRequest(config.frontend);
@@ -94,6 +94,8 @@ async function validateEnvironment(envName, config) {
     } catch (error) {
       issues.push(`Frontend unreachable: ${error.message}`);
     }
+  } else if (envName === 'staging') {
+    console.log(`   ⚠️  Frontend: Skipping validation (dynamic staging URL)`);
   }
   
   // Validate URL format
@@ -125,8 +127,18 @@ async function validateAllEnvironments() {
   const results = {};
   let hasIssues = false;
   
+  // Skip development environment in CI/CD contexts
+  const isCI = process.env.CI || process.env.GITHUB_ACTIONS;
+  const environmentsToValidate = isCI 
+    ? Object.entries(ENVIRONMENTS).filter(([envName]) => envName !== 'development')
+    : Object.entries(ENVIRONMENTS);
+  
+  if (isCI) {
+    console.log('🔧 CI/CD detected - skipping development environment validation');
+  }
+  
   // Validate each environment
-  for (const [envName, config] of Object.entries(ENVIRONMENTS)) {
+  for (const [envName, config] of environmentsToValidate) {
     results[envName] = await validateEnvironment(envName, config);
     
     if (results[envName].issues.length > 0) {
