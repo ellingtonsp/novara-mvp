@@ -45,6 +45,43 @@
 - ALWAYS require explicit user approval for production changes
 - NEVER make production changes without staging validation
 
+## 🗄️ CRITICAL DATABASE CONFIGURATION RULES
+
+### Database Isolation (MANDATORY)
+- **NEVER share database IDs between environments**
+- **ALWAYS verify database configuration before any deployment**
+- **ALWAYS validate environment variables match the correct environment**
+
+### Environment-Specific Database IDs
+| Environment | Base ID | Purpose | Validation Required |
+|-------------|---------|---------|-------------------|
+| **Staging** | `appEOWvLjCn5c7Ght` | Testing and validation | ✅ Before staging deployment |
+| **Production** | `app5QWCcVbCnVg2Gg` | Live user data | ✅ Before production deployment |
+| **Development** | SQLite (local) | Local development | ✅ Before local testing |
+
+### Database Configuration Validation (MANDATORY)
+```bash
+# ALWAYS run these commands before any deployment:
+railway status  # Verify correct environment and service
+railway variables  # Verify AIRTABLE_BASE_ID matches environment
+echo "✅ Database validation: Environment $(railway status | grep Environment) using Base ID $(railway variables | grep AIRTABLE_BASE_ID)"
+```
+
+### Critical Database Rules
+- **🚨 CRITICAL**: Production must NEVER use staging database ID
+- **🚨 CRITICAL**: Staging must NEVER use production database ID  
+- **🚨 CRITICAL**: Verify database isolation before ANY deployment
+- **🚨 CRITICAL**: If database misconfiguration is detected, STOP deployment immediately
+- **🚨 CRITICAL**: Document all database configuration changes
+
+### Database Configuration Checklist (MANDATORY)
+Before any deployment, verify:
+- [ ] Railway environment is correct (staging/production)
+- [ ] Railway service is correct (novara-staging/novara-main)
+- [ ] AIRTABLE_BASE_ID matches the environment
+- [ ] Database isolation is maintained
+- [ ] No cross-environment database sharing
+
 ## 🔧 Technical Context
 
 ### Current Environment URLs
@@ -69,6 +106,7 @@ cd frontend && vercel --target staging
 railway status  # VERIFY: Project=novara-mvp, Environment=staging, Service=novara-staging
 railway environment staging
 railway service novara-staging
+railway variables  # VERIFY: AIRTABLE_BASE_ID=appEOWvLjCn5c7Ght
 railway up
 
 # Production (ONLY after staging validation)
@@ -76,6 +114,7 @@ cd frontend && vercel --prod
 railway status  # VERIFY: Project=novara-mvp, Environment=production, Service=novara-main
 railway environment production
 railway service novara-main
+railway variables  # VERIFY: AIRTABLE_BASE_ID=app5QWCcVbCnVg2Gg
 railway up
 ```
 
@@ -84,11 +123,12 @@ railway up
 ### Before Any Deployment
 1. Check current branch: `git branch`
 2. Check Railway context: `railway status`
-3. Verify environment variables are correct
-4. Confirm user approval for production changes
-5. **CRITICAL**: Verify Railway project is "novara-mvp" and service is correct for environment
-6. **CRITICAL**: For staging: Environment=staging, Service=novara-staging
-7. **CRITICAL**: For production: Environment=production, Service=novara-main
+3. **CRITICAL**: Verify database configuration: `railway variables | grep AIRTABLE_BASE_ID`
+4. Verify environment variables are correct
+5. Confirm user approval for production changes
+6. **CRITICAL**: Verify Railway project is "novara-mvp" and service is correct for environment
+7. **CRITICAL**: For staging: Environment=staging, Service=novara-staging, Base ID=appEOWvLjCn5c7Ght
+8. **CRITICAL**: For production: Environment=production, Service=novara-main, Base ID=app5QWCcVbCnVg2Gg
 
 ### Before Any Code Changes
 1. **Understand the goal** - what problem are we solving?
@@ -106,6 +146,9 @@ railway up
 railway status
 railway domain
 
+# CRITICAL: Verify database configuration
+railway variables | grep AIRTABLE_BASE_ID
+
 # Verify Vercel context
 vercel ls
 
@@ -114,6 +157,7 @@ echo $NODE_ENV
 
 # CRITICAL: Pre-deployment Railway verification
 railway status | grep -E "(Environment|Service)" && echo "✅ Railway context verified"
+railway variables | grep AIRTABLE_BASE_ID && echo "✅ Database configuration verified"
 ```
 
 ## 📋 Session Start Checklist
@@ -121,14 +165,15 @@ railway status | grep -E "(Environment|Service)" && echo "✅ Railway context ve
 When starting a new session, ALWAYS:
 1. Check current working directory
 2. Verify Railway environment and service
-3. Confirm which environment we're working with
-4. Review recent deployment history
-5. Ask user for explicit confirmation before any production changes
-6. **Assess current context** - what are we working on and what's the goal?
-7. **Check for active issues** - any ongoing problems or recent changes?
-8. **Validate assumptions** - confirm understanding of current state
-9. **Review roadmap alignment** - check `docs/roadmaps/Novara Product Roadmap.md` for strategic context
-10. **Map work to roadmap** - identify which epic/story the current work supports
+3. **CRITICAL**: Verify database configuration matches environment
+4. Confirm which environment we're working with
+5. Review recent deployment history
+6. Ask user for explicit confirmation before any production changes
+7. **Assess current context** - what are we working on and what's the goal?
+8. **Check for active issues** - any ongoing problems or recent changes?
+9. **Validate assumptions** - confirm understanding of current state
+10. **Review roadmap alignment** - check `docs/roadmaps/Novara Product Roadmap.md` for strategic context
+11. **Map work to roadmap** - identify which epic/story the current work supports
 
 ## 🎯 User Preferences & Collaboration Guidelines
 
@@ -291,7 +336,7 @@ validate-feature-docs # Validate feature documentation completeness
 #### Database Issues
 - **Local**: SQLite database in `backend/data/novara-local.db`
 - **Staging**: Airtable base `appEOWvLjCn5c7Ght`
-- **Production**: Production Airtable base
+- **Production**: Airtable base `app5QWCcVbCnVg2Gg`
 - **Debug**: `scripts/detailed-database-diagnostic.js`
 - **📖 Architecture**: `docs/database-architecture-assessment.md` - Database design and optimization
 - **📖 Schema Issues**: `docs/airtable-schema-issues.md` - Common Airtable schema problems
@@ -341,6 +386,7 @@ railway up  # Deploy to correct environment
 # ✅ Environment: staging (for staging deployment)
 # ✅ Service: novara-staging (for staging deployment)
 # ✅ Branch: staging (for staging deployment)
+# ✅ Database: AIRTABLE_BASE_ID=appEOWvLjCn5c7Ght (for staging)
 ```
 
 #### Local Development
@@ -532,6 +578,16 @@ npm run performance:production
 4. Merge directly to `main` after validation
 5. Cherry-pick to `stable` and `staging`
 
+### CI/CD Protection for Hotfixes
+- **ALWAYS validate CI/CD pipeline** before and after hotfix deployments
+- **Skip development environment validation** in CI/CD contexts to prevent pipeline failures
+- **Use context-aware validation** with `CI` and `GITHUB_ACTIONS` environment detection
+- **Maintain full validation** for staging and production environments
+- **Handle dynamic staging URLs** gracefully in validation scripts
+- **Ensure hotfix deployments don't break CI/CD pipeline**
+- **Test validation scripts locally** before committing hotfix changes
+- **Document CI/CD fixes** in comprehensive resolution reports
+
 ### Release Process
 1. Feature freeze on `stable` branch
 2. Comprehensive testing in staging
@@ -560,6 +616,15 @@ npm run performance:production
 - Automated rollback procedures
 - Self-healing infrastructure
 - Predictive failure detection
+
+### CI/CD Validation Best Practices
+- **Environment Detection**: Use `CI` and `GITHUB_ACTIONS` environment variables for context-aware validation
+- **Development Environment**: Skip local server validation in CI/CD contexts where servers aren't available
+- **Dynamic URLs**: Handle staging frontend URLs that change with each deployment
+- **Validation Scripts**: Test all validation scripts locally before committing to prevent CI/CD failures
+- **Error Handling**: Implement graceful fallbacks for validation failures in CI/CD contexts
+- **Documentation**: Maintain comprehensive documentation of CI/CD validation procedures
+- **Monitoring**: Track CI/CD pipeline health and validation success rates
 
 ## 🤝 COLLABORATION OPTIMIZATION
 
@@ -610,4 +675,5 @@ npm run performance:production
 ### Quick References
 - **📖 Deployment Quick Ref**: `docs/deployment-quick-reference.md` - Fast deployment commands
 - **📖 Environment Config**: `docs/environment-configuration.md` - Environment configuration details
-- **📖 Environment Setup**: `docs/environment-setup-guide.md` - Environment setup procedures 
+- **📖 Environment Setup**: `docs/environment-setup-guide.md` - Environment setup procedures
+- **📖 CI/CD Protection**: `CICD_PROTECTION_HOTFIX_RESOLUTION.md` - CI/CD pipeline protection procedures 
