@@ -133,18 +133,20 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 // Stricter rate limiting for auth routes
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // limit each IP to 5 requests per windowMs
-  message: {
-    error: 'Too many authentication attempts, please try again later.',
-    retryAfter: '15 minutes'
-  },
-  skip: (req) => {
-    // Skip rate limiting for health checks and internal Railway requests
-    return req.path === '/api/health' || req.get('User-Agent')?.includes('RailwayHealthCheck');
-  }
-});
+// Temporarily disable in development for testing
+let authLimiter;
+if (process.env.NODE_ENV !== 'development') {
+  authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 5, // limit each IP to 5 requests per windowMs
+    message: {
+      error: 'Too many authentication attempts, please try again later.',
+      retryAfter: '15 minutes'
+    },
+  });
+} else {
+  authLimiter = (req, res, next) => next(); // No-op in development
+}
 
 // General rate limiting for API routes
 const generalLimiter = rateLimit({
@@ -1964,8 +1966,8 @@ app.get('/api/checkins/last-values', authenticateToken, async (req, res) => {
       const result = await databaseAdapter.localDb.getUserCheckins(user.id, 1);
       userRecords = result.records || [];
     } else {
-      // Use Airtable with filter formula
-      const checkinsUrl = `${config.airtable.baseUrl}/DailyCheckins?filterByFormula=SEARCH('${user.id}', {user_id})&sort[0][field]=date_submitted&sort[0][direction]=desc&maxRecords=1`;
+      // Use Airtable with filter formula - search by email since check-ins store email as user_id
+      const checkinsUrl = `${config.airtable.baseUrl}/DailyCheckins?filterByFormula=SEARCH('${user.email}', {user_id})&sort[0][field]=date_submitted&sort[0][direction]=desc&maxRecords=1`;
       
       const response = await databaseAdapter.fetchCheckins(checkinsUrl, {
         headers: {
@@ -2183,52 +2185,44 @@ app.get('/api/checkins', authenticateToken, async (req, res) => {
       });
     }
 
-    // Alternative approach: Fetch recent records and filter in code
-    // This avoids Airtable formula issues with linked records
-    const airtableUrl = `${config.airtable.baseUrl}/DailyCheckins?sort[0][field]=date_submitted&sort[0][direction]=desc&maxRecords=${limit * 5}`;
-    console.log('🔍 Querying database for recent checkins, will filter by user:', user.id);
+    let checkins = [];
     
-    const response = await databaseAdapter.fetchCheckins(airtableUrl, {
-      headers: {
-        'Authorization': `Bearer ${config.airtable.apiKey}`,
-      }
-    });
-
-    const result = await response.json();
-
-    if (!response.ok) {
-      console.error('❌ Airtable error fetching check-ins:', result);
-      return res.status(422).json({ 
-        success: false, 
-        error: 'Failed to retrieve check-ins from database' 
+    if (databaseAdapter.isUsingLocalDatabase()) {
+      // Use local database method
+      const result = await databaseAdapter.localDb.getUserCheckins(user.id, limit);
+      checkins = result.records || [];
+    } else {
+      // Use Airtable with email-based filter for production
+      const airtableUrl = `${config.airtable.baseUrl}/DailyCheckins?filterByFormula={user_id}='${req.user.email}'&sort[0][field]=date_submitted&sort[0][direction]=desc&maxRecords=${limit}`;
+      console.log('🔍 Querying Airtable with URL:', airtableUrl);
+      console.log('🆔 Looking for user email:', req.user.email);
+      
+      const response = await fetch(airtableUrl, {
+        headers: {
+          'Authorization': `Bearer ${config.airtable.apiKey}`,
+        }
       });
-    }
 
-    // Filter records by user ID in application code
-    const userCheckins = result.records.filter(record => {
-      const recordUserId = record.fields.user_id;
-      // Handle both single string and array formats
-      if (Array.isArray(recordUserId)) {
-        return recordUserId.includes(user.id);
+      const result = await response.json();
+
+      if (!response.ok) {
+        console.error('❌ Airtable error fetching check-ins:', result);
+        return res.status(422).json({ 
+          success: false, 
+          error: 'Failed to retrieve check-ins from database' 
+        });
       }
-      return recordUserId === user.id;
-    }).slice(0, limit); // Apply limit after filtering
 
-    console.log(`📊 Filtered ${userCheckins.length} check-in records for user ${req.user.email} from ${result.records?.length || 0} total records`);
-    if (userCheckins.length > 0) {
-      console.log('📝 First record user_id field:', userCheckins[0].fields.user_id);
+      checkins = result.records.map(record => ({
+        id: record.id,
+        mood_today: record.fields.mood_today,
+        primary_concern_today: record.fields.primary_concern_today,
+        confidence_today: record.fields.confidence_today,
+        user_note: record.fields.user_note,
+        date_submitted: record.fields.date_submitted,
+        created_at: record.fields.created_at
+      }));
     }
-
-    // Transform Airtable records for frontend consumption
-    const checkins = userCheckins.map(record => ({
-      id: record.id,
-      mood_today: record.fields.mood_today || '',
-      primary_concern_today: record.fields.primary_concern_today || null,
-      confidence_today: record.fields.confidence_today || 5,
-      user_note: record.fields.user_note || null,
-      date_submitted: record.fields.date_submitted || '',
-      created_at: record.fields.created_at || record.createdTime
-    }));
 
     console.log(`✅ Retrieved ${checkins.length} check-ins for user: ${req.user.email}`);
 
@@ -2273,8 +2267,8 @@ app.get('/api/insights/daily', authenticateToken, async (req, res) => {
       const result = await databaseAdapter.localDb.getUserCheckins(user.id, 7);
       userRecords = result.records || [];
     } else {
-      // Use Airtable with filter formula
-      const checkinsUrl = `${config.airtable.baseUrl}/DailyCheckins?filterByFormula=SEARCH('${user.id}', {user_id})&sort[0][field]=date_submitted&sort[0][direction]=desc&maxRecords=7`;
+      // Use Airtable with filter formula - search by email since check-ins store email as user_id
+      const checkinsUrl = `${config.airtable.baseUrl}/DailyCheckins?filterByFormula=SEARCH('${user.email}', {user_id})&sort[0][field]=date_submitted&sort[0][direction]=desc&maxRecords=7`;
       const response = await databaseAdapter.fetchCheckins(checkinsUrl, {
         headers: {
           'Authorization': `Bearer ${config.airtable.apiKey}`,
