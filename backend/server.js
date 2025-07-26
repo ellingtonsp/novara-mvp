@@ -2071,7 +2071,7 @@ app.get('/api/checkins/last-values', authenticateToken, async (req, res) => {
       userRecords = result.records || [];
     } else {
       // Use Airtable with filter formula - search by user ID for linked records
-      const checkinsUrl = `${config.airtable.baseUrl}/DailyCheckins?filterByFormula=user_id='${user.id}'&sort[0][field]=date_submitted&sort[0][direction]=desc&maxRecords=1`;
+      const checkinsUrl = `${config.airtable.baseUrl}/DailyCheckins?filterByFormula=user_id='${user.email}'&sort[0][field]=date_submitted&sort[0][direction]=desc&maxRecords=1`;
       
       const response = await databaseAdapter.fetchCheckins(checkinsUrl, {
         headers: {
@@ -2403,7 +2403,7 @@ app.get('/api/insights/daily', authenticateToken, async (req, res) => {
       userRecords = result.records || [];
     } else {
       // Use Airtable with filter formula - search by user ID for linked records
-      const checkinsUrl = `${config.airtable.baseUrl}/DailyCheckins?filterByFormula=user_id='${user.id}'&sort[0][field]=date_submitted&sort[0][direction]=desc&maxRecords=7`;
+      const checkinsUrl = `${config.airtable.baseUrl}/DailyCheckins?filterByFormula=user_id='${user.email}'&sort[0][field]=date_submitted&sort[0][direction]=desc&maxRecords=7`;
       const response = await databaseAdapter.fetchCheckins(checkinsUrl, {
         headers: {
           'Authorization': `Bearer ${config.airtable.apiKey}`,
