@@ -1,174 +1,254 @@
 # Environment Configuration Guide
 
-## 🌍 **Environment Architecture**
+This document provides comprehensive guidance for configuring Novara MVP across all environments (development, staging, and production).
 
-Our application follows a **dev → staging → production** workflow with proper environment isolation.
+## Environment Overview
 
-### **Environment URLs**
+| Environment | Frontend URL | Backend URL | Database | Purpose |
+|-------------|--------------|-------------|----------|---------|
+| **Development** | http://localhost:4200 | http://localhost:9002 | Local SQLite | Local development and testing |
+| **Staging** | https://novara-bd6xsx1ru-novara-fertility.vercel.app | https://novara-staging-staging.up.railway.app | Staging Airtable | Integration testing and validation |
+| **Production** | https://novara-mvp.vercel.app | https://novara-mvp-production.up.railway.app | Production Airtable | Live application |
 
-| Environment | Frontend | Backend | Database |
-|-------------|----------|---------|----------|
-| **Development** | `http://localhost:3000` | `http://localhost:3002` | SQLite (local) |
-| **Staging** | `https://novara-mvp-staging.vercel.app` | `https://novara-staging.up.railway.app` | Airtable (staging) |
-| **Production** | `https://novara-mvp.vercel.app` | `https://novara-mvp-production.up.railway.app` | Airtable (production) |
+## Database Configuration
 
-## 🔧 **Port Allocation**
+### Airtable Base IDs
 
-### **Development (Consistent)**
-- **Backend**: Always port `3002` (no conflicts)
-- **Frontend**: Port `3000` (auto-fallback to 3001 if occupied)
-- **Database**: SQLite file (isolated)
+| Environment | Base ID | Description |
+|-------------|---------|-------------|
+| **Staging** | `appEOWvLjCn5c7Ght` | Staging database for testing |
+| **Production** | `app5QWCcVbCnVg2Gg` | Production database for live users |
 
-### **Why This Structure**
-1. **No Port Conflicts**: Backend on 3002, frontend on 3000/3001
-2. **Environment Isolation**: Each environment has separate databases
-3. **Predictable URLs**: Consistent naming across environments
-4. **Auto-Failover**: Frontend auto-selects available ports
+### Database Setup Requirements
 
-## ⚙️ **Environment Variables**
+Each Airtable base must contain the following tables:
+- `Users` - User profiles and preferences
+- `DailyCheckins` - Daily check-in submissions
+- `Insights` - Generated insights and recommendations
+- `InsightEngagement` - User interaction with insights
+- `FmvAnalytics` - Event tracking and analytics
 
-### **Development (.env.development)**
-```bash
-# Backend
-NODE_ENV=development
-PORT=3002
-USE_LOCAL_DATABASE=true
-JWT_SECRET=dev_secret_key
+## Analytics Configuration
 
-# Frontend  
-VITE_API_URL=http://localhost:3002
-VITE_ENV=development
+### PostHog API Key
+
+**Current PostHog API Key (used across all environments):**
+```
+phc_5imIla9RYl1YPLFcrXNOlbbZfB6tAY1EKFNq7WFsCbt
 ```
 
-### **Staging**
-```bash
-# Backend (Railway)
-NODE_ENV=staging
-AIRTABLE_BASE_ID=appEOWvLjCn5c7Ght
-JWT_SECRET=staging_secret
-
-# Frontend (Vercel)
-VITE_API_URL=https://novara-staging.up.railway.app
-VITE_ENV=staging
+**PostHog Host:**
+```
+https://app.posthog.com
 ```
 
-### **Production**
-```bash
-# Backend (Railway)
-NODE_ENV=production
-AIRTABLE_BASE_ID=appWOsZBUfg57fKD3
-JWT_SECRET=production_secret
+### Environment-Specific Analytics
 
-# Frontend (Vercel)
-VITE_API_URL=https://novara-mvp-production.up.railway.app
-VITE_ENV=production
-```
+| Environment | Analytics Enabled | Event Tracking | Error Tracking |
+|-------------|------------------|----------------|----------------|
+| **Development** | ✅ Yes | ✅ Yes | ⚠️ Limited |
+| **Staging** | ✅ Yes | ✅ Yes | ✅ Yes |
+| **Production** | ✅ Yes | ✅ Yes | ✅ Yes |
 
-## 🚀 **Deployment Structure**
+## Frontend Environment Variables
 
-### **Frontend (Vercel)**
-- **Production**: `novara-mvp.vercel.app`
-- **Staging**: `novara-mvp-staging.vercel.app`
-- **Development**: `localhost:3000`
-
-### **Backend (Railway)**
-- **Production**: `novara-mvp-production.up.railway.app`
-- **Staging**: `novara-staging.up.railway.app`
-- **Development**: `localhost:3002`
-
-### **Database**
-- **Production**: Airtable Base (appWOsZBUfg57fKD3)
-- **Staging**: Airtable Base (appEOWvLjCn5c7Ght)
-- **Development**: SQLite (isolated file)
-
-## 🔒 **CORS Configuration**
-
-The backend automatically configures CORS based on environment:
-
-```javascript
-const allowedOrigins = [
-  'http://localhost:3000',  // Development frontend
-  'https://novara-mvp.vercel.app', // Production frontend
-  'https://novara-mvp-staging.vercel.app', // Staging frontend
-];
-
-// Additional development origins in non-production
-if (process.env.NODE_ENV !== 'production') {
-  allowedOrigins.push('http://localhost:3001'); // Fallback port
-}
-```
-
-## 📱 **API Endpoint Detection**
-
-Frontend components automatically detect the correct API endpoint:
-
-```javascript
-const API_BASE_URL = import.meta.env.DEV 
-  ? 'http://localhost:3002'  // Development
-  : 'https://novara-mvp-production.up.railway.app';  // Production
-```
-
-## ✅ **Environment Health Checks**
-
-### **Development**
-```bash
-curl http://localhost:3002/api/health
-# Should return: "environment":"development"
-```
-
-### **Staging**
-```bash
-curl https://novara-staging.up.railway.app/api/health
-# Should return: "environment":"staging"
-```
-
-### **Production**
-```bash
-curl https://novara-mvp-production.up.railway.app/api/health
-# Should return: "environment":"production"
-```
-
-## 🎯 **Quick Commands**
-
-### **Start Development**
-```bash
-./start-local.sh
-# Opens: http://localhost:3000 & http://localhost:3002
-```
-
-### **Test Environment**
-```bash
-./scripts/demo-onboarding-flow.sh
-# Tests complete flow in development
-```
-
-### **Deploy Staging**
-```bash
-git push origin staging
-# Auto-deploys to staging URLs
-```
-
-### **Deploy Production**
-```bash
-git push origin main
-# Auto-deploys to production URLs
-```
-
----
-
-## 🔍 **Environment Verification**
-
-Use these commands to verify you're in the correct environment:
+### Required Variables
 
 ```bash
-# Check backend environment
-curl -s http://localhost:3002/api/health | grep environment
+# API Configuration
+VITE_API_URL=<backend_url>
 
-# Check frontend environment (in browser console)
-console.log(import.meta.env.VITE_ENV)
+# Environment
+VITE_ENV=<environment>
+VITE_NODE_ENV=<node_environment>
 
-# Check database type
-curl -s http://localhost:3002/api/health | grep -E "(airtable|sqlite)"
+# Analytics
+VITE_POSTHOG_API_KEY=phc_5imIla9RYl1YPLFcrXNOlbbZfB6tAY1EKFNq7WFsCbt
+VITE_POSTHOG_HOST=https://app.posthog.com
+
+# Feature Flags
+VITE_ENABLE_ANALYTICS=true
+VITE_ENABLE_ERROR_TRACKING=true
+VITE_ENABLE_CM01_FEATURES=true
+VITE_ENABLE_AN01_FEATURES=true
 ```
 
-This configuration ensures **complete environment isolation** and **predictable, conflict-free development**. 
+### Environment-Specific Frontend URLs
+
+| Environment | VITE_API_URL |
+|-------------|--------------|
+| **Development** | `http://localhost:9002` |
+| **Staging** | `https://novara-staging-staging.up.railway.app` |
+| **Production** | `https://novara-mvp-production.up.railway.app` |
+
+## Backend Environment Variables
+
+### Required Variables
+
+```bash
+# Core Configuration
+NODE_ENV=<environment>
+PORT=<port>
+DATABASE_TYPE=airtable
+USE_LOCAL_DATABASE=<boolean>
+
+# Airtable Configuration
+AIRTABLE_API_KEY=<your_airtable_api_key>
+AIRTABLE_BASE_ID=<environment_specific_base_id>
+
+# JWT Configuration
+JWT_SECRET=<secure_jwt_secret>
+JWT_EXPIRES_IN=90d
+
+# Security
+CORS_ORIGIN=<frontend_url>
+TRUST_PROXY=true
+
+# Analytics
+POSTHOG_API_KEY=phc_5imIla9RYl1YPLFcrXNOlbbZfB6tAY1EKFNq7WFsCbt
+POSTHOG_HOST=https://app.posthog.com
+```
+
+### Environment-Specific Backend Configuration
+
+| Environment | AIRTABLE_BASE_ID | CORS_ORIGIN | PORT |
+|-------------|------------------|-------------|------|
+| **Development** | N/A (SQLite) | `http://localhost:4200` | `9002` |
+| **Staging** | `appEOWvLjCn5c7Ght` | `https://novara-bd6xsx1ru-novara-fertility.vercel.app` | `8080` |
+| **Production** | `app5QWCcVbCnVg2Gg` | `https://novara-mvp.vercel.app` | `8080` |
+
+## Deployment Configuration
+
+### Railway Backend Deployment
+
+**Staging Environment:**
+- Project: `novara-mvp`
+- Environment: `staging`
+- Service: `novara-staging`
+- Base ID: `appEOWvLjCn5c7Ght`
+
+**Production Environment:**
+- Project: `novara-mvp`
+- Environment: `production`
+- Service: `novara-main`
+- Base ID: `app5QWCcVbCnVg2Gg`
+
+### Vercel Frontend Deployment
+
+**Staging Environment:**
+- Project: `novara-mvp`
+- Branch: `staging`
+- URL: `https://novara-bd6xsx1ru-novara-fertility.vercel.app`
+
+**Production Environment:**
+- Project: `novara-mvp`
+- Branch: `main`
+- URL: `https://novara-mvp.vercel.app`
+
+## Security Considerations
+
+### Environment Isolation
+
+1. **Database Isolation**: Each environment uses a separate Airtable base
+2. **API Key Separation**: Different API keys for staging and production
+3. **CORS Configuration**: Strict origin validation per environment
+4. **JWT Secrets**: Unique secrets for each environment
+
+### Required Security Variables
+
+```bash
+# Production Security
+JWT_SECRET=<64+_character_random_string>
+CORS_ORIGIN=<exact_frontend_url>
+TRUST_PROXY=true
+RATE_LIMIT_WINDOW_MS=900000
+RATE_LIMIT_MAX_REQUESTS=100
+```
+
+## Monitoring and Observability
+
+### Health Check Endpoints
+
+- **Backend Health**: `GET /api/health`
+- **Frontend Health**: Root endpoint with status indicator
+- **Database Health**: Integrated into backend health check
+
+### Logging Configuration
+
+```bash
+# Development
+LOG_LEVEL=debug
+ENABLE_STRUCTURED_LOGGING=true
+
+# Staging
+LOG_LEVEL=info
+ENABLE_STRUCTURED_LOGGING=true
+
+# Production
+LOG_LEVEL=warn
+ENABLE_STRUCTURED_LOGGING=true
+ENABLE_REQUEST_LOGGING=true
+```
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Database Connection Errors**
+   - Verify AIRTABLE_API_KEY is correct
+   - Confirm AIRTABLE_BASE_ID matches environment
+   - Check Airtable base permissions
+
+2. **CORS Errors**
+   - Verify CORS_ORIGIN matches frontend URL exactly
+   - Check for trailing slashes in URLs
+   - Ensure TRUST_PROXY is set correctly
+
+3. **Authentication Issues**
+   - Verify JWT_SECRET is set and unique per environment
+   - Check JWT_EXPIRES_IN format (e.g., "90d")
+   - Confirm frontend is using correct API URL
+
+4. **Analytics Issues**
+   - Verify PostHog API key: `phc_5imIla9RYl1YPLFcrXNOlbbZfB6tAY1EKFNq7WFsCbt`
+   - Check PostHog host: `https://app.posthog.com`
+   - Confirm VITE_ENABLE_ANALYTICS is true
+
+### Environment Validation
+
+Use the health check script to validate environment configuration:
+
+```bash
+# Validate all environments
+npm run validate:environments
+
+# Validate specific environment
+npm run health-check:production
+npm run health-check:staging
+npm run health-check:development
+```
+
+## Migration Guide
+
+### Updating Environment Variables
+
+1. **Never modify .env files directly** - use environment-specific example files
+2. **Update all example files** when adding new variables
+3. **Test changes in staging** before production
+4. **Document all changes** in this guide
+
+### Database Migration
+
+1. **Backup existing data** before schema changes
+2. **Test migrations in staging** first
+3. **Update all environments** with new schema
+4. **Validate data integrity** after migration
+
+## Best Practices
+
+1. **Environment Parity**: Keep development, staging, and production as similar as possible
+2. **Secret Management**: Use Railway and Vercel secrets management
+3. **Configuration Validation**: Validate all required variables are set
+4. **Monitoring**: Enable comprehensive logging and monitoring
+5. **Security**: Use unique secrets and keys per environment
+6. **Documentation**: Keep this guide updated with all changes 

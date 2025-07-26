@@ -1,142 +1,226 @@
 # Deployment Safety Checklist
 
-## 🛡️ Production Protection Protocol
+This checklist must be completed before ANY deployment to ensure safety and prevent critical configuration errors.
 
-This checklist ensures that production functionality is preserved while validating all changes in lower environments before deployment.
+## 🚨 CRITICAL PRE-DEPLOYMENT CHECKS
 
-### Pre-Deployment Validation
+### 1. Environment Verification (MANDATORY)
+- [ ] **Current branch matches target environment**
+  ```bash
+  git branch
+  # For staging: should be on 'staging' branch
+  # For production: should be on 'main' branch
+  ```
 
-#### ✅ Environment Configuration
-- [ ] Run `npm run validate-environments` - All checks pass
-- [ ] Run `npm run health-check:staging` - Staging environment healthy
-- [ ] Run `npm run validate-schema-comprehensive` - Airtable schema compatible
-- [ ] Verify no hardcoded URLs in any frontend components
-- [ ] Confirm environment variables are properly configured for all environments
+- [ ] **Railway context is correct**
+  ```bash
+  railway status
+  # Verify: Project=novara-mvp
+  # For staging: Environment=staging, Service=novara-staging
+  # For production: Environment=production, Service=novara-main
+  ```
 
-#### ✅ Code Quality
-- [ ] All changes committed to `staging` branch
-- [ ] Staging branch merged with `main` (if applicable)
-- [ ] No merge conflicts in any configuration files
-- [ ] Frontend builds successfully (`npm run build`)
-- [ ] No TypeScript/ESLint errors
+### 2. Database Configuration Validation (CRITICAL)
+- [ ] **Database isolation verified**
+  ```bash
+  railway variables | grep AIRTABLE_BASE_ID
+  # For staging: AIRTABLE_BASE_ID=appEOWvLjCn5c7Ght
+  # For production: AIRTABLE_BASE_ID=app5QWCcVbCnVg2Gg
+  # CRITICAL: These must NEVER be mixed up
+  ```
 
-#### ✅ Schema Validation
-- [ ] All frontend field values accepted by Airtable
-- [ ] Data types validated (confidence values numeric, email_opt_in boolean)
-- [ ] No rejected field values in comprehensive schema check
+- [ ] **No cross-environment database sharing**
+  - [ ] Staging environment uses staging database only
+  - [ ] Production environment uses production database only
+  - [ ] Development uses local SQLite only
 
-### Deployment Process
+### 3. Environment Variables Validation
+- [ ] **All required variables are set**
+  ```bash
+  railway variables
+  # Verify all required variables are present and correct
+  ```
 
-#### 🚀 Staging Deployment
-1. **Pre-deployment checks:**
-   - [ ] Run `npm run pre-deploy` (includes all validations)
-   - [ ] Verify staging backend is accessible
-   - [ ] Confirm staging frontend builds successfully
+- [ ] **Environment-specific URLs are correct**
+  - [ ] Frontend URL matches environment
+  - [ ] Backend URL matches environment
+  - [ ] CORS configuration is correct
 
-2. **Deploy to staging:**
-   - [ ] Push to `staging` branch: `git push origin staging`
-   - [ ] Wait for Railway backend deployment (2-3 minutes)
-   - [ ] Wait for Vercel frontend deployment (1-2 minutes)
+### 4. Code Quality Checks
+- [ ] **All tests pass locally**
+  ```bash
+  npm run test
+  npm run health-check
+  ```
 
-3. **Post-deployment validation:**
-   - [ ] Run `npm run health-check:staging`
-   - [ ] Test user onboarding flow in staging
-   - [ ] Verify all field values work correctly
-   - [ ] Test API endpoints with authentication
+- [ ] **No critical errors in logs**
+  - [ ] Check for any error messages
+  - [ ] Verify all services are healthy
 
-#### 🚀 Production Deployment
-1. **Pre-production validation:**
-   - [ ] Staging environment fully tested and validated
-   - [ ] Run `npm run health-check:production` (baseline)
-   - [ ] Confirm production backend is healthy
+### 5. User Approval (Production Only)
+- [ ] **Explicit user approval for production changes**
+  - [ ] User has confirmed production deployment
+  - [ ] Staging validation completed successfully
+  - [ ] All critical issues resolved
 
-2. **Deploy to production:**
-   - [ ] Merge `staging` to `main`: `git checkout main && git merge staging`
-   - [ ] Push to `main`: `git push origin main`
-   - [ ] Wait for Railway backend deployment
-   - [ ] Wait for Vercel frontend deployment
+## 🔧 DEPLOYMENT COMMANDS
 
-3. **Post-production validation:**
-   - [ ] Run `npm run health-check:production`
-   - [ ] Verify production environment detection shows "production" (not "staging")
-   - [ ] Check browser console for `🚀 AN-01 DEBUG: Current environment: production`
-   - [ ] Verify PostHog analytics initialization successful
-   - [ ] Test critical user flows
-   - [ ] Monitor for any errors
+### Staging Deployment
+```bash
+# 1. Verify context
+git branch  # Should be 'staging'
+railway status  # Should show staging environment
+railway variables | grep AIRTABLE_BASE_ID  # Should be appEOWvLjCn5c7Ght
 
-### Emergency Procedures
+# 2. Deploy frontend
+cd frontend && vercel --target staging
 
-#### 🚨 Rollback Process
-If issues are detected in production:
+# 3. Deploy backend
+railway environment staging
+railway service novara-staging
+railway up
+```
 
-1. **Immediate actions:**
-   - [ ] Identify the problematic commit
-   - [ ] Revert to previous working commit: `git revert <commit-hash>`
-   - [ ] Push revert: `git push origin main`
+### Production Deployment
+```bash
+# 1. Verify context
+git branch  # Should be 'main'
+railway status  # Should show production environment
+railway variables | grep AIRTABLE_BASE_ID  # Should be app5QWCcVbCnVg2Gg
 
-2. **Validation:**
-   - [ ] Run `npm run health-check:production`
-   - [ ] Verify functionality is restored
-   - [ ] Document the issue for future prevention
+# 2. Deploy frontend
+cd frontend && vercel --prod
 
-#### 🚨 Hot Fixes
-For critical production issues:
+# 3. Deploy backend
+railway environment production
+railway service novara-main
+railway up
+```
 
-1. **Create hot fix:**
-   - [ ] Create hot fix branch: `git checkout -b hotfix/critical-issue`
-   - [ ] Make minimal necessary changes
-   - [ ] Test locally if possible
+## ✅ POST-DEPLOYMENT VALIDATION
 
-2. **Deploy hot fix:**
-   - [ ] Merge directly to `main` (bypass staging for critical issues)
-   - [ ] Push immediately: `git push origin main`
-   - [ ] Monitor deployment and validate
+### 1. Health Checks
+- [ ] **Backend health check passes**
+  ```bash
+  curl https://[environment-url]/api/health
+  # Should return 200 with correct environment info
+  ```
 
-### Monitoring and Validation
+- [ ] **Frontend loads correctly**
+  - [ ] No console errors
+  - [ ] All features working
+  - [ ] Environment detection correct
 
-#### 📊 Health Monitoring
-- [ ] Backend health checks return 200
-- [ ] Environment detection working correctly (shows correct environment)
-- [ ] PostHog analytics initialization successful
-- [ ] CORS configuration allows all frontend URLs
-- [ ] API endpoints accessible (with proper authentication)
+### 2. Database Validation
+- [ ] **Database connection working**
+  - [ ] Can create test records
+  - [ ] Can read existing data
+  - [ ] No permission errors
 
-#### 📊 Schema Monitoring
-- [ ] All frontend field values accepted by Airtable
-- [ ] No data type validation errors
-- [ ] User onboarding flow works end-to-end
+- [ ] **Environment isolation maintained**
+  - [ ] Staging data not visible in production
+  - [ ] Production data not visible in staging
 
-### Documentation
+### 3. Feature Testing
+- [ ] **Core functionality works**
+  - [ ] User registration
+  - [ ] Daily check-ins
+  - [ ] Insights generation
+  - [ ] Analytics tracking
 
-#### 📝 Change Documentation
-- [ ] Update relevant documentation
-- [ ] Document any schema changes
-- [ ] Update deployment guides if needed
-- [ ] Record any issues and resolutions
+- [ ] **Environment-specific features**
+  - [ ] Staging: Test features enabled
+  - [ ] Production: Production features only
 
-#### 📝 Post-Deployment Review
-- [ ] Verify all environments are functioning
-- [ ] Confirm no regressions introduced
-- [ ] Update this checklist based on lessons learned
+## 🚨 EMERGENCY STOP CONDITIONS
 
-## 🎯 Success Criteria
+**STOP DEPLOYMENT IMMEDIATELY if:**
 
-A successful deployment is achieved when:
+1. **Database misconfiguration detected**
+   - Wrong AIRTABLE_BASE_ID for environment
+   - Cross-environment database sharing
+   - Database connection errors
 
-1. **All environments healthy:** Development, staging, and production all pass health checks
-2. **No regressions:** Existing functionality preserved across all environments
-3. **New features working:** All new features function correctly in staging and production
-4. **Schema compatibility:** All frontend data accepted by Airtable without errors
-5. **User experience:** End-to-end user flows work seamlessly
+2. **Environment mismatch**
+   - Wrong Railway environment selected
+   - Wrong service selected
+   - Wrong branch deployed
 
-## 🔄 Continuous Improvement
+3. **Critical errors**
+   - Application crashes on startup
+   - Database connection failures
+   - Security configuration errors
 
-- [ ] Review deployment process after each deployment
-- [ ] Update validation scripts based on new requirements
-- [ ] Improve monitoring and alerting
-- [ ] Document any new edge cases or issues discovered
+4. **User data at risk**
+   - Production pointing to staging database
+   - Staging pointing to production database
+   - Data corruption detected
+
+## 📋 ROLLBACK PROCEDURES
+
+### Immediate Rollback
+```bash
+# 1. Stop deployment
+# 2. Revert to previous working version
+git checkout [previous-working-commit]
+git push --force origin [branch-name]
+
+# 3. Redeploy with correct configuration
+railway up
+```
+
+### Database Rollback
+```bash
+# 1. Verify correct database configuration
+railway variables | grep AIRTABLE_BASE_ID
+
+# 2. Fix any misconfiguration
+railway variables --set "AIRTABLE_BASE_ID=[correct-base-id]"
+
+# 3. Redeploy
+railway up
+```
+
+## 📊 DEPLOYMENT LOG
+
+### Pre-Deployment
+- [ ] Date: _______________
+- [ ] Environment: _______________
+- [ ] Branch: _______________
+- [ ] Railway Context: _______________
+- [ ] Database ID: _______________
+- [ ] User Approval: _______________
+
+### Post-Deployment
+- [ ] Health Check: _______________
+- [ ] Database Validation: _______________
+- [ ] Feature Testing: _______________
+- [ ] Issues Found: _______________
+- [ ] Resolution: _______________
+
+## 🔍 TROUBLESHOOTING
+
+### Common Issues
+1. **Wrong database ID**
+   - Check `railway variables | grep AIRTABLE_BASE_ID`
+   - Verify against environment table above
+   - Fix immediately if incorrect
+
+2. **Environment mismatch**
+   - Check `railway status`
+   - Verify environment and service match deployment target
+   - Switch to correct environment if needed
+
+3. **Deployment failures**
+   - Check Railway logs: `railway logs`
+   - Check Vercel logs: `vercel logs`
+   - Verify all environment variables are set
+
+### Emergency Contacts
+- **Critical Database Issues**: Stop deployment immediately
+- **Environment Misconfiguration**: Revert and redeploy
+- **Data Corruption**: Emergency rollback required
 
 ---
 
-**Last Updated:** $(date)
-**Version:** 1.0 
+**Remember**: This checklist is MANDATORY for all deployments. Skipping any step can result in data corruption, security breaches, or service outages. 

@@ -1,120 +1,109 @@
 # Deployment Safety Quick Reference
 
-## 🚀 Quick Deployment Commands
+**CRITICAL**: This reference must be checked before ANY deployment to prevent data corruption and security breaches.
 
-### Pre-Deployment Validation (ALWAYS RUN FIRST)
+## 🚨 CRITICAL DATABASE CONFIGURATION
+
+### Environment-Specific Database IDs
+| Environment | Base ID | Railway Service |
+|-------------|---------|----------------|
+| **Staging** | `appEOWvLjCn5c7Ght` | novara-staging |
+| **Production** | `app5QWCcVbCnVg2Gg` | novara-main |
+| **Development** | SQLite (local) | N/A |
+
+### Database Validation Commands
 ```bash
-# Complete validation suite
-npm run pre-deploy
-
-# Individual validations
-npm run validate-environments
-npm run validate-schema-comprehensive
-npm run health-check:staging
-npm run health-check:production
+# ALWAYS run before deployment:
+railway status  # Verify environment and service
+railway variables | grep AIRTABLE_BASE_ID  # Verify correct database ID
 ```
+
+## 🔧 DEPLOYMENT COMMANDS
 
 ### Staging Deployment
 ```bash
-# 1. Validate everything
-npm run pre-deploy
+# 1. Verify context
+git branch  # Should be 'staging'
+railway status  # Environment=staging, Service=novara-staging
+railway variables | grep AIRTABLE_BASE_ID  # Should be appEOWvLjCn5c7Ght
 
-# 2. Deploy to staging
-git checkout staging
-git merge main
-git push origin staging
-
-# 3. Wait for deployment (2-3 minutes)
-# 4. Validate staging
-npm run health-check:staging
+# 2. Deploy
+cd frontend && vercel --target staging
+railway environment staging && railway service novara-staging && railway up
 ```
 
 ### Production Deployment
 ```bash
-# 1. Ensure staging is fully tested
-npm run health-check:staging
+# 1. Verify context
+git branch  # Should be 'main'
+railway status  # Environment=production, Service=novara-main
+railway variables | grep AIRTABLE_BASE_ID  # Should be app5QWCcVbCnVg2Gg
 
-# 2. Deploy to production
-git checkout main
-git merge staging
-git push origin main
-
-# 3. Wait for deployment (2-3 minutes)
-# 4. Validate production
-npm run health-check:production
+# 2. Deploy
+cd frontend && vercel --prod
+railway environment production && railway service novara-main && railway up
 ```
 
-## 🛡️ Critical Safety Checks
+## ✅ PRE-DEPLOYMENT CHECKLIST
 
-### Before ANY Production Deployment
-- [ ] Staging environment fully tested and validated
-- [ ] All schema validations pass
-- [ ] No hardcoded URLs in any components
-- [ ] Environment detection working correctly
-- [ ] CORS configuration allows all frontend URLs
+### Environment Verification
+- [ ] Correct branch checked out
+- [ ] Railway environment matches target
+- [ ] Railway service matches target
+- [ ] Database ID matches environment
 
-### Emergency Rollback
+### Database Isolation
+- [ ] Staging uses staging database only
+- [ ] Production uses production database only
+- [ ] No cross-environment database sharing
+- [ ] Database ID verified with `railway variables`
+
+### User Approval
+- [ ] User approved production deployment
+- [ ] Staging validation completed
+- [ ] All critical issues resolved
+
+## 🚨 EMERGENCY STOP CONDITIONS
+
+**STOP IMMEDIATELY if:**
+- Wrong AIRTABLE_BASE_ID for environment
+- Production pointing to staging database
+- Staging pointing to production database
+- Environment mismatch detected
+- Database connection errors
+
+## 📋 ROLLBACK PROCEDURES
+
+### Database Misconfiguration
 ```bash
-# If production issues detected
-git revert <commit-hash>
-git push origin main
-npm run health-check:production
+# 1. Stop deployment
+# 2. Fix database configuration
+railway variables --set "AIRTABLE_BASE_ID=[correct-base-id]"
+# 3. Redeploy
+railway up
 ```
 
-## 📊 Health Check Results Interpretation
-
-### ✅ Good Results
-- Backend health checks: 200
-- Environment detection: correct environment name
-- Frontend accessible: 200
-- Schema validation: all field values accepted
-
-### ⚠️ Warning Signs
-- 401 errors on authenticated endpoints (expected without tokens)
-- Development backend not running (expected during validation)
-- Data type validation errors (review field types)
-
-### ❌ Critical Issues
-- Backend health checks failing
-- Environment detection incorrect
-- Frontend not accessible
-- Schema validation rejecting field values
-
-## 🔧 Troubleshooting Common Issues
-
-### Schema Issues
+### Environment Mismatch
 ```bash
-# Test specific field values
-node scripts/comprehensive-schema-check.js
-
-# Check Airtable field configuration
-# Verify field types and allowed values
+# 1. Switch to correct environment
+railway environment [correct-environment]
+railway service [correct-service]
+# 2. Redeploy
+railway up
 ```
 
-### Environment Issues
-```bash
-# Check environment variables
-node scripts/environment-validator.js
+## 🔍 TROUBLESHOOTING
 
-# Test specific environment
-npm run health-check:staging
-npm run health-check:production
-```
+### Common Issues
+1. **Wrong database ID**: Check `railway variables | grep AIRTABLE_BASE_ID`
+2. **Environment mismatch**: Check `railway status`
+3. **Deployment failures**: Check `railway logs`
 
-### Deployment Issues
-```bash
-# Force redeploy with cache bust
-# Edit frontend/src/lib/environment.ts timestamp
-git add . && git commit -m "force redeploy" && git push
-```
-
-## 📞 Emergency Contacts
-
-- **Production Issues**: Immediate rollback required
-- **Staging Issues**: Fix before production deployment
-- **Schema Issues**: Update Airtable configuration
-- **Environment Issues**: Check Railway/Vercel settings
+### Emergency Contacts
+- **Database Issues**: Stop deployment immediately
+- **Environment Issues**: Revert and redeploy
+- **Data Corruption**: Emergency rollback required
 
 ---
 
-**Remember**: Always validate in staging before production deployment! 
+**Remember**: Database configuration errors can cause data corruption and security breaches. Always verify before deployment. 
