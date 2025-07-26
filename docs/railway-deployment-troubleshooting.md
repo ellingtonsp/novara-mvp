@@ -1,152 +1,254 @@
-# 🚂 Railway Deployment Troubleshooting Guide
+# 🚀 Railway Deployment Troubleshooting
 
-## Common Issues and Solutions
+## **🚨 CRITICAL: NO MANUAL ENVIRONMENT SELECTION**
 
-### 1. PORT Variable Error
-**Error:** `PORT variable must be integer between 0 and 65535`
-
-**Cause:** Railway automatically sets the `PORT` environment variable, but it's being overridden incorrectly.
-
-**Solution:**
-1. **Remove PORT from environment variables** - Railway sets this automatically
-2. **Update railway.json** to use `PORT=$PORT` in startCommand
-3. **Ensure server.js validates PORT** properly
-
-**Fixed Configuration:**
-```json
-// railway.json
-{
-  "deploy": {
-    "startCommand": "cd backend && PORT=$PORT npm start"
-  }
-}
-```
-
-```javascript
-// server.js
-const port = process.env.PORT || (process.env.NODE_ENV === 'development' ? 3002 : 3000);
-
-// Validate PORT is a valid integer
-if (process.env.PORT) {
-  const portNum = parseInt(process.env.PORT, 10);
-  if (isNaN(portNum) || portNum < 0 || portNum > 65535) {
-    console.error(`Invalid PORT value: ${process.env.PORT}. Must be an integer between 0 and 65535.`);
-    process.exit(1);
-  }
-}
-```
-
-### 2. Environment Variables Not Set
-**Error:** Missing required environment variables
-
-**Solution:**
-1. Go to Railway Dashboard → Your Project → Variables
-2. Add these required variables:
-   ```
-   AIRTABLE_API_KEY=your_api_key
-   AIRTABLE_BASE_ID=your_base_id
-   JWT_SECRET=your_jwt_secret
-   NODE_ENV=staging
-   USE_LOCAL_DATABASE=false
-   DATABASE_TYPE=airtable
-   ```
-
-### 3. Build Failures
-**Error:** Build process fails during deployment
-
-**Common Causes:**
-- Missing dependencies in package.json
-- Syntax errors in code
-- Incorrect build command
-
-**Solution:**
-1. Test build locally: `cd backend && npm install --omit=dev`
-2. Check for syntax errors: `node -c server.js`
-3. Verify all dependencies are in `dependencies` (not `devDependencies`)
-
-### 4. Health Check Failures
-**Error:** Health check endpoint not responding
-
-**Solution:**
-1. Ensure `/api/health` endpoint exists and returns 200
-2. Check if server is binding to correct port
-3. Verify CORS configuration allows Railway's health check
-
-### 5. Database Connection Issues
-**Error:** Cannot connect to Airtable
-
-**Solution:**
-1. Verify `AIRTABLE_API_KEY` is correct and active
-2. Check `AIRTABLE_BASE_ID` is correct
-3. Ensure `USE_LOCAL_DATABASE=false` for staging/production
-
-## Deployment Checklist
-
-### Before Deployment
-- [ ] All environment variables are set in Railway
-- [ ] Code has no syntax errors
-- [ ] All dependencies are in `dependencies` section
-- [ ] Health check endpoint `/api/health` is working
-- [ ] CORS is configured for staging domain
-
-### During Deployment
-- [ ] Monitor Railway logs for errors
-- [ ] Check build process completes successfully
-- [ ] Verify health check passes
-- [ ] Test API endpoints after deployment
-
-### After Deployment
-- [ ] Test staging URL: `https://novara-staging-production.up.railway.app`
-- [ ] Verify health endpoint: `/api/health`
-- [ ] Test authentication endpoints
-- [ ] Check CORS with frontend
-
-## Quick Fix Commands
-
-### Local Testing
+### **FORBIDDEN COMMANDS**
 ```bash
-# Test build process
-cd backend && npm install --omit=dev
+# ❌ NEVER run these - they require manual interaction
+railway environment    # Requires user to select environment
+railway link          # May require user to select project/environment
+railway up            # May require user to select service
+```
 
-# Test server startup
-NODE_ENV=staging USE_LOCAL_DATABASE=false PORT=3000 node server.js
+### **REQUIRED: AUTOMATED DEPLOYMENT**
+```bash
+# ✅ ALWAYS use automated script - no interaction required
+./scripts/deploy-staging-automated.sh
+```
+
+---
+
+## **COMMON ISSUES & SOLUTIONS**
+
+### **1. Manual Environment Selection Required**
+
+**Problem**: Railway CLI asks you to select environment manually
+```bash
+# ❌ This should NEVER happen
+? Select a project: (Use arrow keys)
+❯ novara-mvp
+  other-project
+```
+
+**Root Cause**: Used forbidden commands like `railway environment` or `railway link` without full parameters
+
+**Solution**: 
+1. **STOP** - do not select anything manually
+2. Use automated deployment script: `./scripts/deploy-staging-automated.sh`
+3. The script uses full parameters: `--project novara-mvp --environment staging --service novara-backend-staging --yes`
+
+**Prevention**: 
+- Never run `railway environment`
+- Never run `railway link` without full parameters
+- Always use automated deployment scripts
+
+---
+
+### **2. Server Crashes on Startup**
+
+**Problem**: Server fails to start with errors like:
+```
+ReferenceError: generalLimiter is not defined
+SyntaxError: Identifier 'config' has already been declared
+```
+
+**Root Cause**: Code errors in server.js
+
+**Solution**:
+1. Fix the code error locally first
+2. Test locally: `curl -s http://localhost:3002/api/health | jq .`
+3. Only deploy after local testing passes
+4. Use automated deployment script
+
+**Prevention**:
+- Always test locally before deploying
+- Use `./scripts/start-dev-stable.sh` for local testing
+- Check for syntax errors and undefined variables
+
+---
+
+### **3. Environment Mismatch**
+
+**Problem**: Staging shows wrong environment or database
+```json
+{
+  "environment": "production",  // Should be "staging"
+  "database": "app5QWCcVbCnVg2Gg"  // Should be "appEOWvLjCn5c7Ght"
+}
+```
+
+**Root Cause**: Wrong environment variables or database configuration
+
+**Solution**:
+1. Verify `NODE_ENV=staging` in Railway environment variables
+2. Verify `AIRTABLE_BASE_ID=appEOWvLjCn5c7Ght` for staging
+3. Redeploy using automated script
+
+**Prevention**:
+- Use environment-specific configuration
+- Verify environment variables before deployment
+- Test environment detection locally
+
+---
+
+### **4. Rate Limiting Issues**
+
+**Problem**: Requests getting rate limited unexpectedly
+```json
+{
+  "error": "Too many requests, please try again later."
+}
+```
+
+**Root Cause**: Rate limiting configured incorrectly for environment
+
+**Solution**:
+1. Verify rate limiting configuration in `server.js`
+2. Check environment-specific limits:
+   - Development: 10,000 requests per 15 minutes
+   - Staging: 2,000 requests per 15 minutes
+   - Production: 500 requests per 15 minutes
+3. Test rate limiting locally first
+
+**Prevention**:
+- Test rate limiting locally before deploying
+- Use environment-aware configuration
+- Monitor rate limiting in logs
+
+---
+
+### **5. Railway CLI Issues**
+
+**Problem**: Railway CLI commands fail or behave unexpectedly
+
+**Root Cause**: Outdated CLI version or incorrect usage
+
+**Solution**:
+1. Update Railway CLI: `npm install -g @railway/cli@latest`
+2. Check login status: `railway whoami`
+3. Use correct command syntax with full parameters
+
+**Prevention**:
+- Keep Railway CLI updated
+- Use automated deployment scripts
+- Never use interactive commands
+
+---
+
+## **EMERGENCY PROCEDURES**
+
+### **Rollback Deployment**
+```bash
+# Use Railway dashboard to revert to previous deployment
+# Or use automated rollback script if available
+./scripts/rollback-staging.sh
+```
+
+### **Manual Emergency Deployment**
+```bash
+# ONLY in emergency - use full parameters to avoid interaction
+cd backend
+railway link --project novara-mvp --environment staging --service novara-backend-staging --yes
+railway up --service novara-backend-staging
+```
+
+### **Database Issues**
+```bash
+# Check environment variables
+railway variables --environment staging
+
+# Verify database connectivity
+curl -s https://novara-backend-staging.up.railway.app/api/health | jq .
+```
+
+---
+
+## **DEBUGGING STEPS**
+
+### **1. Local Testing First**
+```bash
+# Start local development
+./scripts/start-dev-stable.sh
 
 # Test health endpoint
-curl http://localhost:3000/api/health
+curl -s http://localhost:3002/api/health | jq .
+
+# Test rate limiting
+for i in {1..15}; do
+  echo "Request $i:"
+  curl -s http://localhost:3002/api/health | jq -r '.environment'
+done
 ```
 
-### Railway CLI Commands
+### **2. Railway Status Check**
 ```bash
-# Check deployment status
+# Check current Railway context
 railway status
 
-# View logs
-railway logs --service staging
+# Check Railway login
+railway whoami
 
-# Open Railway dashboard
-railway open
-
-# Redeploy
-railway up --service staging
+# Check Railway CLI version
+railway --version
 ```
 
-## Environment-Specific Configurations
+### **3. Environment Variables**
+```bash
+# Check staging environment variables
+railway variables --environment staging
 
-### Staging Environment
-- `NODE_ENV=staging`
-- `USE_LOCAL_DATABASE=false`
-- `DATABASE_TYPE=airtable`
-- CORS origin: `https://novara-mvp-staging.vercel.app`
+# Verify critical variables:
+# - NODE_ENV=staging
+# - AIRTABLE_BASE_ID=appEOWvLjCn5c7Ght
+# - USE_LOCAL_DATABASE=false
+```
 
-### Production Environment
-- `NODE_ENV=production`
-- `USE_LOCAL_DATABASE=false`
-- `DATABASE_TYPE=airtable`
-- CORS origin: `https://novara-mvp.vercel.app`
+### **4. Logs Analysis**
+```bash
+# Check Railway logs
+railway logs --environment staging
 
-## Support Resources
+# Look for:
+# - Environment detection
+# - Rate limiting configuration
+# - Database connection
+# - Server startup errors
+```
 
-- **Railway Documentation:** https://docs.railway.app/
-- **Railway Status:** https://status.railway.app/
-- **Project Dashboard:** https://railway.app/dashboard
-- **Deployment Script:** `./scripts/deploy-staging-railway.sh` 
+---
+
+## **PREVENTION CHECKLIST**
+
+### **Before Every Deployment**
+- [ ] Code tested locally with `./scripts/start-dev-stable.sh`
+- [ ] Health endpoint working locally
+- [ ] Rate limiting tested locally
+- [ ] No syntax errors or undefined variables
+- [ ] Environment variables configured correctly
+- [ ] Automated deployment script ready
+
+### **After Every Deployment**
+- [ ] Health endpoint responding
+- [ ] Environment correctly identified
+- [ ] Rate limiting working as expected
+- [ ] Database operations successful
+- [ ] No critical errors in logs
+- [ ] Frontend connecting to backend
+
+---
+
+## **RESOURCES**
+
+### **Documentation**
+- `docs/staging-deployment-checklist.md` - Staging deployment guide
+- `docs/rate-limiting-guide.md` - Rate limiting configuration
+- `.cursor/rules/deployment.mdc` - Deployment rules
+
+### **Scripts**
+- `./scripts/deploy-staging-automated.sh` - Automated staging deployment
+- `./scripts/start-dev-stable.sh` - Local development startup
+- `./scripts/monitoring/comprehensive-health-check.js` - Health monitoring
+
+### **Railway Dashboard**
+- [Railway Dashboard](https://railway.app/dashboard) - Manual deployment management
+- [Railway CLI Documentation](https://docs.railway.app/reference/cli) - CLI reference 

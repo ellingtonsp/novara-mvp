@@ -1,0 +1,67 @@
+{
+  "timestamp": "2025-07-26T20:26:23.373Z",
+  "environment": "staging",
+  "checks": [
+    {
+      "type": "health_endpoint",
+      "environment": "staging",
+      "status": "success",
+      "statusCode": 200,
+      "responseTime": "measured"
+    },
+    {
+      "type": "health_data",
+      "environment": "staging",
+      "status": "success",
+      "data": {
+        "status": "ok",
+        "timestamp": "2025-07-26T20:26:26.212Z",
+        "service": "Novara API",
+        "environment": "staging",
+        "version": "1.0.3",
+        "startup": "ready"
+      }
+    },
+    {
+      "type": "frontend_accessibility",
+      "environment": "staging",
+      "status": "failure",
+      "statusCode": 404
+    },
+    {
+      "type": "database_connectivity",
+      "environment": "staging",
+      "status": "success",
+      "statusCode": 401
+    },
+    {
+      "type": "environment_detection",
+      "environment": "staging",
+      "status": "success",
+      "detected": "staging",
+      "expected": "staging"
+    },
+    {
+      "type": "deployment_script_syntax",
+      "script": "scripts/deploy-staging-automated.sh",
+      "status": "success"
+    },
+    {
+      "type": "deployment_script_syntax",
+      "script": "scripts/deploy-production-safe.sh",
+      "status": "success"
+    }
+  ],
+  "issues": [
+    {
+      "type": "frontend_accessibility_failure",
+      "severity": "error",
+      "message": "staging frontend returned 404",
+      "details": "Expected 200, got 404",
+      "fix": "Check Vercel dashboard for staging deployment"
+    }
+  ],
+  "recommendations": [
+    "🚨 Fix all errors before considering deployment successful"
+  ]
+}

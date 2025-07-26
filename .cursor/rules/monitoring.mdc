@@ -11,8 +11,10 @@ alwaysApply: false
 - **Schema Validation**: `npm run validate-schema-comprehensive`
 - **Performance Monitoring**: `npm run performance`
 - **Deployment Tracking**: `npm run track:deployments`
+- **BugBot Monitoring**: `npm run bugbot:monitor` - Comprehensive automated monitoring
 - **📖 Monitoring Guide**: `docs/deployment-monitoring-guide.md` - Comprehensive monitoring setup
 - **📖 Railway Health**: `docs/railway-health-check-guide.md` - Railway-specific health monitoring
+- **📖 BugBot Guide**: `docs/bugbot-integration-guide.md` - BugBot integration and usage
 
 ## Key Metrics to Monitor
 - API response times
@@ -26,12 +28,16 @@ alwaysApply: false
 - **Error rate alerts**: 5xx error percentage
 - **Deployment alerts**: Success/failure notifications
 - **Health check alerts**: Service availability
+- **BugBot alerts**: Automated GitHub issue creation for deployment failures
+- **Runtime alerts**: Continuous health monitoring with detailed reports
 
 ## Monitoring Tools
 - **Railway monitoring**: Built-in health checks and logs
 - **Vercel monitoring**: Frontend performance and errors
 - **Sentry**: Error tracking and performance monitoring
 - **Custom scripts**: Environment-specific monitoring
+- **BugBot**: Automated bug detection and reporting system
+- **GitHub Actions**: CI/CD integration with automated monitoring
 
 ## Performance Monitoring
 - **Response time tracking**: API endpoint performance

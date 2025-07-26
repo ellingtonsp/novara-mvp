@@ -1,41 +1,88 @@
----
-description: Critical deployment rules and safety checks
-globs: 
-alwaysApply: true
----
 
 # Deployment Rules & Safety
 
-## Critical Deployment Rules
+## **CRITICAL NO-INTERACTION REQUIREMENTS**
+- **NEVER run `railway environment`** - this requires manual selection
+- **NEVER run `railway link` without full parameters** - this requires manual selection
+- **NEVER ask user to manually select environments**
+- **ALWAYS use automated deployment scripts** that handle environment selection
+- **ALWAYS use `--yes` flag** when available to skip prompts
+- **ALWAYS specify full project/environment/service parameters**
+
+## **CORRECT RAILWAY CLI PROCEDURES**
+```bash
+# ✅ CORRECT - No user interaction required
+railway link --project novara-mvp --environment staging --service novara-backend-staging --yes
+railway up --service novara-backend-staging
+
+# ❌ FORBIDDEN - Requires manual selection
+railway environment
+railway link
+railway up
+```
+
+## **AUTOMATED DEPLOYMENT SCRIPTS**
+- **Staging**: `./scripts/deploy-staging-automated.sh`
+- **Production**: `./scripts/deploy-production-automated.sh`
+- **NEVER bypass these scripts** unless emergency rollback required
+
+## **Critical Deployment Rules**
 - **NEVER bypass staging → production workflow**
 - **ALWAYS verify Railway context before deployment**
 - **ALWAYS get explicit user approval for production changes**
 - **ALWAYS run health checks after deployment**
 
-## Environment URLs
-- **Production**: https://novara-backend-production.up.railway.app
-- **Staging**: https://novara-backend-staging.up.railway.app
-- **Frontend**: https://novara-mvp.vercel.app
-
-## Database Isolation
+## **Environment-Specific Database IDs**
 - **Staging**: `appEOWvLjCn5c7Ght`
 - **Production**: `app5QWCcVbCnVg2Gg`
-- **Local**: SQLite only
+- **Local**: SQLite file at `backend/data/novara-local.db`
 
-## Deployment Commands
+## **Database Validation Steps**
+1. Check `AIRTABLE_BASE_ID` matches environment
+2. Verify `NODE_ENV` is set correctly
+3. Confirm `USE_LOCAL_DATABASE=true` for local development
+4. Test database connectivity
+
+## **Local Development**
 ```bash
-# Check current Railway context
-railway status
+# Use SQLite for local development
+USE_LOCAL_DATABASE=true npm run local
 
-# Deploy to staging
-railway up --service novara-backend-staging
-
-# Deploy to production (requires explicit approval)
-railway up --service novara-backend-production
+# Database file location
+backend/data/novara-local.db
 ```
 
-## Safety Checks
-- Verify `NODE_ENV` is correct
-- Confirm database ID matches environment
-- Test health endpoints after deployment
-- Monitor error rates post-deployment
+## **Troubleshooting**
+- If database errors occur, check environment variables
+- Verify database permissions for SQLite file
+- Ensure proper database isolation between environments
+
+## **Emergency Procedures**
+- **Rollback**: Use Railway dashboard to revert to previous deployment
+- **Database Issues**: Check environment variables and database connectivity
+- **Rate Limiting**: Verify environment-specific limits are applied correctly
+
+## **Pre-Deployment Checklist**
+- [ ] Code changes tested locally
+- [ ] Environment variables configured correctly
+- [ ] Database schema compatible
+- [ ] Rate limiting configured for target environment
+- [ ] Health checks passing locally
+- [ ] Automated deployment script ready
+
+## **Post-Deployment Validation**
+- [ ] Health endpoint responding
+- [ ] Environment correctly identified
+- [ ] Rate limiting working as expected
+- [ ] Database operations successful
+- [ ] Frontend connecting to backend
+- [ ] No critical errors in logs
+- [ ] BugBot validation passed: `npm run bugbot:post-deploy {environment}`
+
+## **BugBot Integration**
+- **Pre-Deployment**: Always run `npm run bugbot:pre-deploy` before staging/production
+- **Post-Deployment**: Always run `npm run bugbot:post-deploy {environment}` after deployment
+- **Local Development**: Run `npm run bugbot:local` to check environment setup
+- **Continuous Monitoring**: Use `npm run bugbot:monitor` for ongoing validation
+- **GitHub Issues**: BugBot automatically creates issues for deployment failures
+- **Reports**: Check generated markdown reports for detailed analysis

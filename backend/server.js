@@ -89,22 +89,85 @@ if (process.env.NODE_ENV === 'production') {
   app.set('trust proxy', 1); // More restrictive for staging
 }
 
-// Configure rate limiting to work with trust proxy
-// Temporarily disabled for Railway deployment due to trust proxy issues
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 1000, // Increased limit for staging
-  message: {
-    error: 'Too many requests from this IP, please try again later.',
-    retryAfter: '15 minutes'
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-  skip: (req) => {
-    // Skip rate limiting for health checks and internal Railway requests
-    return req.path === '/api/health' || req.get('User-Agent')?.includes('RailwayHealthCheck');
+// Environment-aware rate limiting configuration
+const getRateLimitConfig = () => {
+  const env = process.env.NODE_ENV || 'development';
+  
+  switch (env) {
+    case 'development':
+      return {
+        windowMs: 15 * 60 * 1000, // 15 minutes
+        max: 10000, // Nearly unlimited for development
+        message: {
+          error: 'Development rate limit exceeded (10,000 requests per 15 minutes)',
+          retryAfter: '15 minutes'
+        },
+        standardHeaders: true,
+        legacyHeaders: false,
+        skip: (req) => {
+          // Skip rate limiting for health checks and development tools
+          return req.path === '/api/health' || 
+                 req.get('User-Agent')?.includes('RailwayHealthCheck') ||
+                 req.get('User-Agent')?.includes('curl') ||
+                 req.get('User-Agent')?.includes('Postman');
+        }
+      };
+      
+    case 'staging':
+      return {
+        windowMs: 15 * 60 * 1000, // 15 minutes
+        max: 2000, // High limit for rapid testing in staging
+        message: {
+          error: 'Staging rate limit exceeded (2,000 requests per 15 minutes)',
+          retryAfter: '15 minutes'
+        },
+        standardHeaders: true,
+        legacyHeaders: false,
+        skip: (req) => {
+          // Skip rate limiting for health checks and testing tools
+          return req.path === '/api/health' || 
+                 req.get('User-Agent')?.includes('RailwayHealthCheck') ||
+                 req.get('User-Agent')?.includes('curl');
+        }
+      };
+      
+    case 'production':
+      return {
+        windowMs: 15 * 60 * 1000, // 15 minutes
+        max: 500, // Moderate limit for production with room for testing
+        message: {
+          error: 'Too many requests from this IP, please try again later.',
+          retryAfter: '15 minutes'
+        },
+        standardHeaders: true,
+        legacyHeaders: false,
+        skip: (req) => {
+          // Skip rate limiting for health checks only in production
+          return req.path === '/api/health' || 
+                 req.get('User-Agent')?.includes('RailwayHealthCheck');
+        }
+      };
+      
+    default:
+      return {
+        windowMs: 15 * 60 * 1000,
+        max: 1000,
+        message: {
+          error: 'Rate limit exceeded',
+          retryAfter: '15 minutes'
+        },
+        standardHeaders: true,
+        legacyHeaders: false
+      };
   }
-});
+};
+
+const limiter = rateLimit(getRateLimitConfig());
+
+// Log rate limiting configuration
+const currentEnv = process.env.NODE_ENV || 'development';
+const rateLimitConfig = getRateLimitConfig();
+logger.info(`Rate limiting configured for ${currentEnv} environment: ${rateLimitConfig.max} requests per 15 minutes`);
 
 // Enhanced security middleware
 app.use(createSecurityMiddleware());
@@ -126,41 +189,83 @@ app.use(performanceMiddleware);
 // Apply rate limiting to all routes
 app.use(limiter);
 
-// Apply Redis-based rate limiting for additional protection
-// Rate limiting with Redis (disabled in production due to trust proxy issues)
-if (process.env.NODE_ENV !== 'production') {
-  app.use(rateLimiter.rateLimitMiddleware(15 * 60 * 1000, 1000)); // 1000 requests per 15 minutes
-}
+// Redis-based rate limiting (disabled for now to avoid double rate limiting)
+// Uncomment if you want additional Redis-based rate limiting
+// if (process.env.NODE_ENV !== 'production') {
+//   app.use(rateLimiter.rateLimitMiddleware(15 * 60 * 1000, 1000)); // 1000 requests per 15 minutes
+// }
 
-// Stricter rate limiting for auth routes
-// Temporarily disable in development for testing
-let authLimiter;
-if (process.env.NODE_ENV !== 'development') {
-  authLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 5, // limit each IP to 5 requests per windowMs
-    message: {
-      error: 'Too many authentication attempts, please try again later.',
-      retryAfter: '15 minutes'
-    },
-  });
-} else {
-  authLimiter = (req, res, next) => next(); // No-op in development
-}
-
-// General rate limiting for API routes
-const generalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: {
-    error: 'Too many API requests, please try again later.',
-    retryAfter: '15 minutes'
-  },
-  skip: (req) => {
-    // Skip rate limiting for health checks and internal Railway requests
-    return req.path === '/api/health' || req.get('User-Agent')?.includes('RailwayHealthCheck');
+// Environment-aware auth rate limiting
+const getAuthRateLimitConfig = () => {
+  const env = process.env.NODE_ENV || 'development';
+  
+  switch (env) {
+    case 'development':
+      return {
+        windowMs: 15 * 60 * 1000, // 15 minutes
+        max: 1000, // High limit for development testing
+        message: {
+          error: 'Development auth rate limit exceeded (1,000 attempts per 15 minutes)',
+          retryAfter: '15 minutes'
+        },
+        skip: (req) => {
+          // Skip for development tools
+          return req.get('User-Agent')?.includes('curl') ||
+                 req.get('User-Agent')?.includes('Postman');
+        }
+      };
+      
+    case 'staging':
+      return {
+        windowMs: 15 * 60 * 1000, // 15 minutes
+        max: 100, // Moderate limit for staging testing
+        message: {
+          error: 'Staging auth rate limit exceeded (100 attempts per 15 minutes)',
+          retryAfter: '15 minutes'
+        },
+        skip: (req) => {
+          // Skip for testing tools
+          return req.get('User-Agent')?.includes('curl');
+        }
+      };
+      
+    case 'production':
+      return {
+        windowMs: 15 * 60 * 1000, // 15 minutes
+        max: 10, // Conservative limit for production security
+        message: {
+          error: 'Too many authentication attempts, please try again later.',
+          retryAfter: '15 minutes'
+        }
+      };
+      
+    default:
+      return {
+        windowMs: 15 * 60 * 1000,
+        max: 50,
+        message: {
+          error: 'Too many authentication attempts',
+          retryAfter: '15 minutes'
+        }
+      };
   }
-});
+};
+
+const authLimiter = rateLimit(getAuthRateLimitConfig());
+
+// General rate limiting for API routes (using the main limiter instead)
+// const generalLimiter = rateLimit({
+//   windowMs: 15 * 60 * 1000, // 15 minutes
+//   max: 100, // limit each IP to 100 requests per windowMs
+//   message: {
+//     error: 'Too many API requests, please try again later.',
+//     retryAfter: '15 minutes'
+//   },
+//   skip: (req) => {
+//     // Skip rate limiting for health checks and internal Railway requests
+//     return req.path === '/api/health' || req.get('User-Agent')?.includes('RailwayHealthCheck');
+//   }
+// });
 
 // Logging middleware
 app.use(morgan('combined', {
@@ -224,7 +329,6 @@ if (!process.env.DISABLE_PERFORMANCE_MONITORING) {
 
 // Rate limiting
 app.use('/api/auth/', authLimiter);
-app.use('/api/', generalLimiter);
 
 // Database Configuration - Unified local/production adapter
 const { databaseAdapter, airtableRequest, findUserByEmail } = require('./database/database-factory');
@@ -1966,8 +2070,8 @@ app.get('/api/checkins/last-values', authenticateToken, async (req, res) => {
       const result = await databaseAdapter.localDb.getUserCheckins(user.id, 1);
       userRecords = result.records || [];
     } else {
-      // Use Airtable with filter formula - search by email since check-ins store email as user_id
-      const checkinsUrl = `${config.airtable.baseUrl}/DailyCheckins?filterByFormula=SEARCH('${user.email}', {user_id})&sort[0][field]=date_submitted&sort[0][direction]=desc&maxRecords=1`;
+      // Use Airtable with filter formula - search by user ID for linked records
+      const checkinsUrl = `${config.airtable.baseUrl}/DailyCheckins?filterByFormula={user_id}='${user.id}'&sort[0][field]=date_submitted&sort[0][direction]=desc&maxRecords=1`;
       
       const response = await databaseAdapter.fetchCheckins(checkinsUrl, {
         headers: {
@@ -2073,12 +2177,43 @@ app.post('/api/checkins', authenticateToken, async (req, res) => {
 
     console.log('✅ Found user record:', userRecordId.id);
 
+    // Check for existing check-in today to prevent duplicates
+    const today = new Date().toISOString().split('T')[0];
+    const existingCheckinUrl = `${config.airtable.baseUrl}/DailyCheckins?filterByFormula=AND({user_id}='${userRecordId.id}',{date_submitted}='${today}')`;
+    
+    try {
+      const existingCheckinResponse = await fetch(existingCheckinUrl, {
+        headers: {
+          'Authorization': `Bearer ${config.airtable.apiKey}`,
+        }
+      });
+      
+      const existingCheckinResult = await existingCheckinResponse.json();
+      
+      if (existingCheckinResponse.ok && existingCheckinResult.records && existingCheckinResult.records.length > 0) {
+        console.log('⚠️ Check-in already exists for today:', existingCheckinResult.records[0].id);
+        return res.status(409).json({
+          success: false,
+          error: 'You have already submitted a check-in for today. Please try again tomorrow.',
+          existing_checkin: {
+            id: existingCheckinResult.records[0].id,
+            mood_today: existingCheckinResult.records[0].fields.mood_today,
+            confidence_today: existingCheckinResult.records[0].fields.confidence_today,
+            date_submitted: existingCheckinResult.records[0].fields.date_submitted
+          }
+        });
+      }
+    } catch (error) {
+      console.error('❌ Error checking for existing check-in:', error);
+      // Continue with submission even if duplicate check fails
+    }
+
     // Prepare data for Airtable DailyCheckins table
     const checkinData = {
       user_id: [userRecordId.id], // Array format for linked records
       mood_today,
       confidence_today: parseInt(confidence_today),
-      date_submitted: new Date().toISOString().split('T')[0], // YYYY-MM-DD format
+      date_submitted: today, // YYYY-MM-DD format
     };
 
     // Only add optional fields if they have actual values
@@ -2267,8 +2402,8 @@ app.get('/api/insights/daily', authenticateToken, async (req, res) => {
       const result = await databaseAdapter.localDb.getUserCheckins(user.id, 7);
       userRecords = result.records || [];
     } else {
-      // Use Airtable with filter formula - search by email since check-ins store email as user_id
-      const checkinsUrl = `${config.airtable.baseUrl}/DailyCheckins?filterByFormula=SEARCH('${user.email}', {user_id})&sort[0][field]=date_submitted&sort[0][direction]=desc&maxRecords=7`;
+      // Use Airtable with filter formula - search by user ID for linked records
+      const checkinsUrl = `${config.airtable.baseUrl}/DailyCheckins?filterByFormula={user_id}='${user.id}'&sort[0][field]=date_submitted&sort[0][direction]=desc&maxRecords=7`;
       const response = await databaseAdapter.fetchCheckins(checkinsUrl, {
         headers: {
           'Authorization': `Bearer ${config.airtable.apiKey}`,

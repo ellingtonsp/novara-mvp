@@ -22,6 +22,12 @@ validate-environments # Validate all environment configurations
 validate-schema     # Validate Airtable schema
 safety:check        # Run all safety checks
 
+# BugBot Integration
+bugbot:local        # Check local development environment
+bugbot:pre-deploy   # Comprehensive pre-deployment validation
+bugbot:post-deploy  # Post-deployment validation for staging/production
+bugbot:monitor      # Local checks + continuous monitoring
+
 # Monitoring & Performance
 performance         # Performance monitoring and analysis
 monitor:deployments # Track deployment status
@@ -43,6 +49,11 @@ docs:validate       # Validate documentation completeness
 - `./scripts/test-quick.js` - Comprehensive test suite with timeouts
 - `./scripts/test-staging-enhanced-logging.js` - Staging environment testing
 - `./scripts/test-production-fix.js` - Production environment testing
+
+### BugBot Scripts
+- `./scripts/bugbot-local-monitor.js` - Local development environment monitoring
+- `./scripts/bugbot-post-deploy-check.js` - Post-deployment validation
+- `.github/workflows/bugbot-integration.yml` - GitHub Actions integration
 
 ### Deployment Scripts
 - `./scripts/deploy-production-now.sh` - Simple production deployment

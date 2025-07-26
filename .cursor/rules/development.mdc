@@ -24,6 +24,11 @@ npm run test:full
 # Health checks
 npm run health-check
 npm run performance
+
+# BugBot validation
+npm run bugbot:local        # Check environment before development
+npm run bugbot:pre-deploy   # Validate before deployment
+npm run bugbot:post-deploy  # Validate after deployment
 ```
 
 ## Port Strategy
@@ -42,3 +47,6 @@ npm run performance
 - Document all changes
 - Test locally before committing
 - Follow established branching strategy
+- Run BugBot validation before and after deployments
+- Check generated BugBot reports for issues
+- Address BugBot-identified errors before proceeding

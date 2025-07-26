@@ -282,6 +282,12 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
       return;
     }
 
+    // Prevent duplicate submissions
+    if (isSubmitting) {
+      console.log('⚠️ Form submission already in progress, ignoring duplicate submit');
+      return;
+    }
+
     // Start timing for AN-01 event tracking
     (window as any).checkinStartTime = Date.now();
 
@@ -372,6 +378,11 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
         if (response.status === 401 || responseData.error?.includes('token') || responseData.error?.includes('expired')) {
           alert('Your session has expired. Please log in again.');
           logout();
+          return;
+        }
+        if (response.status === 409) {
+          // Duplicate check-in detected
+          alert('You have already submitted a check-in for today. Please try again tomorrow.');
           return;
         }
         throw new Error(responseData.error || `Check-in failed: ${response.statusText}`);

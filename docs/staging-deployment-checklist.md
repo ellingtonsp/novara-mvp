@@ -1,112 +1,152 @@
 # 🚀 Staging Deployment Checklist
 
-## Pre-Deployment Verification
+## **🚨 CRITICAL: NO MANUAL ENVIRONMENT SELECTION**
 
-### ✅ Code Quality
-- [x] All changes committed to feature branch
-- [x] Feature branch pushed to remote repository
-- [x] Pull request created (if applicable)
-- [x] Code review completed (if applicable)
-- [x] Local testing passed
-
-### ✅ Configuration
-- [x] Railway configuration updated (`railway.json`)
-- [x] Environment variables verified (`RAILWAY_STAGING_ENV_VARS.txt`)
-- [x] Database configuration correct (Airtable for staging)
-- [x] Dependencies updated (`package.json`)
-
-### ✅ Environment Validation
-- [ ] Run environment validator: `npm run validate-environments`
-- [ ] Verify no hardcoded URLs in components
-- [ ] Check environment configuration files exist
-- [ ] Validate environment detection logic
-
-### ✅ Health Checks
-- [ ] Run staging health check: `npm run health-check:staging`
-- [ ] Verify backend connectivity: `https://novara-staging-staging.up.railway.app/api/health`
-- [ ] Test frontend accessibility: `https://novara-mvp-git-staging-novara-fertility.vercel.app`
-- [ ] Validate CORS configuration for staging frontend
-- [ ] Check environment detection is working correctly
-
-### ✅ Testing
-- [x] Local staging environment test passed
-- [x] Health endpoint responds correctly
-- [x] Database connection verified
-- [x] No syntax errors in code
-
-## Deployment Process
-
-### 1. Branch Management
-- [x] Create feature branch: `fix/railway-staging-deployment`
-- [x] Commit all changes with descriptive message
-- [x] Push branch to remote repository
-- [ ] Merge to staging branch (if using staging branch)
-- [ ] Or deploy directly from feature branch
-
-### 2. Railway Deployment
-- [ ] Verify Railway project is connected to correct repository
-- [ ] Ensure staging service is configured
-- [ ] Trigger deployment from Railway dashboard
-- [ ] Monitor build logs for errors
-- [ ] Verify health check passes
-
-### 3. Post-Deployment Verification
-- [ ] Run comprehensive health check: `npm run health-check:staging`
-- [ ] Test staging backend URL: `https://novara-staging-staging.up.railway.app`
-- [ ] Verify health endpoint: `/api/health`
-- [ ] Test authentication endpoints
-- [ ] Check CORS with frontend
-- [ ] Verify database connectivity
-- [ ] Test frontend-backend communication
-- [ ] Validate environment detection in health response
-
-## Environment Variables (Staging)
-
+### **FORBIDDEN COMMANDS**
 ```bash
-AIRTABLE_API_KEY="patp9wk9fzHxtkVUZ.1ba015773d9bbdc098796035b0a7bfd620edfbf6cd3b5aecc88c0beb5ef6dde7"
-AIRTABLE_BASE_ID="appEOWvLjCn5c7Ght"
-JWT_SECRET="staging_super_secret_jwt_key_different_from_prod"
-NODE_ENV="staging"
-USE_LOCAL_DATABASE="false"
-DATABASE_TYPE="airtable"
-CORS_ORIGIN="https://novara-mvp-staging.vercel.app"
-LOG_LEVEL="debug"
-ENABLE_DEBUG_LOGGING="true"
-ENABLE_REQUEST_LOGGING="true"
-# PORT is automatically set by Railway
+# ❌ NEVER run these - they require manual interaction
+railway environment    # Requires user to select environment
+railway link          # May require user to select project/environment
+railway up            # May require user to select service
 ```
 
-## Rollback Plan
+### **REQUIRED: AUTOMATED DEPLOYMENT**
+```bash
+# ✅ ALWAYS use automated script - no interaction required
+./scripts/deploy-staging-automated.sh
+```
 
-If deployment fails:
-1. **Immediate**: Check Railway logs for specific errors
-2. **Quick Fix**: Update environment variables if needed
-3. **Code Fix**: Revert problematic changes and redeploy
-4. **Emergency**: Use previous working deployment
+---
 
-## Success Criteria
+## **AUTOMATED DEPLOYMENT PROCEDURE**
 
-- [ ] Environment validator passes: `npm run validate-environments`
-- [ ] Staging health check passes: `npm run health-check:staging`
-- [ ] Staging backend URL responds with 200 OK
-- [ ] Health endpoint returns `{"status":"ok","environment":"staging"}`
-- [ ] Database operations work correctly
-- [ ] Frontend can connect to staging API
+### **One-Command Staging Deployment**
+```bash
+# From project root - NO manual environment selection required
+./scripts/deploy-staging-automated.sh
+```
+
+This script automatically:
+- ✅ Links to staging environment with full parameters
+- ✅ Deploys backend and frontend
+- ✅ Runs health checks
+- ✅ Provides staging URLs
+- ✅ **ZERO USER INTERACTION REQUIRED**
+
+---
+
+## **MANUAL DEPLOYMENT (EMERGENCY FALLBACK ONLY)**
+
+### **Prerequisites**
+- [ ] Railway CLI installed: `npm install -g @railway/cli`
+- [ ] Logged into Railway: `railway login`
+- [ ] Staging environment configured in Railway
+
+### **Backend Deployment (Emergency Only)**
+```bash
+# Navigate to backend directory
+cd backend
+
+# Link with FULL parameters (no interaction)
+railway link --project novara-mvp --environment staging --service novara-backend-staging --yes
+
+# Deploy (no interaction)
+railway up --service novara-backend-staging
+```
+
+### **Frontend Deployment (Emergency Only)**
+```bash
+# Navigate to frontend directory
+cd frontend
+
+# Link with FULL parameters (no interaction)
+railway link --project novara-mvp --environment staging --service novara-frontend-staging --yes
+
+# Deploy (no interaction)
+railway up --service novara-frontend-staging
+```
+
+---
+
+## **VERIFICATION STEPS**
+
+### **Health Check**
+```bash
+# Test staging backend
+curl -s https://novara-backend-staging.up.railway.app/api/health | jq .
+
+# Expected response:
+{
+  "status": "healthy",
+  "environment": "staging",
+  "timestamp": "2025-07-26T...",
+  "version": "1.0.0"
+}
+```
+
+### **Rate Limiting Test**
+```bash
+# Test new environment-aware rate limiting
+for i in {1..15}; do
+  echo "Request $i:"
+  curl -s https://novara-backend-staging.up.railway.app/api/health | jq -r '.environment'
+done
+```
+
+### **Environment Validation**
+- [ ] Environment shows "staging"
+- [ ] Rate limiting allows 2,000 requests per 15 minutes
+- [ ] Database operations working
 - [ ] No critical errors in logs
-- [ ] All environment configurations validated
 
-## Monitoring
+---
 
-- [ ] Set up Railway monitoring alerts
-- [ ] Monitor response times
-- [ ] Check error rates
-- [ ] Verify database performance
-- [ ] Test user flows
+## **TROUBLESHOOTING**
 
-## Documentation
+### **Common Issues**
+1. **Manual Environment Selection Required**
+   - **Cause**: Used forbidden commands like `railway environment`
+   - **Solution**: Use automated deployment script instead
 
-- [x] Update deployment troubleshooting guide
-- [x] Create deployment script
-- [x] Document environment variables
-- [ ] Update API documentation if needed
-- [ ] Record any new deployment procedures 
+2. **Deployment Fails**
+   - **Cause**: Server crashes due to code errors
+   - **Solution**: Fix local issues first, then redeploy
+
+3. **Environment Mismatch**
+   - **Cause**: Wrong environment variables or database
+   - **Solution**: Verify `NODE_ENV=staging` and correct database ID
+
+### **Emergency Rollback**
+```bash
+# Use Railway dashboard to revert to previous deployment
+# Or use automated rollback script if available
+./scripts/rollback-staging.sh
+```
+
+---
+
+## **SECURITY CONSIDERATIONS**
+
+### **Environment Isolation**
+- [ ] Staging uses separate database (`appEOWvLjCn5c7Ght`)
+- [ ] Production uses separate database (`app5QWCcVbCnVg2Gg`)
+- [ ] Local development uses SQLite only
+
+### **Rate Limiting**
+- [ ] Staging: 2,000 requests per 15 minutes
+- [ ] Production: 500 requests per 15 minutes
+- [ ] Development: 10,000 requests per 15 minutes
+
+---
+
+## **DOCUMENTATION**
+
+### **Related Files**
+- `scripts/deploy-staging-automated.sh` - Automated deployment script
+- `docs/rate-limiting-guide.md` - Rate limiting configuration
+- `.cursor/rules/deployment.mdc` - Deployment rules and procedures
+
+### **Update Log**
+- **2025-07-26**: Added NO-INTERACTION requirements
+- **2025-07-26**: Updated Railway CLI procedures
+- **2025-07-26**: Added automated deployment emphasis 
