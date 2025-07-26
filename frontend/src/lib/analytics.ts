@@ -8,12 +8,13 @@ import { environmentConfig } from './environment';
 // PostHog Configuration - Using region-specific host as per Vercel docs
 const POSTHOG_HOST = 'https://us.i.posthog.com';
 
-// Event names as defined in AN-01
+// Event names as defined in AN-01 and CM-01
 export const ANALYTICS_EVENTS = {
   SIGNUP: 'signup',
   CHECKIN_SUBMITTED: 'checkin_submitted',
   INSIGHT_VIEWED: 'insight_viewed',
-  SHARE_ACTION: 'share_action'
+  SHARE_ACTION: 'share_action',
+  SENTIMENT_SCORED: 'sentiment_scored' // CM-01: Sentiment analysis tracking
 } as const;
 
 // Event payload types
@@ -45,6 +46,41 @@ export interface ShareActionEvent {
   share_surface: string;
   destination: string;
   content_id?: string;
+}
+
+export interface SentimentScoredEvent {
+  user_id: string;
+  sentiment: 'positive' | 'neutral' | 'negative' | 'mixed';  // Added 'mixed'
+  confidence: number;
+  mood_score: number;
+  processing_time_ms: number;
+  text_sources: string[];
+  sentiment_scores: {
+    positive: number;
+    neutral: number;
+    negative: number;
+    compound: number;
+  };
+  critical_concerns?: string[];  // NEW: Track critical concerns detected
+  confidence_factors?: {        // NEW: Track confidence factors that influenced sentiment
+    medication?: number;
+    financial?: number;
+    overall?: number;
+  };
+}
+
+export interface InsightFeedbackEvent {
+  user_id: string;
+  insight_id: string;           // Unique ID for the insight shown
+  feedback_type: 'helpful' | 'not_helpful';
+  feedback_text?: string;       // Optional constructive feedback
+  insight_context: {
+    sentiment: 'positive' | 'neutral' | 'negative' | 'mixed';
+    copy_variant_used: string;
+    critical_concerns?: string[];
+    confidence_factors?: Record<string, number>;
+  };
+  timestamp: string;
 }
 
 // Vercel-specific environment detection
@@ -279,6 +315,40 @@ export const track = (event: string, payload: Record<string, any>): void => {
   }
 };
 
+// CM-01: Track insight feedback for continuous improvement
+export const trackInsightFeedback = (payload: InsightFeedbackEvent): void => {
+  if (!isAnalyticsEnabled()) {
+    console.log('📊 Analytics disabled - would track insight_feedback:', payload);
+    return;
+  }
+
+  try {
+    console.log('📊 Tracking insight_feedback event:', payload);
+    
+    // Track with PostHog
+    posthog.capture('insight_feedback', {
+      user_id: payload.user_id,
+      insight_id: payload.insight_id,
+      feedback_type: payload.feedback_type,
+      feedback_text: payload.feedback_text,
+      sentiment: payload.insight_context.sentiment,
+      copy_variant_used: payload.insight_context.copy_variant_used,
+      critical_concerns: payload.insight_context.critical_concerns,
+      confidence_factors: payload.insight_context.confidence_factors,
+      timestamp: payload.timestamp,
+      // Add metadata for analysis
+      $set: {
+        last_insight_feedback: payload.feedback_type,
+        last_feedback_timestamp: payload.timestamp
+      }
+    });
+
+    console.log('✅ insight_feedback event tracked successfully');
+  } catch (error) {
+    console.error('❌ Failed to track insight_feedback event:', error);
+  }
+};
+
 // Event-specific tracking functions
 export const trackSignup = (payload: SignupEvent): void => {
   track(ANALYTICS_EVENTS.SIGNUP, payload);
@@ -294,6 +364,10 @@ export const trackInsightViewed = (payload: InsightViewedEvent): void => {
 
 export const trackShareAction = (payload: ShareActionEvent): void => {
   track(ANALYTICS_EVENTS.SHARE_ACTION, payload);
+};
+
+export const trackSentimentScored = (payload: SentimentScoredEvent): void => {
+  track(ANALYTICS_EVENTS.SENTIMENT_SCORED, payload);
 };
 
 // Enhanced user identification with Vercel context

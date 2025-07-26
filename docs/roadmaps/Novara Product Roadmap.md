@@ -7,7 +7,7 @@
 
 | Epic | ID | Story (Done = all true) | SP |
 |------|----|-------------------------|----|
-| **E1 Advanced Analytics** | **AN-01** | Event tracking for signup, check-in, insight view & share → PostHog funnels | 5 |
+| **E1 Advanced Analytics** | **AN-01** | ✅ Event tracking for signup, check-in, insight view & share → PostHog funnels | 5 |
 | **E2 Insight Polish** | **CM-01** | Positive-reflection NLP so good-day check-ins feel recognised | 3 |
 | | **ON-01** | Auto-detect “speed-tapper” → switch to 3-field onboarding | 3 |
 | | **VP-01** | ROI banner: “5× check-ins → 15 % ↑ med-adherence” under logo | 2 |

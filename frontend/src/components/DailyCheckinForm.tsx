@@ -4,8 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Heart, Clock, CheckCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { trackCheckinSubmitted } from '../lib/analytics';
+import { trackCheckinSubmitted, trackSentimentScored } from '../lib/analytics';
 import { API_BASE_URL } from '../lib/environment';
+import { analyzeCheckinSentiment } from '../lib/sentiment';
+import { generateSentimentBasedInsight } from '../lib/copy-variants';
+import { InsightFeedback } from './InsightFeedback';
 
 interface DailyCheckinFormProps {
   onComplete?: () => void;
@@ -53,6 +56,15 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
     action?: { label: string; type: string } | null;
     enhanced?: boolean;
     tracking_data?: any;
+    // NEW: Feedback system fields
+    insight_id?: string;
+    feedback_enabled?: boolean;
+    insight_context?: {
+      sentiment: 'positive' | 'neutral' | 'negative' | 'mixed';
+      copy_variant_used: string;
+      critical_concerns?: string[];
+      confidence_factors?: Record<string, number>;
+    };
   } | null>(null);
 
   // Clean mood options with better visual hierarchy
@@ -304,6 +316,35 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
     console.log('🐛 DEBUG - enhancedCheckinData.mood_today:', enhancedCheckinData.mood_today);
     console.log('🎯 Submitting enhanced check-in data:', enhancedCheckinData);
 
+    // CM-01: Perform sentiment analysis before submission (enhanced with confidence factors)
+    const sentimentAnalysisData = {
+      mood_today: selectedMoods,
+      journey_reflection_today: formResponses.journey_reflection_today || '',  // Primary sentiment source
+      user_note: formResponses.user_note || '',
+      primary_concern_today: formResponses.primary_concern_today || '',
+      confidence_today: enhancedCheckinData.confidence_today,
+      // NEW: Add confidence factors for mixed sentiment detection (safely access from formResponses)
+      medication_confidence_today: formResponses.medication_confidence_today,
+      financial_confidence_today: formResponses.financial_confidence_today,
+      medication_concern_today: formResponses.medication_concern_today || '',
+      financial_concern_today: formResponses.financial_concern_today || ''
+    };
+    
+    const sentimentResult = analyzeCheckinSentiment(sentimentAnalysisData);
+    
+    console.log('🎭 CM-01: Sentiment analysis result:', sentimentResult);
+    
+    // Add sentiment data to check-in payload
+    const checkinWithSentiment = {
+      ...enhancedCheckinData,
+      sentiment_analysis: {
+        sentiment: sentimentResult.sentiment,
+        confidence: sentimentResult.confidence,
+        scores: sentimentResult.scores,
+        processing_time: sentimentResult.processingTime
+      }
+    };
+
     try {
       const token = localStorage.getItem('token');
       if (!token) {
@@ -314,14 +355,14 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
 
       // Use imported API_BASE_URL from environment configuration
       
-      // Submit enhanced check-in
+      // Submit enhanced check-in with sentiment data
       const response = await fetch(`${API_BASE_URL}/api/checkins`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(enhancedCheckinData)
+        body: JSON.stringify(checkinWithSentiment)
       });
 
       const responseData = await response.json();
@@ -380,20 +421,68 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
           
           // Then try the wrapper function
           trackCheckinSubmitted(eventPayload);
+          
+          // CM-01: Track sentiment analysis event (enhanced with mixed sentiment and critical concerns)
+          const sentimentEventPayload = {
+            user_id: user.id,
+            sentiment: sentimentResult.sentiment,
+            confidence: sentimentResult.confidence,
+            mood_score: enhancedCheckinData.confidence_today || 5,
+            processing_time_ms: sentimentResult.processingTime,
+            text_sources: [
+              ...(sentimentAnalysisData.user_note ? ['user_note'] : []),
+              ...(sentimentAnalysisData.primary_concern_today ? ['primary_concern'] : []),
+              ...(sentimentAnalysisData.mood_today && sentimentAnalysisData.mood_today.length > 0 ? ['mood_selection'] : []),
+              ...(sentimentAnalysisData.journey_reflection_today ? ['journey_reflection'] : []),
+              ...(sentimentAnalysisData.medication_concern_today ? ['medication_concern'] : []),
+              ...(sentimentAnalysisData.financial_concern_today ? ['financial_concern'] : [])
+            ],
+            sentiment_scores: sentimentResult.scores,
+            critical_concerns: sentimentResult.criticalConcerns,
+            confidence_factors: sentimentResult.confidenceFactors
+          };
+          
+          console.log('🎭 CM-01: Tracking sentiment_scored event:', sentimentEventPayload);
+          trackSentimentScored(sentimentEventPayload);
         } else {
           console.error('❌ AN-01 DEBUG: Cannot track checkin_submitted - user.id not available');
         }
         
-        // Display enhanced insight
-        if (responseData.enhanced_insight) {
-          setImmediateInsight(responseData.enhanced_insight);
-        } else {
-          setImmediateInsight({
-            title: 'Enhanced Check-in Complete!',
-            message: 'Thank you for sharing your detailed check-in. Your personalized insights are being prepared.',
-            enhanced: true
-          });
-        }
+        // CM-01: Generate sentiment-based insight for ALL sentiment types (including mixed)
+        const sentimentBasedInsight = generateSentimentBasedInsight({
+          sentiment: sentimentResult.sentiment,
+          confidence: sentimentResult.confidence,
+          mood_score: enhancedCheckinData.confidence_today || 5,
+          user_name: user?.nickname || user?.email?.split('@')[0],
+          criticalConcerns: sentimentResult.criticalConcerns,
+          confidenceFactors: sentimentResult.confidenceFactors
+        });
+        
+        // Generate unique insight ID for feedback tracking
+        const insightId = `insight_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        
+        setImmediateInsight({
+          title: sentimentBasedInsight.title,
+          message: sentimentBasedInsight.message,
+          action: sentimentBasedInsight.action,
+          enhanced: true,
+          // NEW: Add feedback system data
+          insight_id: insightId,
+          feedback_enabled: true,
+          insight_context: {
+            sentiment: sentimentResult.sentiment,
+            copy_variant_used: sentimentBasedInsight.sentiment_data.copy_variant_used,
+            critical_concerns: sentimentResult.criticalConcerns,
+            confidence_factors: sentimentResult.confidenceFactors
+          },
+          tracking_data: {
+            sentiment: sentimentResult.sentiment,
+            celebration_triggered: sentimentResult.sentiment === 'positive',
+            copy_variant: sentimentBasedInsight.sentiment_data.copy_variant_used
+          }
+        });
+        
+        console.log(`🎭 CM-01: ${sentimentResult.sentiment} sentiment insight displayed`);
         
         setShowSuccess(true);
         
@@ -599,6 +688,15 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
                   💚 Personalized for you
                 </div>
               )}
+              
+              {/* NEW: Insight Feedback System */}
+              {immediateInsight?.feedback_enabled && (
+                <InsightFeedback 
+                  insightId={immediateInsight.insight_id!}
+                  insightContext={immediateInsight.insight_context!}
+                  userId={user?.id || ''}
+                />
+              )}
             </div>
             <Button 
               onClick={() => {
@@ -746,9 +844,9 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
                   `
                 }} />
                 <div className="flex justify-between text-xs text-gray-500 mt-1">
-                  <span>Not confident</span>
+                  <span>Low (1)</span>
                   <span className="font-medium text-[#FF6F61]">{formResponses.confidence_today || 5}/10</span>
-                  <span>Very confident</span>
+                  <span>High (10)</span>
                 </div>
               </div>
 

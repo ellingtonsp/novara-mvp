@@ -58,7 +58,9 @@ This checklist ensures that production functionality is preserved while validati
 
 3. **Post-production validation:**
    - [ ] Run `npm run health-check:production`
-   - [ ] Verify production environment detection
+   - [ ] Verify production environment detection shows "production" (not "staging")
+   - [ ] Check browser console for `🚀 AN-01 DEBUG: Current environment: production`
+   - [ ] Verify PostHog analytics initialization successful
    - [ ] Test critical user flows
    - [ ] Monitor for any errors
 
@@ -94,7 +96,8 @@ For critical production issues:
 
 #### 📊 Health Monitoring
 - [ ] Backend health checks return 200
-- [ ] Environment detection working correctly
+- [ ] Environment detection working correctly (shows correct environment)
+- [ ] PostHog analytics initialization successful
 - [ ] CORS configuration allows all frontend URLs
 - [ ] API endpoints accessible (with proper authentication)
 

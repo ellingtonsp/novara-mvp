@@ -12,7 +12,23 @@ class SQLiteAdapter {
       fs.mkdirSync(dataDir, { recursive: true });
     }
     
-    this.db = new Database(dbPath);
+    // Initialize database with better concurrency handling
+    this.db = new Database(dbPath, { 
+      verbose: process.env.NODE_ENV === 'development' ? console.log : null,
+      readonly: false,
+      fileMustExist: false
+    });
+    
+    // Set WAL mode for better concurrent access (especially in CloudDocs)
+    try {
+      this.db.pragma('journal_mode = WAL');
+      this.db.pragma('synchronous = NORMAL');
+      this.db.pragma('cache_size = 1000');
+      this.db.pragma('temp_store = memory');
+    } catch (error) {
+      console.warn('⚠️ Could not set optimal SQLite pragmas:', error.message);
+    }
+    
     this.initSchema();
     
     console.log('🗄️ SQLite database initialized:', dbPath);
@@ -34,6 +50,8 @@ class SQLiteAdapter {
         timezone TEXT,
         email_opt_in BOOLEAN DEFAULT 1,
         status TEXT DEFAULT 'active',
+        medication_status TEXT,              -- NEW: Medication status flag
+        medication_status_updated DATETIME, -- NEW: When status was last updated
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );
 
@@ -49,12 +67,58 @@ class SQLiteAdapter {
         financial_concern_today TEXT,
         journey_readiness_today INTEGER,
         top_concern_today TEXT,
+        journey_reflection_today TEXT,  -- NEW: Universal reflection field
+        medication_momentum TEXT,       -- NEW: Positive medication feedback
+        financial_momentum TEXT,        -- NEW: Positive financial feedback  
+        journey_momentum TEXT,          -- NEW: Positive journey feedback
         user_note TEXT,
         date_submitted DATE NOT NULL,
+        sentiment TEXT,                 -- NEW: CM-01 sentiment analysis result
+        sentiment_confidence REAL,      -- NEW: CM-01 sentiment confidence score
+        sentiment_scores TEXT,          -- NEW: CM-01 detailed sentiment scores (JSON)
+        sentiment_processing_time REAL, -- NEW: CM-01 processing time in ms
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users (id)
       );
 
+      -- Migrate existing database to add new columns if they don't exist
+      PRAGMA table_info(daily_checkins);
+    `);
+    
+    // Add new columns if they don't exist (for existing databases)
+    const addColumnIfNotExists = (tableName, columnName, columnType) => {
+      try {
+        this.db.exec(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${columnType}`);
+        console.log(`✅ Added column ${columnName} to ${tableName}`);
+      } catch (error) {
+        if (error.message.includes('duplicate column name')) {
+          // Column already exists, that's fine
+        } else {
+          console.log(`ℹ️ Column ${columnName} may already exist in ${tableName}`);
+        }
+      }
+    };
+    
+    // Add new columns for enhanced questionnaire
+    addColumnIfNotExists('daily_checkins', 'journey_reflection_today', 'TEXT');
+    addColumnIfNotExists('daily_checkins', 'medication_momentum', 'TEXT');
+    addColumnIfNotExists('daily_checkins', 'financial_momentum', 'TEXT');
+    addColumnIfNotExists('daily_checkins', 'journey_momentum', 'TEXT');
+    
+    // Enhanced dimension tracking fields
+    addColumnIfNotExists('daily_checkins', 'medication_confidence_today', 'INTEGER');
+    addColumnIfNotExists('daily_checkins', 'financial_confidence_today', 'INTEGER');
+    addColumnIfNotExists('daily_checkins', 'journey_confidence_today', 'INTEGER');
+    addColumnIfNotExists('daily_checkins', 'medication_emergency_check', 'TEXT');
+    addColumnIfNotExists('daily_checkins', 'financial_emergency_check', 'TEXT');
+    
+    // CM-01 sentiment analysis fields
+    addColumnIfNotExists('daily_checkins', 'sentiment', 'TEXT');
+    addColumnIfNotExists('daily_checkins', 'sentiment_confidence', 'REAL');
+    addColumnIfNotExists('daily_checkins', 'sentiment_scores', 'TEXT');
+    addColumnIfNotExists('daily_checkins', 'sentiment_processing_time', 'REAL');
+
+    this.db.exec(`
       CREATE TABLE IF NOT EXISTS insights (
         id TEXT PRIMARY KEY,
         user_id TEXT NOT NULL,
@@ -162,6 +226,34 @@ class SQLiteAdapter {
     };
   }
 
+  // NEW: Update user method for medication status and other profile updates
+  async updateUser(userId, updateData) {
+    try {
+      // Build dynamic SQL based on provided fields
+      const fields = Object.keys(updateData);
+      const setClause = fields.map(field => `${field} = ?`).join(', ');
+      const values = fields.map(field => updateData[field]);
+      
+      const stmt = this.db.prepare(`UPDATE users SET ${setClause} WHERE id = ?`);
+      const result = stmt.run(...values, userId);
+      
+      if (result.changes === 0) {
+        throw new Error('User not found or no changes made');
+      }
+      
+      console.log(`✅ SQLite: Updated user ${userId} with:`, updateData);
+      
+      // Return updated user
+      const updatedUser = this.db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+      return {
+        id: updatedUser.id,
+        fields: { ...updatedUser }
+      };
+    } catch (error) {
+      throw new Error(`User update failed: ${error.message}`);
+    }
+  }
+
   // === CHECK-IN OPERATIONS ===
   
   async createCheckin(checkinData) {
@@ -172,8 +264,9 @@ class SQLiteAdapter {
       INSERT INTO daily_checkins (id, user_id, mood_today, confidence_today, primary_concern_today,
                                  medication_confidence_today, medication_concern_today, financial_stress_today,
                                  financial_concern_today, journey_readiness_today, top_concern_today,
-                                 user_note, date_submitted)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                 journey_reflection_today, medication_momentum, financial_momentum, journey_momentum,
+                                 user_note, date_submitted, sentiment, sentiment_confidence, sentiment_scores, sentiment_processing_time)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     
     try {
@@ -182,8 +275,12 @@ class SQLiteAdapter {
         checkinData.primary_concern_today, checkinData.medication_confidence_today,
         checkinData.medication_concern_today, checkinData.financial_stress_today,
         checkinData.financial_concern_today, checkinData.journey_readiness_today,
-        checkinData.top_concern_today, checkinData.user_note, 
-        checkinData.date_submitted || new Date().toISOString().split('T')[0]
+        checkinData.top_concern_today, checkinData.journey_reflection_today,
+        checkinData.medication_momentum, checkinData.financial_momentum, checkinData.journey_momentum,
+        checkinData.user_note, 
+        checkinData.date_submitted || new Date().toISOString().split('T')[0],
+        checkinData.sentiment, checkinData.sentiment_confidence, 
+        checkinData.sentiment_scores, checkinData.sentiment_processing_time
       );
       
       // Return in Airtable format
@@ -227,22 +324,45 @@ class SQLiteAdapter {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     
-    try {
-      stmt.run(
-        id, userId, insightData.insight_type, insightData.insight_title,
-        insightData.insight_message, insightData.insight_id, 
-        insightData.date || new Date().toISOString().split('T')[0],
-        insightData.context_data, insightData.action_label, 
-        insightData.action_type, insightData.status || 'active'
-      );
-      
-      return {
-        id,
-        fields: { ...insightData, id, user_id: userId }
-      };
-    } catch (error) {
-      throw new Error(`Insight creation failed: ${error.message}`);
+    const maxRetries = 3;
+    let lastError;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        stmt.run(
+          id, userId, insightData.insight_type, insightData.insight_title,
+          insightData.insight_message, insightData.insight_id, 
+          insightData.date || new Date().toISOString().split('T')[0],
+          insightData.context_data, insightData.action_label, 
+          insightData.action_type, insightData.status || 'active'
+        );
+        
+        console.log(`✅ Insight created successfully on attempt ${attempt}: ${id}`);
+        return {
+          id,
+          fields: { ...insightData, id, user_id: userId }
+        };
+      } catch (error) {
+        lastError = error;
+        
+        if (error.message.includes('readonly database') || error.message.includes('database is locked')) {
+          console.warn(`⚠️ Database access issue (attempt ${attempt}/${maxRetries}):`, error.message);
+          
+          if (attempt < maxRetries) {
+            // Wait a bit before retrying
+            await new Promise(resolve => setTimeout(resolve, 100 * attempt));
+            continue;
+          }
+        }
+        
+        // For non-retry-able errors or max retries reached
+        break;
+      }
     }
+    
+    // If we get here, all retries failed
+    console.error('❌ Failed to create insight after all retries:', lastError.message);
+    throw new Error(`Insight creation failed: ${lastError.message}`);
   }
 
   // === ENGAGEMENT OPERATIONS ===

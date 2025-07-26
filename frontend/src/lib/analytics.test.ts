@@ -1,53 +1,84 @@
-// Analytics Service Unit Tests - AN-01 Event Tracking
+/**
+ * AN-01 Event Tracking Unit Tests
+ * 
+ * Tests for all four core events: signup, checkin_submitted, insight_viewed, share_action
+ * Covers success + failure paths with ≥90% branch coverage requirement
+ */
+
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { 
-  track, 
-  trackSignup, 
-  trackCheckinSubmitted, 
-  trackInsightViewed, 
-  trackShareAction,
+import {
   ANALYTICS_EVENTS,
+  track,
+  trackSignup,
+  trackCheckinSubmitted,
+  trackInsightViewed,
+  trackShareAction,
   initializeAnalytics,
-  isAnalyticsEnabled
+  identifyUser,
+  resetUser,
+  isAnalyticsEnabled,
+  type SignupEvent,
+  type CheckinSubmittedEvent,
+  type InsightViewedEvent,
+  type ShareActionEvent
 } from './analytics';
 
 // Mock PostHog
-vi.mock('posthog-js', () => ({
-  default: {
-    init: vi.fn(),
-    capture: vi.fn(),
-    identify: vi.fn(),
-    reset: vi.fn()
+const mockPostHog = {
+  capture: vi.fn(),
+  identify: vi.fn(),
+  reset: vi.fn(),
+  get_distinct_id: vi.fn(() => 'test-user-id'),
+  people: {
+    set: vi.fn()
   }
-}));
+};
 
-// Mock environment
+// Mock environment variables
 vi.mock('./environment', () => ({
   environmentConfig: {
     environment: 'test',
     isDevelopment: true,
-    isStaging: false,
     isProduction: false,
-    debugMode: true
+    isStaging: false,
+    isPreview: false,
+    debugMode: true,
+    apiUrl: 'http://localhost:9002'
   }
 }));
 
-describe('Analytics Service - AN-01 Event Tracking', () => {
+// Mock Vite environment variables
+vi.stubEnv('VITE_POSTHOG_API_KEY', 'test-api-key');
+vi.stubEnv('VITE_POSTHOG_HOST', 'https://us.i.posthog.com');
+vi.stubEnv('VITE_VERCEL_ENV', 'test');
+
+// Mock window.posthog
+Object.defineProperty(window, 'posthog', {
+  value: mockPostHog,
+  writable: true
+});
+
+// Mock console methods
+const consoleSpy = {
+  log: vi.spyOn(console, 'log').mockImplementation(() => {}),
+  debug: vi.spyOn(console, 'debug').mockImplementation(() => {}),
+  error: vi.spyOn(console, 'error').mockImplementation(() => {}),
+  warn: vi.spyOn(console, 'warn').mockImplementation(() => {})
+};
+
+describe('AN-01 Event Tracking - Core Functions', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Mock console methods
-    vi.spyOn(console, 'debug').mockImplementation(() => {});
-    vi.spyOn(console, 'log').mockImplementation(() => {});
-    vi.spyOn(console, 'warn').mockImplementation(() => {});
-    vi.spyOn(console, 'error').mockImplementation(() => {});
+    // Reset window.posthog
+    (window as any).posthog = mockPostHog;
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  describe('Event Constants', () => {
-    it('should have correct event names', () => {
+  describe('ANALYTICS_EVENTS Constants', () => {
+    it('should export correct event names', () => {
       expect(ANALYTICS_EVENTS.SIGNUP).toBe('signup');
       expect(ANALYTICS_EVENTS.CHECKIN_SUBMITTED).toBe('checkin_submitted');
       expect(ANALYTICS_EVENTS.INSIGHT_VIEWED).toBe('insight_viewed');
@@ -55,312 +86,513 @@ describe('Analytics Service - AN-01 Event Tracking', () => {
     });
   });
 
-  describe('Core Tracking Function', () => {
-    it('should log events in development mode', () => {
-      const mockPayload = { user_id: 'test123', test: 'data' };
-      
-      track('test_event', mockPayload);
-      
-      expect(console.debug).toHaveBeenCalledWith(
-        '📊 PH-DEV Event:',
-        'test_event',
+  describe('track() - Core Tracking Function', () => {
+    it('should track events successfully with enriched payload', () => {
+      const eventName = 'test_event';
+      const payload = { user_id: 'test-user', test: true };
+
+      track(eventName, payload);
+
+      expect(mockPostHog.capture).toHaveBeenCalledWith(
+        eventName,
         expect.objectContaining({
-          ...mockPayload,
+          user_id: 'test-user',
+          test: true,
           environment: 'test',
-          timestamp: expect.any(String)
+          timestamp: expect.any(String),
+          vercel_environment: 'test'
         })
       );
     });
 
-    it('should handle errors gracefully', () => {
-      const mockPayload = { user_id: 'test123' };
-      
-      // Mock console.debug to throw
-      vi.spyOn(console, 'debug').mockImplementation(() => {
-        throw new Error('Test error');
+    it('should handle missing PostHog gracefully', () => {
+      (window as any).posthog = undefined;
+      const eventName = 'test_event';
+      const payload = { user_id: 'test-user' };
+
+      expect(() => track(eventName, payload)).not.toThrow();
+      expect(consoleSpy.warn).toHaveBeenCalledWith(
+        '⚠️ PostHog not available for tracking:',
+        eventName
+      );
+    });
+
+    it('should handle PostHog capture errors gracefully', () => {
+      mockPostHog.capture.mockImplementation(() => {
+        throw new Error('PostHog error');
       });
+
+      const eventName = 'test_event';
+      const payload = { user_id: 'test-user' };
+
+      expect(() => track(eventName, payload)).not.toThrow();
+      expect(consoleSpy.error).toHaveBeenCalledWith(
+        '❌ AN-01 DEBUG: Failed to track event:',
+        eventName,
+        expect.any(Error)
+      );
+    });
+
+    it('should identify user before tracking if user_id provided', () => {
+      const eventName = 'test_event';
+      const payload = { user_id: 'test-user' };
+
+      track(eventName, payload);
+
+      expect(mockPostHog.identify).toHaveBeenCalledWith('test-user');
+    });
+
+    it('should not identify user if already identified', () => {
+      mockPostHog.get_distinct_id.mockReturnValue('test-user');
       
-      // Should not throw even if console.debug fails
-      expect(() => track('test_event', mockPayload)).not.toThrow();
+      const eventName = 'test_event';
+      const payload = { user_id: 'test-user' };
+
+      track(eventName, payload);
+
+      expect(mockPostHog.identify).not.toHaveBeenCalled();
+    });
+
+    it('should handle user identification errors gracefully', () => {
+      mockPostHog.identify.mockImplementation(() => {
+        throw new Error('Identification error');
+      });
+
+      const eventName = 'test_event';
+      const payload = { user_id: 'test-user' };
+
+      expect(() => track(eventName, payload)).not.toThrow();
+      expect(consoleSpy.error).toHaveBeenCalledWith(
+        '❌ AN-01 DEBUG: User identification failed:',
+        expect.any(Error)
+      );
+    });
+
+    it('should skip tracking when API key is missing', () => {
+      vi.stubEnv('VITE_POSTHOG_API_KEY', '');
+      
+      const eventName = 'test_event';
+      const payload = { user_id: 'test-user' };
+
+      track(eventName, payload);
+
+      expect(mockPostHog.capture).not.toHaveBeenCalled();
+      expect(consoleSpy.log).toHaveBeenCalledWith(
+        '🎯 AN-01 DEBUG: Skipping PostHog tracking - conditions not met'
+      );
     });
   });
 
-  describe('Signup Event Tracking', () => {
-    it('should track signup with correct payload', () => {
-      const signupPayload = {
-        user_id: 'u_123',
-        signup_method: 'email',
-        referrer: 'google.com'
-      };
-      
-      trackSignup(signupPayload);
-      
-      expect(console.debug).toHaveBeenCalledWith(
-        '📊 PH-DEV Event:',
-        'signup',
-        expect.objectContaining({
-          ...signupPayload,
-          environment: 'test',
-          timestamp: expect.any(String)
-        })
-      );
-    });
-
-    it('should handle missing optional fields', () => {
-      const signupPayload = {
-        user_id: 'u_123',
+  describe('trackSignup() - Signup Event Tracking', () => {
+    it('should track signup event with required properties', () => {
+      const signupEvent: SignupEvent = {
+        user_id: 'test-user',
         signup_method: 'email'
       };
-      
-      trackSignup(signupPayload);
-      
-      expect(console.debug).toHaveBeenCalledWith(
-        '📊 PH-DEV Event:',
-        'signup',
+
+      trackSignup(signupEvent);
+
+      expect(mockPostHog.capture).toHaveBeenCalledWith(
+        ANALYTICS_EVENTS.SIGNUP,
         expect.objectContaining({
-          user_id: 'u_123',
+          user_id: 'test-user',
+          signup_method: 'email'
+        })
+      );
+    });
+
+    it('should track signup event with optional properties', () => {
+      const signupEvent: SignupEvent = {
+        user_id: 'test-user',
+        signup_method: 'email',
+        referrer: 'google',
+        experiment_variants: ['variant_a', 'variant_b']
+      };
+
+      trackSignup(signupEvent);
+
+      expect(mockPostHog.capture).toHaveBeenCalledWith(
+        ANALYTICS_EVENTS.SIGNUP,
+        expect.objectContaining({
+          user_id: 'test-user',
           signup_method: 'email',
-          environment: 'test',
-          timestamp: expect.any(String)
+          referrer: 'google',
+          experiment_variants: ['variant_a', 'variant_b']
         })
       );
     });
+
+    it('should handle signup tracking errors gracefully', () => {
+      mockPostHog.capture.mockImplementation(() => {
+        throw new Error('Signup tracking error');
+      });
+
+      const signupEvent: SignupEvent = {
+        user_id: 'test-user',
+        signup_method: 'email'
+      };
+
+      expect(() => trackSignup(signupEvent)).not.toThrow();
+    });
   });
 
-  describe('Check-in Event Tracking', () => {
-    it('should track check-in with correct payload', () => {
-      const checkinPayload = {
-        user_id: 'u_123',
+  describe('trackCheckinSubmitted() - Check-in Event Tracking', () => {
+    it('should track check-in event with required properties', () => {
+      const checkinEvent: CheckinSubmittedEvent = {
+        user_id: 'test-user',
         mood_score: 7,
-        symptom_flags: ['stress', 'fatigue'],
-        time_to_complete_ms: 1500
+        symptom_flags: ['hopeful', 'anxious']
       };
-      
-      trackCheckinSubmitted(checkinPayload);
-      
-      expect(console.debug).toHaveBeenCalledWith(
-        '📊 PH-DEV Event:',
-        'checkin_submitted',
+
+      trackCheckinSubmitted(checkinEvent);
+
+      expect(mockPostHog.capture).toHaveBeenCalledWith(
+        ANALYTICS_EVENTS.CHECKIN_SUBMITTED,
         expect.objectContaining({
-          ...checkinPayload,
-          environment: 'test',
-          timestamp: expect.any(String)
+          user_id: 'test-user',
+          mood_score: 7,
+          symptom_flags: ['hopeful', 'anxious']
         })
       );
     });
 
-    it('should handle empty symptom flags', () => {
-      const checkinPayload = {
-        user_id: 'u_123',
-        mood_score: 5,
-        symptom_flags: []
+    it('should track check-in event with optional properties', () => {
+      const checkinEvent: CheckinSubmittedEvent = {
+        user_id: 'test-user',
+        mood_score: 7,
+        symptom_flags: ['hopeful'],
+        cycle_day: 14,
+        time_to_complete_ms: 45000
       };
-      
-      trackCheckinSubmitted(checkinPayload);
-      
-      expect(console.debug).toHaveBeenCalledWith(
-        '📊 PH-DEV Event:',
-        'checkin_submitted',
-        expect.objectContaining({
-          user_id: 'u_123',
-          mood_score: 5,
-          symptom_flags: [],
-          environment: 'test',
-          timestamp: expect.any(String)
-        })
-      );
-    });
-  });
 
-  describe('Insight Event Tracking', () => {
-    it('should track insight view with correct payload', () => {
-      const insightPayload = {
-        user_id: 'u_123',
-        insight_id: 'insight_confidence_rising_123',
-        insight_type: 'confidence_rising',
-        dwell_ms: 5000
-      };
-      
-      trackInsightViewed(insightPayload);
-      
-      expect(console.debug).toHaveBeenCalledWith(
-        '📊 PH-DEV Event:',
-        'insight_viewed',
+      trackCheckinSubmitted(checkinEvent);
+
+      expect(mockPostHog.capture).toHaveBeenCalledWith(
+        ANALYTICS_EVENTS.CHECKIN_SUBMITTED,
         expect.objectContaining({
-          ...insightPayload,
-          environment: 'test',
-          timestamp: expect.any(String)
+          user_id: 'test-user',
+          mood_score: 7,
+          symptom_flags: ['hopeful'],
+          cycle_day: 14,
+          time_to_complete_ms: 45000
         })
       );
     });
 
-    it('should handle missing optional fields', () => {
-      const insightPayload = {
-        user_id: 'u_123',
-        insight_id: 'insight_test_123',
-        insight_type: 'test_type'
+    it('should handle check-in tracking errors gracefully', () => {
+      mockPostHog.capture.mockImplementation(() => {
+        throw new Error('Check-in tracking error');
+      });
+
+      const checkinEvent: CheckinSubmittedEvent = {
+        user_id: 'test-user',
+        mood_score: 7,
+        symptom_flags: ['hopeful']
       };
-      
-      trackInsightViewed(insightPayload);
-      
-      expect(console.debug).toHaveBeenCalledWith(
-        '📊 PH-DEV Event:',
-        'insight_viewed',
-        expect.objectContaining({
-          user_id: 'u_123',
-          insight_id: 'insight_test_123',
-          insight_type: 'test_type',
-          environment: 'test',
-          timestamp: expect.any(String)
-        })
-      );
+
+      expect(() => trackCheckinSubmitted(checkinEvent)).not.toThrow();
     });
   });
 
-  describe('Share Event Tracking', () => {
-    it('should track share action with correct payload', () => {
-      const sharePayload = {
-        user_id: 'u_123',
+  describe('trackInsightViewed() - Insight View Event Tracking', () => {
+    it('should track insight viewed event with required properties', () => {
+      const insightEvent: InsightViewedEvent = {
+        user_id: 'test-user',
+        insight_id: 'insight_123',
+        insight_type: 'daily_insight'
+      };
+
+      trackInsightViewed(insightEvent);
+
+      expect(mockPostHog.capture).toHaveBeenCalledWith(
+        ANALYTICS_EVENTS.INSIGHT_VIEWED,
+        expect.objectContaining({
+          user_id: 'test-user',
+          insight_id: 'insight_123',
+          insight_type: 'daily_insight'
+        })
+      );
+    });
+
+    it('should track insight viewed event with optional properties', () => {
+      const insightEvent: InsightViewedEvent = {
+        user_id: 'test-user',
+        insight_id: 'insight_123',
+        insight_type: 'daily_insight',
+        dwell_ms: 5000,
+        cta_clicked: true
+      };
+
+      trackInsightViewed(insightEvent);
+
+      expect(mockPostHog.capture).toHaveBeenCalledWith(
+        ANALYTICS_EVENTS.INSIGHT_VIEWED,
+        expect.objectContaining({
+          user_id: 'test-user',
+          insight_id: 'insight_123',
+          insight_type: 'daily_insight',
+          dwell_ms: 5000,
+          cta_clicked: true
+        })
+      );
+    });
+
+    it('should handle insight viewed tracking errors gracefully', () => {
+      mockPostHog.capture.mockImplementation(() => {
+        throw new Error('Insight viewed tracking error');
+      });
+
+      const insightEvent: InsightViewedEvent = {
+        user_id: 'test-user',
+        insight_id: 'insight_123',
+        insight_type: 'daily_insight'
+      };
+
+      expect(() => trackInsightViewed(insightEvent)).not.toThrow();
+    });
+  });
+
+  describe('trackShareAction() - Share Action Event Tracking', () => {
+    it('should track share action event with required properties', () => {
+      const shareEvent: ShareActionEvent = {
+        user_id: 'test-user',
+        share_surface: 'insight',
+        destination: 'whatsapp'
+      };
+
+      trackShareAction(shareEvent);
+
+      expect(mockPostHog.capture).toHaveBeenCalledWith(
+        ANALYTICS_EVENTS.SHARE_ACTION,
+        expect.objectContaining({
+          user_id: 'test-user',
+          share_surface: 'insight',
+          destination: 'whatsapp'
+        })
+      );
+    });
+
+    it('should track share action event with optional properties', () => {
+      const shareEvent: ShareActionEvent = {
+        user_id: 'test-user',
         share_surface: 'insight',
         destination: 'whatsapp',
         content_id: 'insight_123'
       };
-      
-      trackShareAction(sharePayload);
-      
-      expect(console.debug).toHaveBeenCalledWith(
-        '📊 PH-DEV Event:',
-        'share_action',
+
+      trackShareAction(shareEvent);
+
+      expect(mockPostHog.capture).toHaveBeenCalledWith(
+        ANALYTICS_EVENTS.SHARE_ACTION,
         expect.objectContaining({
-          ...sharePayload,
-          environment: 'test',
-          timestamp: expect.any(String)
+          user_id: 'test-user',
+          share_surface: 'insight',
+          destination: 'whatsapp',
+          content_id: 'insight_123'
         })
       );
     });
 
-    it('should handle missing optional content_id', () => {
-      const sharePayload = {
-        user_id: 'u_123',
-        share_surface: 'checkin',
-        destination: 'email'
-      };
-      
-      trackShareAction(sharePayload);
-      
-      expect(console.debug).toHaveBeenCalledWith(
-        '📊 PH-DEV Event:',
-        'share_action',
-        expect.objectContaining({
-          user_id: 'u_123',
-          share_surface: 'checkin',
-          destination: 'email',
-          environment: 'test',
-          timestamp: expect.any(String)
-        })
-      );
-    });
-  });
+    it('should handle share action tracking errors gracefully', () => {
+      mockPostHog.capture.mockImplementation(() => {
+        throw new Error('Share action tracking error');
+      });
 
-  describe('Analytics Initialization', () => {
-    it('should handle missing API key gracefully', () => {
-      // Mock missing API key
-      vi.stubEnv('VITE_POSTHOG_API_KEY', '');
-      
-      expect(() => initializeAnalytics()).not.toThrow();
-      expect(console.warn).toHaveBeenCalledWith(
-        'PostHog API key not found. Analytics will be disabled.'
-      );
-    });
-
-    it('should disable analytics in development mode', () => {
-      vi.stubEnv('VITE_POSTHOG_API_KEY', 'test_key');
-      
-      initializeAnalytics();
-      
-      expect(console.log).toHaveBeenCalledWith(
-        'PostHog disabled in development mode'
-      );
-    });
-  });
-
-  describe('Analytics Status', () => {
-    it('should return correct enabled status', () => {
-      // Test with missing API key
-      vi.stubEnv('VITE_POSTHOG_API_KEY', '');
-      expect(isAnalyticsEnabled()).toBe(false);
-      
-      // Test with API key but in development
-      vi.stubEnv('VITE_POSTHOG_API_KEY', 'test_key');
-      expect(isAnalyticsEnabled()).toBe(false);
-    });
-  });
-
-  describe('Payload Validation', () => {
-    it('should include required fields for signup', () => {
-      const payload = {
-        user_id: 'u_123',
-        signup_method: 'email'
-      };
-      
-      trackSignup(payload);
-      
-      const loggedPayload = vi.mocked(console.debug).mock.calls[0][2];
-      expect(loggedPayload).toHaveProperty('user_id');
-      expect(loggedPayload).toHaveProperty('signup_method');
-      expect(loggedPayload).toHaveProperty('environment');
-      expect(loggedPayload).toHaveProperty('timestamp');
-    });
-
-    it('should include required fields for check-in', () => {
-      const payload = {
-        user_id: 'u_123',
-        mood_score: 7,
-        symptom_flags: ['stress']
-      };
-      
-      trackCheckinSubmitted(payload);
-      
-      const loggedPayload = vi.mocked(console.debug).mock.calls[0][2];
-      expect(loggedPayload).toHaveProperty('user_id');
-      expect(loggedPayload).toHaveProperty('mood_score');
-      expect(loggedPayload).toHaveProperty('symptom_flags');
-      expect(loggedPayload).toHaveProperty('environment');
-      expect(loggedPayload).toHaveProperty('timestamp');
-    });
-
-    it('should include required fields for insight view', () => {
-      const payload = {
-        user_id: 'u_123',
-        insight_id: 'insight_123',
-        insight_type: 'confidence_rising'
-      };
-      
-      trackInsightViewed(payload);
-      
-      const loggedPayload = vi.mocked(console.debug).mock.calls[0][2];
-      expect(loggedPayload).toHaveProperty('user_id');
-      expect(loggedPayload).toHaveProperty('insight_id');
-      expect(loggedPayload).toHaveProperty('insight_type');
-      expect(loggedPayload).toHaveProperty('environment');
-      expect(loggedPayload).toHaveProperty('timestamp');
-    });
-
-    it('should include required fields for share action', () => {
-      const payload = {
-        user_id: 'u_123',
+      const shareEvent: ShareActionEvent = {
+        user_id: 'test-user',
         share_surface: 'insight',
         destination: 'whatsapp'
       };
+
+      expect(() => trackShareAction(shareEvent)).not.toThrow();
+    });
+  });
+
+  describe('identifyUser() - User Identification', () => {
+    it('should identify user successfully', () => {
+      const userId = 'test-user';
+      const userProperties = { email: 'test@example.com', plan: 'premium' };
+
+      identifyUser(userId, userProperties);
+
+      expect(mockPostHog.identify).toHaveBeenCalledWith(
+        userId,
+        expect.objectContaining({
+          email: 'test@example.com',
+          plan: 'premium',
+          vercel_environment: 'test',
+          deployment_type: 'vercel'
+        })
+      );
+    });
+
+    it('should identify user without properties', () => {
+      const userId = 'test-user';
+
+      identifyUser(userId);
+
+      expect(mockPostHog.identify).toHaveBeenCalledWith(
+        userId,
+        expect.objectContaining({
+          vercel_environment: 'test',
+          deployment_type: 'vercel'
+        })
+      );
+    });
+
+    it('should handle identification errors gracefully', () => {
+      mockPostHog.identify.mockImplementation(() => {
+        throw new Error('Identification error');
+      });
+
+      const userId = 'test-user';
+
+      expect(() => identifyUser(userId)).not.toThrow();
+      expect(consoleSpy.error).toHaveBeenCalledWith(
+        'Failed to identify user:',
+        expect.any(Error)
+      );
+    });
+
+    it('should handle missing PostHog gracefully', () => {
+      (window as any).posthog = undefined;
+
+      const userId = 'test-user';
+
+      expect(() => identifyUser(userId)).not.toThrow();
+      expect(consoleSpy.warn).toHaveBeenCalledWith(
+        '⚠️ PostHog not available for user identification'
+      );
+    });
+  });
+
+  describe('resetUser() - User Reset', () => {
+    it('should reset user successfully', () => {
+      resetUser();
+
+      expect(mockPostHog.reset).toHaveBeenCalled();
+    });
+
+    it('should handle reset errors gracefully', () => {
+      mockPostHog.reset.mockImplementation(() => {
+        throw new Error('Reset error');
+      });
+
+      expect(() => resetUser()).not.toThrow();
+      expect(consoleSpy.error).toHaveBeenCalledWith(
+        'Failed to reset PostHog:',
+        expect.any(Error)
+      );
+    });
+
+    it('should handle missing PostHog gracefully', () => {
+      (window as any).posthog = undefined;
+
+      expect(() => resetUser()).not.toThrow();
+      expect(consoleSpy.warn).toHaveBeenCalledWith(
+        '⚠️ PostHog not available for reset'
+      );
+    });
+  });
+
+  describe('isAnalyticsEnabled() - Analytics Status', () => {
+    it('should return true when API key is present', () => {
+      vi.stubEnv('VITE_POSTHOG_API_KEY', 'test-key');
+      expect(isAnalyticsEnabled()).toBe(true);
+    });
+
+    it('should return false when API key is missing', () => {
+      vi.stubEnv('VITE_POSTHOG_API_KEY', '');
+      expect(isAnalyticsEnabled()).toBe(false);
+    });
+
+    it('should return false when API key is undefined', () => {
+      vi.stubEnv('VITE_POSTHOG_API_KEY', undefined);
+      expect(isAnalyticsEnabled()).toBe(false);
+    });
+  });
+
+  describe('initializeAnalytics() - Analytics Initialization', () => {
+    it('should initialize analytics successfully', () => {
+      expect(() => initializeAnalytics()).not.toThrow();
+    });
+
+    it('should handle initialization errors gracefully', () => {
+      // Mock posthog initialization to throw error
+      const originalPostHog = (window as any).posthog;
+      (window as any).posthog = undefined;
+
+      expect(() => initializeAnalytics()).not.toThrow();
+
+      // Restore
+      (window as any).posthog = originalPostHog;
+    });
+  });
+
+  describe('Edge Cases and Error Handling', () => {
+    it('should handle malformed payload gracefully', () => {
+      const eventName = 'test_event';
+      const payload = { user_id: null, invalid: undefined };
+
+      expect(() => track(eventName, payload)).not.toThrow();
+    });
+
+    it('should handle very large payloads', () => {
+      const eventName = 'test_event';
+      const largePayload = {
+        user_id: 'test-user',
+        large_data: 'x'.repeat(10000)
+      };
+
+      expect(() => track(eventName, largePayload)).not.toThrow();
+    });
+
+    it('should handle special characters in payload', () => {
+      const eventName = 'test_event';
+      const payload = {
+        user_id: 'test-user',
+        special_chars: '🎉🚀💻📊',
+        unicode: 'café résumé naïve'
+      };
+
+      expect(() => track(eventName, payload)).not.toThrow();
+    });
+
+    it('should handle concurrent tracking calls', () => {
+      const eventName = 'test_event';
+      const payload = { user_id: 'test-user' };
+
+      // Simulate concurrent calls
+      const promises = Array.from({ length: 10 }, () => 
+        Promise.resolve(track(eventName, payload))
+      );
+
+      expect(() => Promise.all(promises)).not.toThrow();
+    });
+  });
+
+  describe('Performance and Timing', () => {
+    it('should track events within 200ms requirement', () => {
+      const startTime = performance.now();
       
-      trackShareAction(payload);
+      track('test_event', { user_id: 'test-user' });
       
-      const loggedPayload = vi.mocked(console.debug).mock.calls[0][2];
-      expect(loggedPayload).toHaveProperty('user_id');
-      expect(loggedPayload).toHaveProperty('share_surface');
-      expect(loggedPayload).toHaveProperty('destination');
-      expect(loggedPayload).toHaveProperty('environment');
-      expect(loggedPayload).toHaveProperty('timestamp');
+      const endTime = performance.now();
+      const duration = endTime - startTime;
+      
+      expect(duration).toBeLessThan(200);
+    });
+
+    it('should not block UI thread during tracking', () => {
+      const eventName = 'test_event';
+      const payload = { user_id: 'test-user' };
+
+      // This should execute quickly without blocking
+      const startTime = Date.now();
+      track(eventName, payload);
+      const endTime = Date.now();
+
+      expect(endTime - startTime).toBeLessThan(50); // Should be very fast
     });
   });
 }); 
