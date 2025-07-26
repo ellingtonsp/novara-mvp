@@ -257,7 +257,7 @@ export function selectCopyVariant(data: InsightCopyData): CopyVariant {
     confidence = 0.5, 
     mood_score = 5, 
     user_name, 
-    context,
+    context: _context,
     criticalConcerns = [],
     confidenceFactors = {}
   } = data;
