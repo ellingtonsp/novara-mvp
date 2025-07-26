@@ -90,8 +90,41 @@ class DatabaseAdapter {
   // NEW: Update user method for medication status and other profile updates
   async updateUser(userId, updateData) {
     if (!this.useLocalDatabase) {
-      // For production Airtable, we'll need to handle this differently
-      throw new Error('User updates not implemented for Airtable yet');
+      // Airtable update for staging/production using axios
+      const config = {
+        airtable: {
+          apiKey: process.env.AIRTABLE_API_KEY,
+          baseId: process.env.AIRTABLE_BASE_ID,
+          baseUrl: `https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}`
+        }
+      };
+      
+      const airtableUrl = `${config.airtable.baseUrl}/Users/${userId}`;
+      
+      console.log(`🔄 Updating user ${userId} in Airtable:`, updateData);
+      
+      try {
+        const response = await axios.patch(airtableUrl, {
+          fields: updateData 
+        }, {
+          headers: {
+            'Authorization': `Bearer ${config.airtable.apiKey}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        console.log('✅ Airtable update successful:', response.data.fields);
+        return response.data;
+      } catch (error) {
+        console.error('❌ Airtable update failed:', {
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          error: error.response?.data || error.message,
+          userId,
+          updateData
+        });
+        throw new Error(`Failed to update user in Airtable: ${error.response?.status} ${error.response?.statusText} - ${error.response?.data || error.message}`);
+      }
     }
     
     return await this.localDb.updateUser(userId, updateData);
@@ -220,7 +253,7 @@ class DatabaseAdapter {
     };
 
     try {
-      const response = await fetch(
+      const response = await axios.get(
         `${config.airtable.baseUrl}/Users?filterByFormula={email}='${email}'`,
         {
           headers: {
@@ -229,7 +262,7 @@ class DatabaseAdapter {
         }
       );
       
-      const result = await response.json();
+      const result = response.data;
       
       if (result.records && result.records.length > 0) {
         return {

@@ -139,6 +139,16 @@ const authLimiter = rateLimit({
   },
 });
 
+// General rate limiting for API routes
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: {
+    error: 'Too many API requests, please try again later.',
+    retryAfter: '15 minutes'
+  },
+});
+
 // Logging middleware
 app.use(morgan('combined', {
   stream: logger.stream
