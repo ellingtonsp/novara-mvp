@@ -70,6 +70,12 @@ git checkout -b feature/EPIC-ID-description
 - Map to roadmap Epic/Story ID
 - Define acceptance criteria and success metrics
 
+### **Step 2.5: Environment Configuration**
+- **NEVER modify .env files directly** (they are hidden from cursor)
+- **ALWAYS update .env.example files** with required variables
+- **PROVIDE exact content** for user to copy into live .env files
+- **DOCUMENT environment requirements** in feature documentation
+
 ### **Step 3: Implementation**
 - Follow established patterns from existing features
 - Implement incrementally with commits after each major component
