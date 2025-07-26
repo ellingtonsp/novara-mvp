@@ -12,7 +12,23 @@ class SQLiteAdapter {
       fs.mkdirSync(dataDir, { recursive: true });
     }
     
-    this.db = new Database(dbPath);
+    // Initialize database with better concurrency handling
+    this.db = new Database(dbPath, { 
+      verbose: process.env.NODE_ENV === 'development' ? console.log : null,
+      readonly: false,
+      fileMustExist: false
+    });
+    
+    // Set WAL mode for better concurrent access (especially in CloudDocs)
+    try {
+      this.db.pragma('journal_mode = WAL');
+      this.db.pragma('synchronous = NORMAL');
+      this.db.pragma('cache_size = 1000');
+      this.db.pragma('temp_store = memory');
+    } catch (error) {
+      console.warn('⚠️ Could not set optimal SQLite pragmas:', error.message);
+    }
+    
     this.initSchema();
     
     console.log('🗄️ SQLite database initialized:', dbPath);
@@ -308,22 +324,45 @@ class SQLiteAdapter {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     
-    try {
-      stmt.run(
-        id, userId, insightData.insight_type, insightData.insight_title,
-        insightData.insight_message, insightData.insight_id, 
-        insightData.date || new Date().toISOString().split('T')[0],
-        insightData.context_data, insightData.action_label, 
-        insightData.action_type, insightData.status || 'active'
-      );
-      
-      return {
-        id,
-        fields: { ...insightData, id, user_id: userId }
-      };
-    } catch (error) {
-      throw new Error(`Insight creation failed: ${error.message}`);
+    const maxRetries = 3;
+    let lastError;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        stmt.run(
+          id, userId, insightData.insight_type, insightData.insight_title,
+          insightData.insight_message, insightData.insight_id, 
+          insightData.date || new Date().toISOString().split('T')[0],
+          insightData.context_data, insightData.action_label, 
+          insightData.action_type, insightData.status || 'active'
+        );
+        
+        console.log(`✅ Insight created successfully on attempt ${attempt}: ${id}`);
+        return {
+          id,
+          fields: { ...insightData, id, user_id: userId }
+        };
+      } catch (error) {
+        lastError = error;
+        
+        if (error.message.includes('readonly database') || error.message.includes('database is locked')) {
+          console.warn(`⚠️ Database access issue (attempt ${attempt}/${maxRetries}):`, error.message);
+          
+          if (attempt < maxRetries) {
+            // Wait a bit before retrying
+            await new Promise(resolve => setTimeout(resolve, 100 * attempt));
+            continue;
+          }
+        }
+        
+        // For non-retry-able errors or max retries reached
+        break;
+      }
     }
+    
+    // If we get here, all retries failed
+    console.error('❌ Failed to create insight after all retries:', lastError.message);
+    throw new Error(`Insight creation failed: ${lastError.message}`);
   }
 
   // === ENGAGEMENT OPERATIONS ===
