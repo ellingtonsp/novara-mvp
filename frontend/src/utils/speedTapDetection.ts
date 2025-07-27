@@ -165,7 +165,7 @@ export class SpeedTapDetector {
  */
 export const trackOnboardingEvent = (eventName: string, properties: any) => {
   const baseProperties = {
-    environment: process.env.NODE_ENV || 'development',
+    environment: import.meta.env.NODE_ENV || 'development',
     timestamp: Date.now(),
     session_id: sessionStorage.getItem(SESSION_KEYS.SESSION_ID) || 'unknown'
   };
@@ -222,7 +222,7 @@ export const trackOnboardingCompletion = (completionData: {
  * Check if speed-tap detection is enabled via feature flag
  */
 export const isSpeedTapDetectionEnabled = (): boolean => {
-  const enabled = process.env.REACT_APP_SPEED_TAP_ENABLED === 'true' ||
+  const enabled = import.meta.env.VITE_SPEED_TAP_ENABLED === 'true' ||
                  localStorage.getItem('speed_tap_detection_enabled') === 'true';
   
   return enabled;
@@ -233,7 +233,7 @@ export const isSpeedTapDetectionEnabled = (): boolean => {
  */
 export const getSpeedTapConfig = (): SpeedTapConfig => {
   try {
-    const configString = process.env.REACT_APP_SPEED_TAP_CONFIG;
+    const configString = import.meta.env.VITE_SPEED_TAP_CONFIG;
     if (configString) {
       return { ...DEFAULT_CONFIG, ...JSON.parse(configString) };
     }
