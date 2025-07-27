@@ -113,7 +113,7 @@ const ENVIRONMENTS = {
       platform: 'railway',
       projectId: 'novara-mvp',
       environment: 'production',
-      serviceName: 'backend',
+      serviceName: 'novara-main',
       healthPath: '/api/health',
       env: {
         NODE_ENV: 'production',
