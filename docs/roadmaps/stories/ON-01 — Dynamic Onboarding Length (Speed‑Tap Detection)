@@ -1,131 +1,178 @@
-## **1 Overview**
+# ON-01 — Onboarding A/B Experiment (Fast Lane vs. Control)
 
-Pilot testing shows a subset of users race through onboarding and abandon when faced with multiple sliders and questions. This story introduces a **speed-tap detector** that shortens onboarding to a 3-field “fast lane” when users tap through >3 inputs in under 10 s. Goal: uplift completion rate among time-sensitive users without harming those who prefer the full flow.
+## 📊 Story Overview
 
-Deliverables
+**Epic**: E2 Insight Polish  
+**Story Points**: 3  
+**Status**: ✅ COMPLETE  
+**Priority**: High  
 
-1. **Tap-rate heuristic** that classifies a session as *fast* or *standard* in real time.
-2. **Abbreviated onboarding path** with three required fields (email, cycle stage, biggest concern).
-3. **Analytics events** to measure path selection and completion.
+## 🎯 User Story
 
----
+**As a** new Novara user  
+**I want** to have an optimized onboarding experience  
+**So that** I can start receiving personalized insights with minimal friction  
 
-## **2 User Story**
+## 🔬 A/B Test Design
 
-| **Role** | **Need** | **Benefit** |
-| --- | --- | --- |
-| Speed-tapper (Alex archetype) | Skip lengthy onboarding questions when they’re in a hurry | Less friction → higher completion and first check-in |
+### Control Path (50%)
+- **Full 6-question onboarding** as currently implemented
+- Email, nickname, confidence scores (3), cycle stage, primary concern
+- Track completion rates and time-to-first-insight
 
----
+### Test Path (50%) 
+- **Fast Lane: 3-question onboarding** (email, cycle stage, primary concern)
+- **BaselinePanel**: Remaining questions appear after first check-in, before first insight
+- Track completion rates, baseline completion rates, retention
 
-## **3 Acceptance Criteria**
+## ✅ Acceptance Criteria
 
-## **(Done = all true)**
+### Core Functionality
+- [x] **Path Selection**: Users randomly assigned to control/test (50/50 split)
+- [x] **Fast Onboarding**: 3-field form for test path users  
+- [x] **BaselinePanel**: Modal appears after first check-in for test users
+- [x] **Analytics Events**: `onboarding_path_selected`, `onboarding_completed`, `baseline_completed`
+- [x] **Data Consistency**: All users have complete profiles regardless of path
 
-1. **Detection rule**: if user performs ≥3 taps/inputs in any 10-second rolling window *before* reaching screen 3, flag as fast_onboard = true.
-2. When flagged, app **immediately navigates** to abbreviated flow (3 required fields). Total time-to-completion ≤30 s median.
-3. Standard users see no change; full flow unaffected.
-4. Events fired:
-    - onboarding_path_selected { path: 'fast' | 'standard' }
-    - onboarding_completed { path, completion_ms }
-5. Fast-path users show ≥10 % improvement in onboarding completion vs. baseline within 1-week A/B.
-6. Unit tests cover boundary cases (e.g., 3 taps in 9.9 s = fast; 3 taps in 10.1 s = standard).
-7. No Core Web Vitals regressions (LCP, CLS unchanged ±5 %).
+### Technical Requirements
+- [x] **PostHog Integration**: Feature flag `fast_onboarding_v1` for production control
+- [x] **Database Schema**: Add `baseline_completed`, `onboarding_path` fields
+- [x] **API Endpoints**: `/api/users/baseline` for updating baseline data
+- [x] **Development Testing**: Force path selection via environment variables
 
----
+### Success Metrics
+- **Primary**: Onboarding completion rate (target: +15% for test path)
+- **Secondary**: Time to first insight (target: <2 minutes for test path)
+- **Retention**: 7-day active user rate comparison between paths
 
-## **4 Success Metrics**
+## 🛠️ Technical Implementation
 
-| **Metric** | **Baseline** | **Target** |
-| --- | --- | --- |
-| Overall onboarding completion | 72 % | **≥80 %** |
-| Completion for fast-path cohort | 60 % | **≥70 %** |
-| Avg onboarding time (fast users) | 45 s | **≤30 s** |
+### Frontend Components
+- `OnboardingFast.tsx` - 3-field fast onboarding form
+- `BaselinePanel.tsx` - Progressive multi-step question collection  
+- `abTestUtils.ts` - A/B test logic and analytics tracking
+- `NovaraLanding.tsx` - Path selection and modal integration
 
----
+### Backend Changes
+- SQLite schema: Add `baseline_completed`, `onboarding_path` fields
+- API endpoint: `PATCH /api/users/baseline` for baseline data updates
+- User model: Include A/B test fields in authentication context
 
-## **5 Technical Approach**
+### Analytics Events
 
-### **5.1 Heuristic**
+```typescript
+// Path selection (immediate)
+onboarding_path_selected: {
+  path: 'control' | 'test',
+  session_id: string,
+  timestamp: number
+}
 
-```
-let tapTimes: number[] = [];
-function recordTap() {
-  tapTimes.push(Date.now());
-  tapTimes = tapTimes.filter(t => Date.now() - t <= 10000);
-  if (tapTimes.length >= 3 && currentStep < 3) {
-    triggerFastPath();
-  }
+// Onboarding completion
+onboarding_completed: {
+  path: 'control' | 'test', 
+  completion_ms: number,
+  user_id: string,
+  session_id: string
+}
+
+// Baseline completion (test path only)
+baseline_completed: {
+  completion_ms: number,
+  user_id: string,
+  session_id: string
 }
 ```
 
-### **5.2 Fast Path UI**
+## 🎮 User Journey
 
-- Render as separate **FastOnboarding.tsx** component.
-- Fields: email, cycle_stage (select), primary_concern (select).
-- Display copy: “Short on time? No problem—just give us the basics.”
-- After submit ➜ proceed to **Welcome** screen (same as standard flow).
+### Control Path Journey
+1. Click "Start Your Journey"
+2. Complete 6-question onboarding form
+3. Create account → Welcome insight
+4. Daily check-ins → Insights
 
-### **5.3 Routing Logic**
+### Test Path Journey  
+1. Click "Start Your Journey"
+2. Complete 3-question Fast Lane onboarding
+3. Create account → Welcome insight
+4. Daily check-ins → **BaselinePanel appears**
+5. Complete baseline questions → Insights
 
-| **Condition** | **Route** |
-| --- | --- |
-| fast_onboard === true | /onboard/fast |
-| else | /onboard/standard |
+## 🧪 Testing Strategy
 
-### **5.4 Analytics Integration**
+### Development Testing
+```bash
+# Force control path
+VITE_FORCE_ONBOARDING_PATH=control
 
+# Force test path  
+VITE_FORCE_ONBOARDING_PATH=test
+
+# Enable debug logging
+VITE_DEBUG_AB_TEST=true
 ```
-track('onboarding_path_selected', { path: fast ? 'fast' : 'standard', environment });
-track('onboarding_completed', { path, completion_ms, environment });
+
+### Production Rollout
+1. **Phase 1**: 10% test / 90% control via PostHog feature flag
+2. **Phase 2**: 50% test / 50% control if metrics positive
+3. **Phase 3**: 100% test if successful, or rollback to control
+
+## 📈 Success Criteria
+
+### Completion Rates
+- **Control baseline**: Current onboarding completion rate
+- **Test target**: +15% improvement in onboarding completion
+- **Baseline target**: >80% of test users complete BaselinePanel
+
+### Time Metrics
+- **Control**: Current average time to complete onboarding
+- **Test target**: <2 minutes for Fast Lane onboarding
+- **BaselinePanel**: <3 minutes average completion time
+
+### Retention Impact
+- **7-day retention**: Test path ≥ control path retention
+- **Insight engagement**: Test users ≥ control users in first week
+
+## 🔒 Data & Privacy
+
+- No additional PII collection
+- Same data ultimately collected for all users
+- A/B test assignment not stored with PII
+- Analytics events follow existing privacy policies
+
+## 🚀 Deployment Notes
+
+### Environment Variables Required
+```bash
+# Frontend
+VITE_AB_TEST_ENABLED=true
+VITE_FORCE_ONBOARDING_PATH=  # Leave empty for random
+VITE_DEBUG_AB_TEST=false    # Set to true for development
+
+# PostHog Feature Flag
+fast_onboarding_v1 = true/false (50% rollout)
 ```
 
----
+### Database Migration
+```sql
+-- SQLite schema update (automatic via adapter)
+ALTER TABLE users ADD COLUMN baseline_completed BOOLEAN DEFAULT 0;
+ALTER TABLE users ADD COLUMN onboarding_path TEXT;
+```
 
-## **6 Data & Privacy**
+## ✅ Definition of Done
 
-- No additional PII collected.
-- fast_onboard flag stored only in analytics payload; not persisted server-side.
-
----
-
-## **7 Testing Plan**
-
-| **Test** | **Tool** | **Pass Criteria** |
-| --- | --- | --- |
-| Unit heuristic | Jest | Edge timestamps classify correctly |
-| UI fast path | Cypress | Trigger fast taps → fast component rendered |
-| Performance | Lighthouse | CLS & LCP within 5 % of baseline |
-
----
-
-## **8 Dependencies**
-
-| **Dependency** | **Status** |
-| --- | --- |
-| track() util from AN-01 | ✅ |
-| Route guards in React Router | ✅ |
+- [x] A/B test infrastructure implemented and tested
+- [x] Both onboarding paths functional and validated  
+- [x] BaselinePanel integration working correctly
+- [x] Analytics events firing and tracked properly
+- [x] Development testing capabilities functional
+- [x] PostHog feature flag integration ready
+- [x] Documentation complete and UAT script created
+- [x] Code committed and ready for staging deployment
 
 ---
 
-## **9 Risks & Mitigations**
-
-| **Risk** | **Likelihood** | **Mitigation** |
-| --- | --- | --- |
-| False positives (power users tapping slowly) | Low | Require >3 taps within <8-10 s; tweak window after data review |
-| Confusion switching flows mid-stream | Medium | Show transitional toast: “We’ve streamlined these last questions.” |
-
----
-
-## **10 Definition of Done Checklist**
-
-- Heuristic implemented and unit-tested.
-- FastOnboarding UI styling complete.
-- Analytics events visible in PostHog.
-- A/B flag enabled to measure uplift.
-- Docs in /docs/onboarding/ON-01.md.
-
----
-
-> Next:
->
+**✅ IMPLEMENTATION COMPLETE**  
+**Ready for UAT and staging deployment**
