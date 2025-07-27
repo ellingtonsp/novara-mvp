@@ -125,7 +125,11 @@ const NovaraLanding = () => {
   const [justSignedUp, setJustSignedUp] = useState(false);
   
   // ON-01: Speed-tapper detection state
-  const [speedTapDetector] = useState(() => new SpeedTapDetector(getSpeedTapConfig()));
+  const [speedTapDetector] = useState(() => {
+    const detector = new SpeedTapDetector(getSpeedTapConfig());
+    console.log('🎯 Speed-tap detector initialized with config:', getSpeedTapConfig());
+    return detector;
+  });
   const [isSpeedTapper, setIsSpeedTapper] = useState(false);
   const [showFastOnboarding, setShowFastOnboarding] = useState(false);
   const [onboardingStartTime, setOnboardingStartTime] = useState(0);
@@ -236,6 +240,7 @@ const NovaraLanding = () => {
 
   // ON-01: Trigger fast path when speed-tap is detected
   const triggerFastPath = () => {
+    console.log('🚀 triggerFastPath called - setting up fast onboarding...');
     setIsSpeedTapper(true);
     setShowFastOnboarding(true);
     
@@ -249,6 +254,7 @@ const NovaraLanding = () => {
     
     // Show transition message
     showToast("We've streamlined these last questions for you.", 'info', 3000);
+    console.log('✅ Fast onboarding triggered successfully');
   };
 
   const handleInputChange = (field: string, value: string | number | boolean) => {
@@ -256,9 +262,36 @@ const NovaraLanding = () => {
     
     // ON-01: Speed-tap detection
     if (isSpeedTapDetectionEnabled() && !isSpeedTapper && showForm) {
+      console.log(`🎯 Speed-tap detection: recording 'change' event for field '${field}'`);
       const isSpeedTap = speedTapDetector.recordTap('change', currentStep);
       
       if (isSpeedTap) {
+        console.log('🚀 Speed-tap detected! Triggering fast path...');
+        triggerFastPath();
+      }
+    }
+  };
+
+  // ON-01: Add focus and click detection for better speed-tap detection
+  const handleInputFocus = (field: string) => {
+    if (isSpeedTapDetectionEnabled() && !isSpeedTapper && showForm) {
+      console.log(`🎯 Speed-tap detection: recording 'focus' event for field '${field}'`);
+      const isSpeedTap = speedTapDetector.recordTap('focus', currentStep);
+      
+      if (isSpeedTap) {
+        console.log('🚀 Speed-tap detected on focus! Triggering fast path...');
+        triggerFastPath();
+      }
+    }
+  };
+
+  const handleInputClick = (field: string) => {
+    if (isSpeedTapDetectionEnabled() && !isSpeedTapper && showForm) {
+      console.log(`🎯 Speed-tap detection: recording 'click' event for field '${field}'`);
+      const isSpeedTap = speedTapDetector.recordTap('click', currentStep);
+      
+      if (isSpeedTap) {
+        console.log('🚀 Speed-tap detected on click! Triggering fast path...');
         triggerFastPath();
       }
     }
@@ -810,6 +843,8 @@ const NovaraLanding = () => {
                         type="email"
                         value={formData.email}
                         onChange={(e) => handleInputChange('email', e.target.value)}
+                        onFocus={() => handleInputFocus('email')}
+                        onClick={() => handleInputClick('email')}
                         required
                         className="border-[#FF6F61]/30 focus:border-[#FF6F61]"
                       />
@@ -820,6 +855,8 @@ const NovaraLanding = () => {
                         id="nickname"
                         value={formData.nickname}
                         onChange={(e) => handleInputChange('nickname', e.target.value)}
+                        onFocus={() => handleInputFocus('nickname')}
+                        onClick={() => handleInputClick('nickname')}
                         placeholder="Your preferred name"
                         className="border-[#FF6F61]/30 focus:border-[#FF6F61]"
                       />
@@ -829,7 +866,11 @@ const NovaraLanding = () => {
                   <div>
                     <Label htmlFor="cycle_stage">Where are you in your journey?</Label>
                     <Select onValueChange={(value) => handleInputChange('cycle_stage', value)}>
-                      <SelectTrigger className="border-[#FF6F61]/30 focus:border-[#FF6F61]">
+                      <SelectTrigger 
+                        className="border-[#FF6F61]/30 focus:border-[#FF6F61]"
+                        onFocus={() => handleInputFocus('cycle_stage')}
+                        onClick={() => handleInputClick('cycle_stage')}
+                      >
                         <SelectValue placeholder="Select your current stage" />
                       </SelectTrigger>
                       <SelectContent>
@@ -848,7 +889,11 @@ const NovaraLanding = () => {
                   <div>
                     <Label htmlFor="primary_need">What would be most helpful right now?</Label>
                     <Select onValueChange={(value) => handleInputChange('primary_need', value)}>
-                      <SelectTrigger className="border-[#FF6F61]/30 focus:border-[#FF6F61]">
+                      <SelectTrigger 
+                        className="border-[#FF6F61]/30 focus:border-[#FF6F61]"
+                        onFocus={() => handleInputFocus('primary_need')}
+                        onClick={() => handleInputClick('primary_need')}
+                      >
                         <SelectValue placeholder="Choose your primary need" />
                       </SelectTrigger>
                       <SelectContent>

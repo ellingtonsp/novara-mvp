@@ -225,6 +225,12 @@ export const isSpeedTapDetectionEnabled = (): boolean => {
   const enabled = import.meta.env.VITE_SPEED_TAP_ENABLED === 'true' ||
                  localStorage.getItem('speed_tap_detection_enabled') === 'true';
   
+  console.log('🎯 Speed-tap detection check:', {
+    envEnabled: import.meta.env.VITE_SPEED_TAP_ENABLED,
+    localStorageEnabled: localStorage.getItem('speed_tap_detection_enabled'),
+    finalEnabled: enabled
+  });
+  
   return enabled;
 };
 
