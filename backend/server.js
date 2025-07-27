@@ -3133,6 +3133,83 @@ app.patch('/api/users/medication-status', authenticateToken, async (req, res) =>
   }
 });
 
+// ON-01: Update user baseline completion data
+app.patch('/api/users/baseline', authenticateToken, async (req, res) => {
+  try {
+    const { nickname, confidence_meds, confidence_costs, confidence_overall, baseline_completed } = req.body;
+    
+    if (!nickname || confidence_meds === undefined || confidence_costs === undefined || confidence_overall === undefined) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'All baseline fields are required: nickname, confidence_meds, confidence_costs, confidence_overall' 
+      });
+    }
+
+    // Validate confidence scores
+    const confidenceFields = [confidence_meds, confidence_costs, confidence_overall];
+    for (let score of confidenceFields) {
+      if (typeof score !== 'number' || score < 1 || score > 10) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Confidence scores must be numbers between 1 and 10' 
+        });
+      }
+    }
+
+    const user = await findUserByEmail(req.user.email);
+    if (!user) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'User not found' 
+      });
+    }
+
+    // Update user baseline data
+    const updateData = {
+      nickname,
+      confidence_meds,
+      confidence_costs,
+      confidence_overall,
+      baseline_completed: baseline_completed === true
+    };
+
+    if (databaseAdapter.isUsingLocalDatabase()) {
+      // SQLite update
+      await databaseAdapter.updateUser(user.id, updateData);
+    } else {
+      // Airtable update
+      const airtableUrl = `${config.airtable.baseUrl}/Users/${user.id}`;
+      const response = await fetch(airtableUrl, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${config.airtable.apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ fields: updateData })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update user in Airtable');
+      }
+    }
+
+    console.log(`✅ ON-01: Updated baseline data for ${req.user.email}, baseline_completed: ${baseline_completed}`);
+
+    res.json({
+      success: true,
+      message: 'Baseline data updated successfully',
+      data: updateData
+    });
+
+  } catch (error) {
+    console.error('❌ ON-01: Error updating baseline data:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Internal server error' 
+    });
+  }
+});
+
 // NEW: Derive medication status from cycle stage for consistency
 function getMedicationStatusFromCycleStage(cycleStage) {
   const medicationMapping = {

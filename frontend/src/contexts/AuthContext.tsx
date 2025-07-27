@@ -10,6 +10,9 @@ export interface User {
   confidence_costs: number;
   confidence_overall: number;
   created_at: string;
+  // ON-01: A/B Test fields
+  baseline_completed?: boolean;
+  onboarding_path?: string;
 }
 
 interface AuthContextType {

@@ -12,14 +12,17 @@ import { apiClient } from '../lib/api';
 import { clearAllCaches } from '../utils/pwa';
 import DailyCheckinForm from './DailyCheckinForm';
 import DailyInsightsDisplay from './DailyInsightsDisplay';
+import { API_BASE_URL } from '../lib/environment';
 import WelcomeInsight from './WelcomeInsight';
 import { OnboardingFast } from './OnboardingFast';
+import { BaselinePanel } from './BaselinePanel';
 import { 
   getOnboardingPath, 
   trackOnboardingPathSelected, 
   trackOnboardingCompleted,
   getSessionId,
-  OnboardingPath 
+  OnboardingPath,
+  needsBaselineCompletion 
 } from '../utils/abTestUtils';
 import { 
   SpeedTapDetector, 
@@ -135,6 +138,8 @@ const NovaraLanding = () => {
   // ON-01: A/B Test state
   const [onboardingPath, setOnboardingPath] = useState<OnboardingPath | null>(null);
   const [sessionId] = useState(() => getSessionId());
+  const [showBaselinePanel, setShowBaselinePanel] = useState(false);
+  const [baselineStartTime, setBaselineStartTime] = useState(0);
   
   // ON-01: Speed-tapper detection state
   const [speedTapDetector] = useState(() => {
@@ -364,8 +369,68 @@ const NovaraLanding = () => {
 
 
 
+  // ON-01: Custom check-in completion handler that checks for baseline completion need
   const handleCheckinComplete = () => {
+    // Check if user needs to complete baseline panel (test path users who haven't completed baseline)
+    if (user && needsBaselineCompletion(user, user.onboarding_path as OnboardingPath)) {
+      console.log('🎯 ON-01: User needs baseline completion, showing BaselinePanel');
+      setBaselineStartTime(Date.now());
+      setShowBaselinePanel(true);
+      return; // Don't redirect to insights yet
+    }
+    
+    // Normal flow: redirect to insights
     setCurrentView('insights');
+  };
+
+  // ON-01: Handle baseline panel completion
+  const handleBaselineComplete = async (baselineData: any) => {
+    try {
+      // Update user with baseline data
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.error('No auth token for baseline update');
+        return;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/api/users/baseline`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          ...baselineData,
+          baseline_completed: true
+        })
+      });
+
+      if (response.ok) {
+        // Update local user state
+        if (user) {
+          const updatedUser = { 
+            ...user, 
+            ...baselineData, 
+            baseline_completed: true 
+          };
+          login(user.email, token, updatedUser);
+        }
+
+        console.log('✅ Baseline completion successful');
+        setShowBaselinePanel(false);
+        setCurrentView('insights');
+      } else {
+        console.error('Failed to update baseline data');
+        // Still allow them to continue to insights
+        setShowBaselinePanel(false);
+        setCurrentView('insights');
+      }
+    } catch (error) {
+      console.error('Error updating baseline:', error);
+      // Still allow them to continue to insights
+      setShowBaselinePanel(false);
+      setCurrentView('insights');
+    }
   };
 
   const handleClearCache = async () => {
@@ -1176,7 +1241,7 @@ const NovaraLanding = () => {
           
           {/* Desktop Daily Check-in Form */}
           <div className="flex justify-center">
-            <DailyCheckinForm />
+            <DailyCheckinForm onComplete={handleCheckinComplete} />
           </div>
         </section>
         )}
@@ -1188,6 +1253,16 @@ const NovaraLanding = () => {
         {currentView === 'dashboard' && <MobileDashboard />}
         {currentView === 'checkin' && <MobileCheckinView />}
         {currentView === 'insights' && <MobileInsightsView />}
+        
+        {/* ON-01: BaselinePanel Modal */}
+        {showBaselinePanel && user && (
+          <BaselinePanel
+            onComplete={handleBaselineComplete}
+            userEmail={user.email}
+            sessionId={sessionId}
+            startTime={baselineStartTime}
+          />
+        )}
         
         {currentView !== 'welcome' && <MobileNavigation />}
       </div>
