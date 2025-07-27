@@ -379,8 +379,7 @@ class DeploymentOrchestrator {
     // Deploy
     const deployArgs = [
       'up',
-      '--environment', componentConfig.environment,
-      '--yes'
+      '--environment', componentConfig.environment
     ];
 
     await this.runCommand('railway', deployArgs, { cwd: workingDir });
