@@ -13,6 +13,15 @@ import { clearAllCaches } from '../utils/pwa';
 import DailyCheckinForm from './DailyCheckinForm';
 import DailyInsightsDisplay from './DailyInsightsDisplay';
 import WelcomeInsight from './WelcomeInsight';
+import { 
+  SpeedTapDetector, 
+  trackPathSelection, 
+  isSpeedTapDetectionEnabled,
+  getSpeedTapConfig,
+  OnboardingContext 
+} from '../utils/speedTapDetection';
+import { FastOnboarding } from './FastOnboarding';
+import { showToast } from './ui/toast';
 
 const sliderThumbStyle = `
   input[type="range"]::-webkit-slider-thumb {
@@ -115,11 +124,12 @@ const NovaraLanding = () => {
   const [loginEmail, setLoginEmail] = useState('');
   const [justSignedUp, setJustSignedUp] = useState(false);
   
-  // ON-01: Speed-tapper detection state (commented out for future implementation)
-  // const [isSpeedTapper, setIsSpeedTapper] = useState(false);
-  // const [tapTimes, setTapTimes] = useState<number[]>([]);
-  // const [currentStep, setCurrentStep] = useState(1);
-  // const [showSimplifiedForm, setShowSimplifiedForm] = useState(false);
+  // ON-01: Speed-tapper detection state
+  const [speedTapDetector] = useState(() => new SpeedTapDetector(getSpeedTapConfig()));
+  const [isSpeedTapper, setIsSpeedTapper] = useState(false);
+  const [showFastOnboarding, setShowFastOnboarding] = useState(false);
+  const [onboardingStartTime, setOnboardingStartTime] = useState(0);
+  const [currentStep, setCurrentStep] = useState(1);
   
   const [formData, setFormData] = useState({
     email: '',
@@ -166,6 +176,15 @@ const NovaraLanding = () => {
     setIsSubmitting(true);
     
     try {
+      // ON-01: Track standard path completion
+      const completionTime = Date.now() - onboardingStartTime;
+      trackPathSelection('standard', {
+        triggerReason: 'default',
+        tapCount: speedTapDetector.getTapCount(),
+        timeWindowMs: speedTapDetector.getTimeWindowMs(),
+        stepsCompleted: currentStep
+      });
+      
       const response = await apiClient.createUser(formData);
       
       if (response.success && response.data) {
@@ -216,8 +235,78 @@ const NovaraLanding = () => {
     }
   };
 
+  // ON-01: Trigger fast path when speed-tap is detected
+  const triggerFastPath = () => {
+    setIsSpeedTapper(true);
+    setShowFastOnboarding(true);
+    
+    // Track path selection
+    trackPathSelection('fast', {
+      triggerReason: 'speed_tap',
+      tapCount: speedTapDetector.getTapCount(),
+      timeWindowMs: speedTapDetector.getTimeWindowMs(),
+      stepsCompleted: currentStep
+    });
+    
+    // Show transition message
+    showToast("We've streamlined these last questions for you.", 'info', 3000);
+  };
+
   const handleInputChange = (field: string, value: string | number | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    
+    // ON-01: Speed-tap detection
+    if (isSpeedTapDetectionEnabled() && !isSpeedTapper && showForm) {
+      const isSpeedTap = speedTapDetector.recordTap('change', currentStep);
+      
+      if (isSpeedTap) {
+        triggerFastPath();
+      }
+    }
+  };
+
+  // ON-01: Handle fast onboarding completion
+  const handleFastOnboardingComplete = async (fastData: any, context: OnboardingContext) => {
+    setIsSubmitting(true);
+    
+    try {
+      // Convert fast data to standard format
+      const standardData = {
+        email: fastData.email,
+        nickname: fastData.email.split('@')[0], // Use email prefix as nickname
+        confidence_meds: 5, // Default values for fast path
+        confidence_costs: 5,
+        confidence_overall: 5,
+        primary_need: fastData.primary_concern,
+        cycle_stage: fastData.cycle_stage,
+        top_concern: fastData.primary_concern,
+        email_opt_in: true,
+        // ON-01: Add onboarding context
+        onboarding_path: context.path,
+        trigger_reason: context.triggerReason,
+        completion_ms: context.completionMs,
+        steps_completed: context.stepsCompleted
+      };
+      
+      const response = await apiClient.createUser(standardData);
+      
+      if (response.success && response.data) {
+        console.log('✅ Fast onboarding signup successful');
+        login(fastData.email, response.data.token, response.data.user);
+        
+        // Redirect to welcome insight page
+        setJustSignedUp(true);
+        setShowFastOnboarding(false);
+        setCurrentView('welcome');
+      } else {
+        alert(`Signup failed: ${response.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Fast onboarding error:', error);
+      alert('Connection error. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleCheckinComplete = () => {
@@ -542,7 +631,11 @@ const NovaraLanding = () => {
             {/* Desktop: Side by side buttons, Mobile: Stacked */}
             <div className="flex flex-col md:flex-row gap-4 justify-center max-w-md md:max-w-none mx-auto">
               <Button 
-                onClick={() => setShowForm(true)}
+                onClick={() => {
+                  setShowForm(true);
+                  // ON-01: Initialize onboarding start time
+                  setOnboardingStartTime(Date.now());
+                }}
                 className="bg-[#FF6F61] hover:bg-[#FF6F61]/90 text-white px-8 py-3 text-lg"
               >
                 Start Your Journey
@@ -671,8 +764,25 @@ const NovaraLanding = () => {
           </div>
         )}
 
+        {/* ON-01: Fast Onboarding Modal */}
+        {showFastOnboarding && (
+          <FastOnboarding
+            onComplete={handleFastOnboardingComplete}
+            onBack={() => {
+              setShowFastOnboarding(false);
+              setIsSpeedTapper(false);
+            }}
+            initialData={{
+              email: formData.email,
+              cycle_stage: formData.cycle_stage,
+              primary_concern: formData.primary_need
+            }}
+            startTime={onboardingStartTime}
+          />
+        )}
+
         {/* Signup Form Modal - Responsive */}
-        {showForm && (
+        {showForm && !showFastOnboarding && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
             <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
               <CardHeader>
