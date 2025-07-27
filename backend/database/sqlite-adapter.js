@@ -52,6 +52,8 @@ class SQLiteAdapter {
         status TEXT DEFAULT 'active',
         medication_status TEXT,              -- NEW: Medication status flag
         medication_status_updated DATETIME, -- NEW: When status was last updated
+        baseline_completed BOOLEAN DEFAULT 0, -- ON-01: A/B test baseline completion flag
+        onboarding_path TEXT,              -- ON-01: Track which onboarding path user took
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );
 

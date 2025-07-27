@@ -15,6 +15,23 @@ export interface OnboardingContext {
  * Returns 'test' for Fast Lane, 'control' for standard onboarding
  */
 export const getOnboardingPath = (): OnboardingPath => {
+  // Development testing: Check for forced path
+  const forcedPath = import.meta.env.VITE_FORCE_ONBOARDING_PATH;
+  if (forcedPath && (forcedPath === 'control' || forcedPath === 'test')) {
+    if (import.meta.env.VITE_DEBUG_AB_TEST === 'true') {
+      console.log('🧪 A/B Test: FORCED PATH =', forcedPath);
+    }
+    return forcedPath;
+  }
+
+  // Check if A/B test is enabled
+  if (import.meta.env.VITE_AB_TEST_ENABLED !== 'true') {
+    if (import.meta.env.VITE_DEBUG_AB_TEST === 'true') {
+      console.log('🧪 A/B Test: DISABLED, defaulting to control');
+    }
+    return 'control';
+  }
+
   // Check if PostHog is available
   if (typeof window !== 'undefined' && (window as any).posthog) {
     const posthog = (window as any).posthog;
@@ -22,16 +39,22 @@ export const getOnboardingPath = (): OnboardingPath => {
     // Check feature flag for fast onboarding
     const isFastLane = posthog.isFeatureEnabled('fast_onboarding_v1');
     
-    console.log('🧪 A/B Test: fast_onboarding_v1 =', isFastLane);
+    if (import.meta.env.VITE_DEBUG_AB_TEST === 'true') {
+      console.log('🧪 A/B Test: PostHog fast_onboarding_v1 =', isFastLane);
+    }
     
     return isFastLane ? 'test' : 'control';
   }
   
   // Fallback: 50/50 split based on session
   const sessionBasedSplit = Math.random() < 0.5;
-  console.log('🧪 A/B Test: PostHog not available, using session-based split =', sessionBasedSplit ? 'test' : 'control');
+  const result = sessionBasedSplit ? 'test' : 'control';
   
-  return sessionBasedSplit ? 'test' : 'control';
+  if (import.meta.env.VITE_DEBUG_AB_TEST === 'true') {
+    console.log('🧪 A/B Test: PostHog not available, using session-based split =', result);
+  }
+  
+  return result;
 };
 
 /**
