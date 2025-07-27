@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
-import { Label } from './ui/label';
+
 import { X } from 'lucide-react';
 import { trackBaselineCompleted } from '../utils/abTestUtils';
 
