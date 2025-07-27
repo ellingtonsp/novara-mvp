@@ -295,8 +295,13 @@ const NovaraLanding = () => {
         login(fastData.email, response.data.token, response.data.user);
         
         setShowFastOnboarding(false);
+        
+        // ON-01: Test path users need baseline completion before insights
+        console.log('🎯 ON-01: Fast onboarding user needs baseline completion');
+        setBaselineStartTime(Date.now());
+        setShowBaselinePanel(true);
         setJustSignedUp(true);
-        setCurrentView('welcome');
+        // Don't set currentView yet - wait for baseline completion
       } else {
         alert(`Signup failed: ${response.error || 'Unknown error'}`);
       }
@@ -369,17 +374,9 @@ const NovaraLanding = () => {
 
 
 
-  // ON-01: Custom check-in completion handler that checks for baseline completion need
+  // ON-01: Check-in completion handler - baseline should already be completed for test users
   const handleCheckinComplete = () => {
-    // Check if user needs to complete baseline panel (test path users who haven't completed baseline)
-    if (user && needsBaselineCompletion(user, user.onboarding_path as OnboardingPath)) {
-      console.log('🎯 ON-01: User needs baseline completion, showing BaselinePanel');
-      setBaselineStartTime(Date.now());
-      setShowBaselinePanel(true);
-      return; // Don't redirect to insights yet
-    }
-    
-    // Normal flow: redirect to insights
+    // Normal flow: redirect to insights (baseline already completed for test users)
     setCurrentView('insights');
   };
 
@@ -418,19 +415,19 @@ const NovaraLanding = () => {
 
         console.log('✅ Baseline completion successful');
         setShowBaselinePanel(false);
-        setCurrentView('insights');
+        setCurrentView('welcome');
       } else {
         console.error('Failed to update baseline data');
-        // Still allow them to continue to insights
+        // Still allow them to continue to welcome
         setShowBaselinePanel(false);
-        setCurrentView('insights');
+        setCurrentView('welcome');
       }
-    } catch (error) {
-      console.error('Error updating baseline:', error);
-      // Still allow them to continue to insights
-      setShowBaselinePanel(false);
-      setCurrentView('insights');
-    }
+          } catch (error) {
+        console.error('Error updating baseline:', error);
+        // Still allow them to continue to welcome
+        setShowBaselinePanel(false);
+        setCurrentView('welcome');
+      }
   };
 
   const handleClearCache = async () => {
