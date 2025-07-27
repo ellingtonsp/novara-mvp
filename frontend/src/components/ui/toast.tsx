@@ -35,18 +35,7 @@ export const Toast: React.FC<ToastProps> = ({
     return `${baseStyles} translate-x-0 opacity-100`;
   };
 
-  const getIconStyles = () => {
-    switch (type) {
-      case 'success':
-        return 'text-green-500';
-      case 'warning':
-        return 'text-yellow-500';
-      case 'error':
-        return 'text-red-500';
-      default:
-        return 'text-blue-500';
-    }
-  };
+
 
   const getBorderStyles = () => {
     switch (type) {

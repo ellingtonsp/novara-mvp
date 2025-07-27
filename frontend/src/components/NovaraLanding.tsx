@@ -129,7 +129,7 @@ const NovaraLanding = () => {
   const [isSpeedTapper, setIsSpeedTapper] = useState(false);
   const [showFastOnboarding, setShowFastOnboarding] = useState(false);
   const [onboardingStartTime, setOnboardingStartTime] = useState(0);
-  const [currentStep, setCurrentStep] = useState(1);
+  const [currentStep] = useState(1);
   
   const [formData, setFormData] = useState({
     email: '',
@@ -177,7 +177,6 @@ const NovaraLanding = () => {
     
     try {
       // ON-01: Track standard path completion
-      const completionTime = Date.now() - onboardingStartTime;
       trackPathSelection('standard', {
         triggerReason: 'default',
         tapCount: speedTapDetector.getTapCount(),
