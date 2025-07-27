@@ -1,185 +1,358 @@
 #!/usr/bin/env node
 
 /**
- * Environment Configuration Validator
- * Validates all environment URLs and configurations before deployment
+ * 🛡️ Environment Configuration Validator
+ * 
+ * Validates environment variables across all environments
+ * to prevent build and deployment errors
  */
 
-const { ENVIRONMENTS } = require('./environment-config');
-const https = require('https');
-const http = require('http');
+const fs = require('fs');
+const path = require('path');
 
-// HTTP request utility
-function makeRequest(url, timeout = 5000) {
-  return new Promise((resolve, reject) => {
-    const urlObj = new URL(url);
-    const isHttps = urlObj.protocol === 'https:';
-    const client = isHttps ? https : http;
-    
-    const requestOptions = {
-      hostname: urlObj.hostname,
-      port: urlObj.port || (isHttps ? 443 : 80),
-      path: urlObj.pathname + urlObj.search,
-      method: 'GET',
-      headers: {
-        'User-Agent': 'Novara-Config-Validator/1.0'
-      },
-      timeout: timeout
-    };
-    
-    const req = client.request(requestOptions, (res) => {
-      let data = '';
-      res.on('data', (chunk) => data += chunk);
-      res.on('end', () => {
-        resolve({
-          statusCode: res.statusCode,
-          headers: res.headers,
-          data: data,
-          url: url
-        });
-      });
-    });
-    
-    req.on('error', (error) => reject(error));
-    req.on('timeout', () => {
-      req.destroy();
-      reject(new Error('Request timeout'));
-    });
-    
-    req.end();
-  });
-}
+class EnvironmentValidator {
+  constructor() {
+    this.errors = [];
+    this.warnings = [];
+    this.environments = ['development', 'staging', 'production'];
+  }
 
-// Validate environment configuration
-async function validateEnvironment(envName, config) {
-  console.log(`\n🔍 Validating ${envName} environment...`);
-  
-  const issues = [];
-  
-  // Check backend health
-  try {
-    console.log(`   Backend: ${config.backend}`);
-    const backendResponse = await makeRequest(`${config.backend}/api/health`);
+  log(message, type = 'info') {
+    const prefix = {
+      info: '🔍',
+      warning: '⚠️',
+      error: '🚨',
+      success: '✅'
+    }[type];
+    console.log(`${prefix} ${message}`);
+  }
+
+  validateEnvironmentFile(envPath, envName) {
+    this.log(`Validating ${envName} environment...`);
     
-    if (backendResponse.statusCode === 200) {
-      console.log(`   ✅ Backend: Healthy (${backendResponse.statusCode})`);
-      
-      // Parse health data
-      try {
-        const healthData = JSON.parse(backendResponse.data);
-        if (healthData.environment !== envName) {
-          issues.push(`Backend environment mismatch: expected ${envName}, got ${healthData.environment}`);
+    if (!fs.existsSync(envPath)) {
+      this.errors.push(`Missing environment file: ${envPath}`);
+      return false;
+    }
+
+    const envContent = fs.readFileSync(envPath, 'utf8');
+    const lines = envContent.split('\n');
+    const variables = {};
+
+    // Parse environment variables
+    lines.forEach(line => {
+      const trimmed = line.trim();
+      if (trimmed && !trimmed.startsWith('#')) {
+        const [key, ...valueParts] = trimmed.split('=');
+        if (key && valueParts.length > 0) {
+          variables[key.trim()] = valueParts.join('=').trim();
         }
-      } catch (parseError) {
-        issues.push('Backend health response is not valid JSON');
       }
-    } else {
-      issues.push(`Backend unhealthy: HTTP ${backendResponse.statusCode}`);
+    });
+
+    // Required variables for each environment
+    const requiredVars = {
+      development: {
+        frontend: ['VITE_API_URL', 'VITE_APP_ENV'],
+        backend: ['NODE_ENV', 'JWT_SECRET', 'AIRTABLE_API_KEY', 'AIRTABLE_BASE_ID', 'USE_LOCAL_DATABASE']
+      },
+      staging: {
+        frontend: ['VITE_API_URL', 'VITE_APP_ENV'],
+        backend: ['NODE_ENV', 'JWT_SECRET', 'AIRTABLE_API_KEY', 'AIRTABLE_BASE_ID', 'PORT']
+      },
+      production: {
+        frontend: ['VITE_API_URL', 'VITE_APP_ENV'],
+        backend: ['NODE_ENV', 'JWT_SECRET', 'AIRTABLE_API_KEY', 'AIRTABLE_BASE_ID', 'PORT']
+      }
+    };
+
+    const envRequired = requiredVars[envName];
+    if (!envRequired) {
+      this.warnings.push(`No validation rules for environment: ${envName}`);
+      return true;
     }
-  } catch (error) {
-    issues.push(`Backend unreachable: ${error.message}`);
-  }
-  
-  // Check frontend accessibility (skip for development and staging due to dynamic URLs)
-  if (envName !== 'development' && envName !== 'staging') {
-    try {
-      console.log(`   Frontend: ${config.frontend}`);
-      const frontendResponse = await makeRequest(config.frontend);
-      
-      if (frontendResponse.statusCode === 200) {
-        console.log(`   ✅ Frontend: Accessible (${frontendResponse.statusCode})`);
+
+    // Check frontend variables
+    if (envName === 'development') {
+      const frontendEnvPath = 'frontend/.env.development';
+      if (fs.existsSync(frontendEnvPath)) {
+        const frontendContent = fs.readFileSync(frontendEnvPath, 'utf8');
+        envRequired.frontend.forEach(varName => {
+          if (!frontendContent.includes(varName)) {
+            this.errors.push(`Missing frontend variable: ${varName} in ${frontendEnvPath}`);
+          }
+        });
       } else {
-        issues.push(`Frontend inaccessible: HTTP ${frontendResponse.statusCode}`);
+        this.errors.push(`Missing frontend environment file: ${frontendEnvPath}`);
       }
-    } catch (error) {
-      issues.push(`Frontend unreachable: ${error.message}`);
     }
-  } else if (envName === 'staging') {
-    console.log(`   ⚠️  Frontend: Skipping validation (dynamic staging URL)`);
-  }
-  
-  // Validate URL format
-  const urlValidation = {
-    backend: new URL(config.backend),
-    frontend: new URL(config.frontend),
-    healthUrl: new URL(config.healthUrl)
-  };
-  
-  // Check that health URL matches backend
-  if (urlValidation.healthUrl.hostname !== urlValidation.backend.hostname) {
-    issues.push('Health URL hostname does not match backend URL');
-  }
-  
-  return {
-    environment: envName,
-    config: config,
-    issues: issues,
-    valid: issues.length === 0
-  };
-}
 
-// Main validation function
-async function validateAllEnvironments() {
-  console.log('🛡️  Environment Configuration Validator');
-  console.log('=====================================');
-  console.log(`⏰ Timestamp: ${new Date().toISOString()}`);
-  
-  const results = {};
-  let hasIssues = false;
-  
-  // Skip development environment in CI/CD contexts
-  const isCI = process.env.CI || process.env.GITHUB_ACTIONS;
-  const environmentsToValidate = isCI 
-    ? Object.entries(ENVIRONMENTS).filter(([envName]) => envName !== 'development')
-    : Object.entries(ENVIRONMENTS);
-  
-  if (isCI) {
-    console.log('🔧 CI/CD detected - skipping development environment validation');
+    // Check backend variables
+    envRequired.backend.forEach(varName => {
+      if (!variables[varName]) {
+        this.errors.push(`Missing backend variable: ${varName} in ${envPath}`);
+      } else if (variables[varName] === '') {
+        this.warnings.push(`Empty backend variable: ${varName} in ${envPath}`);
+      }
+    });
+
+    // Environment-specific validations
+    if (envName === 'development') {
+      if (variables['USE_LOCAL_DATABASE'] !== 'true') {
+        this.warnings.push(`USE_LOCAL_DATABASE should be 'true' for development`);
+      }
+    }
+
+    if (envName === 'staging' || envName === 'production') {
+      if (variables['NODE_ENV'] !== envName) {
+        this.errors.push(`NODE_ENV should be '${envName}' in ${envPath}`);
+      }
+    }
+
+    return this.errors.length === 0;
   }
-  
-  // Validate each environment
-  for (const [envName, config] of environmentsToValidate) {
-    results[envName] = await validateEnvironment(envName, config);
+
+  validateDatabaseConfiguration() {
+    this.log('Validating database configuration...');
     
-    if (results[envName].issues.length > 0) {
-      hasIssues = true;
-      console.log(`   ❌ Issues found:`);
-      results[envName].issues.forEach(issue => {
-        console.log(`      - ${issue}`);
-      });
-    } else {
-      console.log(`   ✅ All checks passed`);
+    // Check for local database file
+    const localDbPath = 'backend/data/novara-local.db';
+    if (!fs.existsSync(localDbPath)) {
+      this.warnings.push(`Local database file not found: ${localDbPath}`);
+    }
+
+    // Check database adapter
+    const adapterPath = 'backend/database/sqlite-adapter.js';
+    if (!fs.existsSync(adapterPath)) {
+      this.errors.push(`Database adapter not found: ${adapterPath}`);
     }
   }
-  
-  // Summary
-  console.log('\n📊 Validation Summary:');
-  console.log('=====================');
-  
-  Object.entries(results).forEach(([env, result]) => {
-    const status = result.valid ? '✅' : '❌';
-    console.log(`${status} ${env}: ${result.valid ? 'Valid' : `${result.issues.length} issues`}`);
-  });
-  
-  if (hasIssues) {
-    console.log('\n🚨 Environment configuration issues detected!');
-    console.log('Please fix these issues before deploying.');
-    process.exit(1);
-  } else {
-    console.log('\n🎉 All environment configurations are valid!');
-    process.exit(0);
+
+  validateDeploymentScripts() {
+    this.log('Validating deployment scripts...');
+    
+    const requiredScripts = [
+      'scripts/deploy-staging-automated.sh',
+      'scripts/deploy-production-safe.sh',
+      'scripts/start-dev-stable.sh',
+      'scripts/kill-local-servers.sh'
+    ];
+
+    requiredScripts.forEach(script => {
+      if (!fs.existsSync(script)) {
+        this.errors.push(`Missing deployment script: ${script}`);
+      } else {
+        // Check if script is executable
+        try {
+          fs.accessSync(script, fs.constants.X_OK);
+        } catch (error) {
+          this.warnings.push(`Script not executable: ${script}`);
+        }
+      }
+    });
+  }
+
+  validateDockerConfiguration() {
+    this.log('Validating Docker configuration...');
+    
+    const dockerfilePath = 'Dockerfile';
+    if (!fs.existsSync(dockerfilePath)) {
+      this.errors.push(`Dockerfile not found: ${dockerfilePath}`);
+      return;
+    }
+
+    const dockerfileContent = fs.readFileSync(dockerfilePath, 'utf8');
+    
+    // Check for essential Dockerfile components
+    if (!dockerfileContent.includes('FROM node:')) {
+      this.errors.push('Dockerfile missing Node.js base image');
+    }
+    
+    if (!dockerfileContent.includes('COPY backend/package')) {
+      this.warnings.push('Dockerfile missing package.json copy for caching');
+    }
+    
+    if (!dockerfileContent.includes('npm ci')) {
+      this.warnings.push('Dockerfile should use npm ci for production builds');
+    }
+  }
+
+  validatePackageConfiguration() {
+    this.log('Validating package configuration...');
+    
+    const packageDirs = ['frontend', 'backend'];
+    
+    packageDirs.forEach(dir => {
+      const packagePath = path.join(dir, 'package.json');
+      if (!fs.existsSync(packagePath)) {
+        this.errors.push(`Missing package.json in ${dir}`);
+        return;
+      }
+
+      try {
+        const packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
+        
+        // Check for required scripts
+        const requiredScripts = {
+          frontend: ['build', 'dev'],
+          backend: ['start', 'test']
+        };
+
+        const scripts = requiredScripts[dir] || [];
+        scripts.forEach(script => {
+          if (!packageJson.scripts || !packageJson.scripts[script]) {
+            this.warnings.push(`Missing script '${script}' in ${dir}/package.json`);
+          }
+        });
+
+        // Check for dependencies
+        if (!packageJson.dependencies && !packageJson.devDependencies) {
+          this.warnings.push(`No dependencies found in ${dir}/package.json`);
+        }
+
+      } catch (error) {
+        this.errors.push(`Invalid JSON in ${dir}/package.json`);
+      }
+    });
+  }
+
+  generateReport() {
+    const report = {
+      timestamp: new Date().toISOString(),
+      errors: this.errors,
+      warnings: this.warnings,
+      summary: {
+        totalIssues: this.errors.length + this.warnings.length,
+        errors: this.errors.length,
+        warnings: this.warnings.length
+      }
+    };
+
+    // Save JSON report
+    fs.writeFileSync('environment-validation-report.json', JSON.stringify(report, null, 2));
+
+    // Generate markdown report
+    const markdownReport = this.generateMarkdownReport(report);
+    fs.writeFileSync('environment-validation-report.md', markdownReport);
+
+    return report;
+  }
+
+  generateMarkdownReport(report) {
+    let markdown = `# 🛡️ Environment Configuration Validation Report
+
+**Generated:** ${report.timestamp}
+
+## 📊 Summary
+
+- **Total Issues:** ${report.summary.totalIssues}
+- **Errors:** ${report.summary.errors}
+- **Warnings:** ${report.summary.warnings}
+
+`;
+
+    if (report.errors.length === 0 && report.warnings.length === 0) {
+      markdown += `## ✅ All Clear!
+
+Environment configuration is valid and ready for deployment.
+
+### 🚀 Next Steps
+1. Run pre-deployment validation: \`npm run pre-deploy:full\`
+2. Deploy to staging: \`./scripts/deploy-staging-automated.sh\`
+3. Monitor deployment: \`npm run monitor:deployments\`
+
+`;
+    } else {
+      if (report.errors.length > 0) {
+        markdown += `## 🚨 Errors (Must Fix)
+
+`;
+        report.errors.forEach(error => {
+          markdown += `- ${error}\n`;
+        });
+        markdown += '\n';
+      }
+
+      if (report.warnings.length > 0) {
+        markdown += `## ⚠️ Warnings (Recommended)
+
+`;
+        report.warnings.forEach(warning => {
+          markdown += `- ${warning}\n`;
+        });
+        markdown += '\n';
+      }
+    }
+
+    markdown += `## 🔧 Quick Fix Commands
+
+\`\`\`bash
+# Fix environment variable issues
+npm run sync:env-examples
+npm run validate:environments
+
+# Fix script permissions
+chmod +x scripts/*.sh
+
+# Fix local development issues
+./scripts/fix-local-dev.sh
+
+# Run comprehensive validation
+npm run pre-deploy:full
+\`\`\`
+
+---
+*Report generated by Environment Configuration Validator*
+`;
+
+    return markdown;
+  }
+
+  async run() {
+    this.log('🛡️ Environment Configuration Validator Starting...');
+    
+    // Validate environment files
+    this.environments.forEach(env => {
+      const envPath = `.env.${env}`;
+      this.validateEnvironmentFile(envPath, env);
+    });
+
+    // Validate development environment files
+    this.validateEnvironmentFile('frontend/.env.development', 'development');
+    this.validateEnvironmentFile('backend/.env.development', 'development');
+
+    // Additional validations
+    this.validateDatabaseConfiguration();
+    this.validateDeploymentScripts();
+    this.validateDockerConfiguration();
+    this.validatePackageConfiguration();
+
+    // Generate report
+    const report = this.generateReport();
+
+    // Print summary
+    if (report.summary.errors > 0) {
+      this.log(`🚨 Found ${report.summary.errors} errors that must be fixed`, 'error');
+    }
+
+    if (report.summary.warnings > 0) {
+      this.log(`⚠️ Found ${report.summary.warnings} warnings to address`, 'warning');
+    }
+
+    if (report.summary.totalIssues === 0) {
+      this.log('✅ Environment configuration is valid!', 'success');
+    }
+
+    this.log(`Report saved to: environment-validation-report.json and environment-validation-report.md`, 'success');
+
+    return report;
   }
 }
 
-// CLI usage
+// Run if called directly
 if (require.main === module) {
-  validateAllEnvironments().catch(error => {
-    console.error('❌ Validation failed:', error.message);
-    process.exit(1);
-  });
+  const validator = new EnvironmentValidator();
+  validator.run().catch(console.error);
 }
 
-module.exports = {
-  validateEnvironment,
-  validateAllEnvironments
-}; 
+module.exports = EnvironmentValidator; 

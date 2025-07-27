@@ -25,6 +25,12 @@ npm run test:full
 npm run health-check
 npm run performance
 
+# 🏗️ BUILD ERROR PREVENTION
+npm run pre-deploy:build      # Test frontend build locally
+npm run pre-deploy:typescript # Validate TypeScript compilation
+npm run pre-deploy:full       # Complete pre-deployment validation
+npm run validate:environments # Validate environment variables
+
 # BugBot validation
 npm run bugbot:local        # Check environment before development
 npm run bugbot:pre-deploy   # Validate before deployment
@@ -42,6 +48,53 @@ npm run bugbot:post-deploy  # Validate after deployment
 - Test both frontend and backend components
 - Validate environment configurations
 
+## 🏗️ Build Error Prevention Best Practices
+
+### Pre-Development Setup
+```bash
+# 1. Check environment setup
+npm run bugbot:local
+
+# 2. Validate environment variables
+npm run validate:environments
+
+# 3. Test local build
+npm run pre-deploy:build
+
+# 4. Start development
+./scripts/start-dev-stable.sh
+```
+
+### Pre-Commit Validation
+```bash
+# 1. Run all tests
+npm run test:full
+
+# 2. Validate TypeScript
+npm run pre-deploy:typescript
+
+# 3. Test build process
+npm run pre-deploy:build
+
+# 4. Run safety checks
+npm run safety:check
+```
+
+### Pre-Deployment Validation (MANDATORY)
+```bash
+# 1. Complete validation suite
+npm run pre-deploy:full
+
+# 2. BugBot validation
+npm run bugbot:pre-deploy
+
+# 3. Environment validation
+npm run validate:environments
+
+# 4. Schema validation
+npm run validate-schema-comprehensive
+```
+
 ## Development Best Practices
 - Always use stable port strategy
 - Document all changes
@@ -50,6 +103,9 @@ npm run bugbot:post-deploy  # Validate after deployment
 - Run BugBot validation before and after deployments
 - Check generated BugBot reports for issues
 - Address BugBot-identified errors before proceeding
+- **ALWAYS test Docker builds locally before deployment**
+- **ALWAYS validate environment variables before deployment**
+- **ALWAYS run pre-deployment validation suite**
 
 ## 🌿 SUSTAINABLE BRANCH STRATEGY (MANDATORY)
 
@@ -105,3 +161,43 @@ git push origin feature/AN-02-churn-risk-flag
 - **ALWAYS** require feature branch creation for any changes
 - **ALWAYS** follow progressive integration workflow
 - **NEVER** allow workflow bypasses
+
+## 🚨 Common Build Error Prevention
+
+### Environment Variable Issues
+```bash
+# Check for missing variables
+npm run validate:environments
+
+# Sync environment examples
+npm run sync:env-examples
+
+# Fix common issues
+./scripts/fix-local-dev.sh
+```
+
+### Port Conflict Issues
+```bash
+# Kill conflicting processes
+./scripts/kill-local-servers.sh
+
+# Start with stable ports
+./scripts/start-dev-stable.sh
+```
+
+### Dependency Issues
+```bash
+# Clean and reinstall
+npm cache clean --force
+rm -rf node_modules package-lock.json
+npm install
+```
+
+### Railway CLI Issues
+```bash
+# Re-authenticate
+railway logout && railway login
+
+# Re-link with full parameters
+railway link --project novara-mvp --environment staging --yes
+```

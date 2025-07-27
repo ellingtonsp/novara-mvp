@@ -22,6 +22,14 @@ validate-environments # Validate all environment configurations
 validate-schema     # Validate Airtable schema
 safety:check        # Run all safety checks
 
+# 🏗️ BUILD ERROR PREVENTION
+pre-deploy:build    # Test frontend build locally
+pre-deploy:typescript # Validate TypeScript compilation
+pre-deploy:full     # Complete pre-deployment validation
+validate:environments # Validate environment variables
+validate:deployment # Validate deployment scripts
+sync:env-examples   # Sync environment variable examples
+
 # BugBot Integration
 bugbot:local        # Check local development environment
 bugbot:pre-deploy   # Comprehensive pre-deployment validation
@@ -50,6 +58,13 @@ docs:validate       # Validate documentation completeness
 - `./scripts/test-staging-enhanced-logging.js` - Staging environment testing
 - `./scripts/test-production-fix.js` - Production environment testing
 
+### 🏗️ Build Error Prevention Scripts
+- `./scripts/validate-environment-config.js` - Environment variable validation
+- `./scripts/validate-deployment-scripts.sh` - Deployment script validation
+- `./scripts/test-docker-build.sh` - Local Docker build testing
+- `./scripts/emergency-rollback.sh` - Emergency deployment rollback
+- `./scripts/fix-build-errors.sh` - Common build error fixes
+
 ### BugBot Scripts
 - `./scripts/bugbot-local-monitor.js` - Local development environment monitoring
 - `./scripts/bugbot-post-deploy-check.js` - Post-deployment validation
@@ -59,14 +74,60 @@ docs:validate       # Validate documentation completeness
 - `./scripts/deploy-production-now.sh` - Simple production deployment
 - `./scripts/deploy-production-final.sh` - Robust production deployment
 - `./scripts/deploy-staging-backend.sh` - Staging backend deployment
+- `./scripts/deploy-staging-automated.sh` - Automated staging deployment
 
 ### Monitoring Scripts
 - `./scripts/monitoring/deployment-health-monitor.js` - Deployment health monitoring
 - `./scripts/monitoring/comprehensive-health-check.js` - Comprehensive health checks
 - `./scripts/monitoring/performance-monitor.js` - Performance monitoring
 
+## 🚨 Build Error Prevention Workflow
+
+### Pre-Deployment Validation (MANDATORY)
+```bash
+# 1. Environment validation
+npm run validate:environments
+
+# 2. Schema validation
+npm run validate-schema-comprehensive
+
+# 3. Local build test
+npm run pre-deploy:build
+
+# 4. TypeScript validation
+npm run pre-deploy:typescript
+
+# 5. Complete validation
+npm run pre-deploy:full
+
+# 6. BugBot validation
+npm run bugbot:pre-deploy
+```
+
+### Common Build Error Fixes
+```bash
+# Fix npm ci failures
+npm cache clean --force
+rm -rf node_modules package-lock.json
+npm install
+
+# Fix port conflicts
+./scripts/kill-local-servers.sh
+./scripts/start-dev-stable.sh
+
+# Fix environment variable issues
+npm run sync:env-examples
+npm run validate:environments
+
+# Fix Railway CLI issues
+railway logout && railway login
+railway link --project novara-mvp --environment staging --yes
+```
+
 ## Script Features
 - **Non-hanging scripts**: All scripts terminate properly with timeouts
 - **Safety-first scripts**: Built-in validation and error handling
 - **Environment-aware**: Automatically detect and use correct environment
 - **Comprehensive logging**: Detailed logs for debugging and monitoring
+- **Build error prevention**: Pre-deployment validation and testing
+- **Emergency recovery**: Rollback and recovery procedures

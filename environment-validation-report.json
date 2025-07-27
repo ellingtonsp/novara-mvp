@@ -1,0 +1,16 @@
+{
+  "timestamp": "2025-07-27T19:47:01.833Z",
+  "errors": [
+    "Missing environment file: .env.development",
+    "Missing environment file: .env.staging",
+    "Missing environment file: .env.production",
+    "Missing environment file: frontend/.env.development",
+    "Missing environment file: backend/.env.development"
+  ],
+  "warnings": [],
+  "summary": {
+    "totalIssues": 5,
+    "errors": 5,
+    "warnings": 0
+  }
+}

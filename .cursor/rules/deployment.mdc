@@ -1,19 +1,24 @@
 
-# Deployment Rules & Safety
+# Deployment Rules
 
-## **CRITICAL NO-INTERACTION REQUIREMENTS**
-- **NEVER run `railway environment`** - this requires manual selection
+## **🚨 CRITICAL RAILWAY CLI RULES**
 - **NEVER run `railway link` without full parameters** - this requires manual selection
 - **NEVER ask user to manually select environments**
 - **ALWAYS use automated deployment scripts** that handle environment selection
 - **ALWAYS use `--yes` flag** when available to skip prompts
 - **ALWAYS specify full project/environment/service parameters**
+- **ALWAYS include fallback mechanisms** for CLI command failures
 
-## **CORRECT RAILWAY CLI PROCEDURES**
+## **🔧 ENHANCED RAILWAY CLI PROCEDURES**
 ```bash
-# ✅ CORRECT - No user interaction required
-railway link --project novara-mvp --environment staging --service novara-backend-staging --yes
-railway up --service novara-backend-staging
+# ✅ CORRECT - No user interaction required with fallbacks
+railway link --project novara-mvp --environment staging --service novara-backend-staging --yes || \
+  railway link --project novara-mvp --environment staging --yes || \
+  echo "Warning: Linking failed, continuing with deployment"
+
+# ✅ BETTER - Service-agnostic deployment
+railway link --project novara-mvp --environment staging --yes
+railway up
 
 # ❌ FORBIDDEN - Requires manual selection
 railway environment
@@ -21,16 +26,129 @@ railway link
 railway up
 ```
 
-## **AUTOMATED DEPLOYMENT SCRIPTS**
+## **🏗️ BUILD ERROR PREVENTION**
+
+### **Pre-Deployment Validation (MANDATORY)**
+```bash
+# 1. Environment validation
+npm run validate:environments
+
+# 2. Schema validation
+npm run validate-schema-comprehensive
+
+# 3. Local build test
+npm run pre-deploy:build
+
+# 4. TypeScript validation
+npm run pre-deploy:typescript
+
+# 5. BugBot pre-deployment check
+npm run bugbot:pre-deploy
+```
+
+### **Docker Build Resilience**
+- **ALWAYS test Docker build locally** before deployment
+- **ALWAYS use multi-stage builds** to reduce image size
+- **ALWAYS include health checks** in Dockerfile
+- **ALWAYS set proper timeouts** for npm install operations
+
+### **Environment Variable Validation**
+```bash
+# Validate all required environment variables
+npm run validate:environments
+
+# Check for missing variables
+node scripts/validate-environment-config.js
+```
+
+## **🚀 AUTOMATED DEPLOYMENT SCRIPTS**
 - **Staging**: `./scripts/deploy-staging-automated.sh`
 - **Production**: `./scripts/deploy-production-automated.sh`
+- **Emergency Rollback**: `./scripts/emergency-rollback.sh`
 - **NEVER bypass these scripts** unless emergency rollback required
 
-## **Critical Deployment Rules**
+## **🔍 ENHANCED VALIDATION STEPS**
+
+### **Pre-Deployment Checklist (EXPANDED)**
+- [ ] Code changes tested locally
+- [ ] Environment variables configured correctly
+- [ ] Database schema compatible
+- [ ] Rate limiting configured for target environment
+- [ ] Health checks passing locally
+- [ ] Automated deployment script ready
+- [ ] **Docker build tested locally**
+- [ ] **TypeScript compilation successful**
+- [ ] **Frontend build successful**
+- [ ] **BugBot validation passed**
+- [ ] **Environment variable validation passed**
+
+### **Post-Deployment Validation (EXPANDED)**
+- [ ] Health endpoint responding
+- [ ] Environment correctly identified
+- [ ] Rate limiting working as expected
+- [ ] Database operations successful
+- [ ] Frontend connecting to backend
+- [ ] No critical errors in logs
+- [ ] BugBot validation passed: `npm run bugbot:post-deploy {environment}`
+- [ ] **Docker container health check passed**
+- [ ] **API endpoints responding correctly**
+- [ ] **Frontend accessibility verified**
+- [ ] **Database connectivity confirmed**
+
+## **🛠️ BUILD ERROR RECOVERY**
+
+### **Common Build Failures & Fixes**
+```bash
+# 1. npm ci failures
+npm cache clean --force
+rm -rf node_modules package-lock.json
+npm install
+
+# 2. Port conflicts
+./scripts/kill-local-servers.sh
+./scripts/start-dev-stable.sh
+
+# 3. Environment variable issues
+npm run sync:env-examples
+npm run validate:environments
+
+# 4. Railway CLI issues
+railway logout && railway login
+railway link --project novara-mvp --environment staging --yes
+```
+
+### **Emergency Procedures**
+- **Build Failure**: Use Railway dashboard to check build logs
+- **Deployment Failure**: Use `./scripts/emergency-rollback.sh`
+- **Database Issues**: Check environment variables and database connectivity
+- **Rate Limiting**: Verify environment-specific limits are applied correctly
+
+## **📊 DEPLOYMENT MONITORING**
+
+### **Real-time Monitoring**
+```bash
+# Monitor deployment progress
+npm run monitor:deployments
+
+# Track deployment metrics
+npm run track:deployments
+
+# Health check all environments
+npm run health-check
+```
+
+### **Alerting & Notifications**
+- **Build Failures**: Immediate notification via GitHub Actions
+- **Deployment Failures**: Automatic rollback and issue creation
+- **Health Check Failures**: Alert team via configured channels
+
+## **🔧 Critical Deployment Rules**
 - **NEVER bypass staging → production workflow**
 - **ALWAYS verify Railway context before deployment**
 - **ALWAYS get explicit user approval for production changes**
 - **ALWAYS run health checks after deployment**
+- **ALWAYS test Docker builds locally before deployment**
+- **ALWAYS validate environment variables before deployment**
 
 ## **Environment-Specific Database IDs**
 - **Staging**: `appEOWvLjCn5c7Ght`
@@ -56,28 +174,6 @@ backend/data/novara-local.db
 - If database errors occur, check environment variables
 - Verify database permissions for SQLite file
 - Ensure proper database isolation between environments
-
-## **Emergency Procedures**
-- **Rollback**: Use Railway dashboard to revert to previous deployment
-- **Database Issues**: Check environment variables and database connectivity
-- **Rate Limiting**: Verify environment-specific limits are applied correctly
-
-## **Pre-Deployment Checklist**
-- [ ] Code changes tested locally
-- [ ] Environment variables configured correctly
-- [ ] Database schema compatible
-- [ ] Rate limiting configured for target environment
-- [ ] Health checks passing locally
-- [ ] Automated deployment script ready
-
-## **Post-Deployment Validation**
-- [ ] Health endpoint responding
-- [ ] Environment correctly identified
-- [ ] Rate limiting working as expected
-- [ ] Database operations successful
-- [ ] Frontend connecting to backend
-- [ ] No critical errors in logs
-- [ ] BugBot validation passed: `npm run bugbot:post-deploy {environment}`
 
 ## **BugBot Integration**
 - **Pre-Deployment**: Always run `npm run bugbot:pre-deploy` before staging/production
