@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Heart, Users, Calendar, MessageCircle, ArrowRight, CheckCircle, LogOut, User, Menu, X, RefreshCw } from 'lucide-react';
+import { Heart, Users, Calendar, MessageCircle, CheckCircle, LogOut, User, Menu, X, RefreshCw } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { apiClient } from '../lib/api';
 // import { trackEvent, trackAuthEvent } from '../lib/analytics';
@@ -356,145 +356,7 @@ const NovaraLanding = () => {
     </header>
   );
 
-  // Mobile Dashboard View
-  const MobileDashboard = () => (
-    <div className="px-4 py-6 pb-24 space-y-6">
-      {/* Welcome Section */}
-      <div className="text-center">
-        {justSignedUp ? (
-          <>
-            <div className="w-16 h-16 rounded-full bg-gradient-to-r from-[#FF6F61] to-[#CBA7FF] flex items-center justify-center mx-auto mb-4">
-              <CheckCircle className="w-8 h-8 text-white" />
-            </div>
-            <h2 className="text-2xl font-bold mb-3">
-              Welcome to Novara, {user?.nickname || user?.email?.split('@')[0]}! 🌟
-            </h2>
-            <p className="text-gray-600 mb-6">
-              Your journey has officially begun. Let's start with your first daily check-in.
-            </p>
-          </>
-        ) : (
-          <>
-            <h2 className="text-2xl font-bold mb-3">
-              Welcome back, {user?.nickname || user?.email?.split('@')[0]}! 👋
-            </h2>
-            <p className="text-gray-600 mb-6">
-              Ready for today's check-in? Share how you're feeling and get personalized insights.
-            </p>
-          </>
-        )}
-      </div>
 
-      {/* Daily Insights Display */}
-      <DailyInsightsDisplay />
-
-      {/* Quick Action Cards - Mobile Stacked */}
-      <div className="space-y-4 max-w-sm mx-auto">
-        <button
-          onClick={() => setCurrentView('checkin')}
-          className="w-full bg-[#FF6F61] text-white p-6 rounded-2xl shadow-sm hover:shadow-md transition-all active:scale-95"
-        >
-          <div className="flex items-center justify-between">
-            <div className="text-left">
-              <h3 className="text-xl font-semibold mb-2">Daily Check-in</h3>
-              <p className="text-white/90 text-sm">Share how you're feeling and get personalized insights</p>
-            </div>
-            <ArrowRight className="w-6 h-6 text-white/80 flex-shrink-0 ml-4" />
-          </div>
-        </button>
-
-        <button
-          onClick={() => setCurrentView('insights')}
-          className="w-full bg-[#CBA7FF] text-white p-6 rounded-2xl shadow-sm hover:shadow-md transition-all active:scale-95"
-        >
-          <div className="flex items-center justify-between">
-            <div className="text-left">
-              <h3 className="text-xl font-semibold mb-2">View Insights</h3>
-              <p className="text-white/90 text-sm">See your patterns and personalized recommendations</p>
-            </div>
-            <ArrowRight className="w-6 h-6 text-white/80 flex-shrink-0 ml-4" />
-          </div>
-        </button>
-      </div>
-
-      {/* Stats Overview */}
-      <div className="bg-white rounded-2xl p-6 shadow-sm">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Your Journey</h3>
-        <div className="grid grid-cols-3 gap-4">
-          <div className="text-center">
-            <div className="text-2xl font-bold text-[#FF6F61]">7</div>
-            <div className="text-sm text-gray-600">Days Active</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-[#CBA7FF]">85%</div>
-            <div className="text-sm text-gray-600">Avg Confidence</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-gray-700">🌟</div>
-            <div className="text-sm text-gray-600">Streak</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Next Steps for New Users */}
-      {justSignedUp && (
-        <div className="bg-white rounded-2xl p-6 shadow-sm">
-          <h3 className="text-lg font-semibold mb-4 text-gray-800">What happens next?</h3>
-          <div className="space-y-4">
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 rounded-lg bg-[#FF6F61]/10 flex items-center justify-center">
-                <MessageCircle className="w-4 h-4 text-[#FF6F61]" />
-              </div>
-              <p className="text-sm text-gray-600">Get personalized insights based on your daily check-ins</p>
-            </div>
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 rounded-lg bg-[#CBA7FF]/10 flex items-center justify-center">
-                <Calendar className="w-4 h-4 text-[#CBA7FF]" />
-              </div>
-              <p className="text-sm text-gray-600">Track your journey timeline and milestones</p>
-            </div>
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 rounded-lg bg-[#FF6F61]/10 flex items-center justify-center">
-                <Users className="w-4 h-4 text-[#FF6F61]" />
-              </div>
-              <p className="text-sm text-gray-600">Access expert guidance when you need it</p>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-
-  // Mobile Check-in View
-  const MobileCheckinView = () => (
-    <div className="pb-24">
-      <DailyCheckinForm onComplete={handleCheckinComplete} />
-    </div>
-  );
-
-  // Mobile Insights View
-  const MobileInsightsView = () => (
-    <div className="px-4 py-6 pb-24">
-      <div className="text-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Your Insights</h2>
-        <p className="text-gray-600">Based on your recent check-ins</p>
-      </div>
-      <DailyInsightsDisplay />
-      
-      {/* Encouragement Card */}
-      <div className="mt-6 bg-white rounded-2xl p-6 shadow-sm border-2 border-gray-100">
-        <div className="text-center">
-          <div className="text-4xl mb-3">🌟</div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">
-            You're doing great, {user?.nickname}!
-          </h3>
-          <p className="text-gray-600 text-sm">
-            Every check-in helps us understand your patterns better and provide more personalized insights.
-          </p>
-        </div>
-      </div>
-    </div>
-  );
 
   // Main Render Logic
   if (!isAuthenticated) {
@@ -980,9 +842,9 @@ const NovaraLanding = () => {
       {/* Mobile Content */}
       <div className="block md:hidden">
         {currentView === 'welcome' && <WelcomeInsight onContinue={() => setCurrentView('dashboard')} />}
-        {currentView === 'dashboard' && <MobileDashboard />}
-        {currentView === 'checkin' && <MobileCheckinView />}
-        {currentView === 'insights' && <MobileInsightsView />}
+        {currentView === 'dashboard' && <div className="p-4"><h2>Dashboard</h2><p>Welcome to your dashboard!</p></div>}
+        {currentView === 'checkin' && <div className="pb-24"><DailyCheckinForm onComplete={handleCheckinComplete} /></div>}
+        {currentView === 'insights' && <div className="px-4 py-6 pb-24"><DailyInsightsDisplay /></div>}
         
         {currentView !== 'welcome' && <MobileNavigation />}
       </div>
