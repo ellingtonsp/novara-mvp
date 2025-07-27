@@ -796,25 +796,8 @@ const NovaraLanding = () => {
           </div>
         )}
 
-        {/* ON-01: Fast Onboarding Modal */}
-        {showFastOnboarding && (
-          <FastOnboarding
-            onComplete={handleFastOnboardingComplete}
-            onBack={() => {
-              setShowFastOnboarding(false);
-              setIsSpeedTapper(false);
-            }}
-            initialData={{
-              email: formData.email,
-              cycle_stage: formData.cycle_stage,
-              primary_concern: formData.primary_need
-            }}
-            startTime={onboardingStartTime}
-          />
-        )}
-
         {/* Signup Form Modal - Responsive */}
-        {showForm && !showFastOnboarding && (
+        {showForm && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
             <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
               <CardHeader>
@@ -834,7 +817,22 @@ const NovaraLanding = () => {
                 </p>
               </CardHeader>
               <CardContent>
-                <div className="space-y-6">
+                {showFastOnboarding ? (
+                  <FastOnboarding
+                    onComplete={handleFastOnboardingComplete}
+                    onBack={() => {
+                      setShowFastOnboarding(false);
+                      setIsSpeedTapper(false);
+                    }}
+                    initialData={{
+                      email: formData.email,
+                      cycle_stage: formData.cycle_stage,
+                      primary_concern: formData.primary_need
+                    }}
+                    startTime={onboardingStartTime}
+                  />
+                ) : (
+                  <div className="space-y-6">
                   <div className="grid md:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="email">Email</Label>
@@ -1040,6 +1038,7 @@ const NovaraLanding = () => {
                     </Button>
                   </div>
                 </div>
+                  )}
               </CardContent>
             </Card>
           </div>

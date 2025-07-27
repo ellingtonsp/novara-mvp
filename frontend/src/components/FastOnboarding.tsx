@@ -148,8 +148,7 @@ export const FastOnboarding: React.FC<FastOnboardingProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-novara-cream via-white to-novara-cream flex items-center justify-center px-4 py-8">
-      <Card className="w-full max-w-md mx-auto shadow-lg">
+    <Card className="w-full max-w-md mx-auto shadow-lg">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold text-gray-800">
             Short on time? No problem!
@@ -265,6 +264,5 @@ export const FastOnboarding: React.FC<FastOnboardingProps> = ({
           </form>
         </CardContent>
       </Card>
-    </div>
   );
 }; 
