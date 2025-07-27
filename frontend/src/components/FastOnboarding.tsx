@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { trackOnboardingCompletion, OnboardingContext } from '../utils/speedTapDetection';
+import { trackOnboardingCompleted, OnboardingContext, generateSessionId } from '../utils/abTestUtils';
 
 interface FastOnboardingData {
   email: string;
@@ -109,22 +109,20 @@ export const FastOnboarding: React.FC<FastOnboardingProps> = ({
       const completionTime = Date.now() - startTime;
       
       // Track completion analytics
-      trackOnboardingCompletion({
-        path: 'fast',
-        completionMs: completionTime,
-        stepsCompleted: 3,
-        totalSteps: 3,
-        fieldsCompleted: Object.keys(formData)
+      trackOnboardingCompleted({
+        path: 'test',
+        sessionId: generateSessionId(),
+        startTime: startTime,
+        completion_ms: completionTime,
+        userId: formData.email
       });
 
       // Create onboarding context
       const context: OnboardingContext = {
-        path: 'fast',
-        triggerReason: 'speed_tap',
-        completionMs: completionTime,
-        stepsCompleted: 3,
-        tapCount: 0, // Will be set by parent component
-        timeWindowMs: 10000
+        path: 'test',
+        sessionId: generateSessionId(),
+        startTime: startTime,
+        userId: formData.email
       };
 
       onComplete(formData, context);
@@ -259,7 +257,7 @@ export const FastOnboarding: React.FC<FastOnboardingProps> = ({
                 <div className="w-2 h-2 bg-novara-coral rounded-full"></div>
                 <div className="w-2 h-2 bg-novara-coral rounded-full"></div>
               </div>
-              <span>Fast path • 3 of 3 steps</span>
+              <span>Quick setup</span>
             </div>
           </form>
         </CardContent>

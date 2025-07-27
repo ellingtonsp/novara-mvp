@@ -18,6 +18,11 @@ export interface User {
   confidence_meds: number;
   confidence_costs: number;
   confidence_overall: number;
+  primary_need?: string;
+  cycle_stage?: string;
+  top_concern?: string;
+  baseline_completed?: boolean;
+  onboarding_path?: string;
   created_at: string;
 }
 

@@ -1,0 +1,98 @@
+#!/bin/bash
+
+# ON-01 UAT Execution Script
+# Follows cursor rules for proper feature validation
+
+set -e
+
+echo "🧪 ON-01 UAT EXECUTION SCRIPT"
+echo "=============================="
+echo "This script helps execute the ON-01 User Acceptance Testing"
+echo ""
+
+# Check if backend is running
+echo "🔍 Checking backend status..."
+if ! curl -s http://localhost:9002/api/health > /dev/null; then
+    echo "❌ Backend not running on port 9002"
+    echo "Please start the backend first:"
+    echo "  cd backend && NODE_ENV=development USE_LOCAL_DATABASE=true PORT=9002 node server.js"
+    exit 1
+fi
+echo "✅ Backend is running"
+
+# Check if frontend is running
+echo "🔍 Checking frontend status..."
+if ! curl -s http://localhost:4200 > /dev/null; then
+    echo "❌ Frontend not running on port 4200"
+    echo "Please start the frontend first:"
+    echo "  cd frontend && npm run dev"
+    exit 1
+fi
+echo "✅ Frontend is running"
+
+echo ""
+echo "📋 UAT PREREQUISITES CHECKLIST"
+echo "=============================="
+echo "✅ Backend running on port 9002"
+echo "✅ Frontend running on port 4200"
+echo ""
+echo "📝 MANUAL UAT STEPS REQUIRED:"
+echo "=============================="
+echo ""
+echo "1. 📊 A/B Test Distribution Validation"
+echo "   - Open browser in incognito mode"
+echo "   - Navigate to http://localhost:4200"
+echo "   - Note which path appears (Fast Lane vs Control)"
+echo "   - Repeat 10 times, record distribution"
+echo "   - Expected: 40-60% range for each path"
+echo ""
+echo "2. ⚡ Fast Lane User Journey"
+echo "   - Set VITE_FORCE_ONBOARDING_PATH=test in frontend .env"
+echo "   - Complete Fast Lane form (3 fields)"
+echo "   - Complete Baseline Panel"
+echo "   - Verify insights accessible"
+echo ""
+echo "3. 🔄 Control Path User Journey"
+echo "   - Set VITE_FORCE_ONBOARDING_PATH=control in frontend .env"
+echo "   - Complete full onboarding form"
+echo "   - Verify no baseline panel appears"
+echo "   - Verify insights accessible immediately"
+echo ""
+echo "4. 🚫 Insights Blocking Validation"
+echo "   - Create incomplete test user (Fast Lane only, no baseline)"
+echo "   - Try to access insights"
+echo "   - Verify blocking message appears"
+echo ""
+echo "5. 🗄️ Database Validation"
+echo "   - Check database records after testing:"
+echo "   sqlite3 backend/data/novara-local.db \""
+echo "   SELECT email, onboarding_path, baseline_completed, nickname"
+echo "   FROM users"
+echo "   WHERE email LIKE '%uat-%'"
+echo "   ORDER BY created_at DESC"
+echo "   LIMIT 5;\""
+echo ""
+echo "6. 📊 Analytics Tracking Validation"
+echo "   - Open browser dev tools"
+echo "   - Check Network tab for PostHog events"
+echo "   - Verify onboarding_path_selected, onboarding_completed, baseline_completed"
+echo ""
+echo "📄 Complete UAT guide available at:"
+echo "docs/features/ON-01-onboarding-ab-experiment/UAT-testing-guide.md"
+echo ""
+echo "🎯 UAT SUCCESS CRITERIA:"
+echo "========================"
+echo "✅ All 6 test scenarios pass"
+echo "✅ A/B distribution within 40-60% range"
+echo "✅ No console errors or data corruption"
+echo "✅ Performance acceptable (<2s response times)"
+echo ""
+echo "📝 After UAT completion:"
+echo "========================"
+echo "1. Document results in UAT guide"
+echo "2. Update ON-01-IMPLEMENTATION-STATUS.md"
+echo "3. Create staging deployment plan"
+echo "4. Schedule production deployment"
+echo ""
+echo "🚀 Ready to begin UAT testing!"
+echo "Open http://localhost:4200 in your browser to start." 

@@ -8,8 +8,8 @@ const STATIC_FILES = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/icons/icon-192x192.png',
-  '/icons/icon-512x512.png',
+  '/icons/icon-192x192.svg',
+  '/icons/icon-512x512.svg',
   '/offline.html'
 ];
 
@@ -74,6 +74,15 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   
+  // Skip analytics and external services - let them pass through
+  if (url.hostname.includes('posthog.com') || 
+      url.hostname.includes('sentry.io') ||
+      url.hostname.includes('google-analytics.com') ||
+      url.hostname.includes('googletagmanager.com') ||
+      url.hostname.includes('doubleclick.net')) {
+    return; // Let these requests pass through without interception
+  }
+  
   // Handle API requests
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(handleApiRequest(request));
@@ -86,7 +95,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   
-  // Handle external requests (Google Analytics, etc.)
+  // Handle other external requests (but not analytics)
   if (url.origin !== self.location.origin) {
     event.respondWith(handleExternalRequest(request));
     return;
@@ -164,7 +173,7 @@ async function handleStaticRequest(request) {
   }
 }
 
-// Handle external requests (Google Analytics, etc.)
+// Handle external requests (but not analytics services)
 async function handleExternalRequest(request) {
   try {
     // Try network first for external requests
@@ -172,7 +181,11 @@ async function handleExternalRequest(request) {
     return networkResponse;
   } catch (error) {
     console.log('External request failed:', request.url);
-    throw error;
+    // Return a minimal response instead of throwing
+    return new Response('', {
+      status: 503,
+      statusText: 'Service Unavailable'
+    });
   }
 }
 

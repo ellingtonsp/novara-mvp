@@ -240,7 +240,7 @@ export const OnboardingFast: React.FC<OnboardingFastProps> = ({
               <div className="w-1.5 h-1.5 bg-[#FF6F61] rounded-full"></div>
               <div className="w-1.5 h-1.5 bg-[#FF6F61] rounded-full"></div>
             </div>
-            <span>Fast path • Step 1 of 1</span>
+            <span>Quick setup</span>
           </div>
         </form>
       </CardContent>

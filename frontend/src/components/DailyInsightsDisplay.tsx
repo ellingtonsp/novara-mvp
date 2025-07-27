@@ -28,6 +28,13 @@ interface InsightResponse {
   success: boolean;
   insight: Insight;
   analysis_data: AnalysisData;
+  requires_onboarding_completion?: boolean;
+  user_status?: {
+    onboarding_path?: string;
+    baseline_completed?: boolean;
+    has_primary_need?: boolean;
+    has_cycle_stage?: boolean;
+  };
 }
 
 const DailyInsightsDisplay: React.FC = () => {
@@ -122,7 +129,13 @@ const DailyInsightsDisplay: React.FC = () => {
         setInsight(data.insight);
         setAnalysisData(data.analysis_data);
       } else {
-        setError('Complete a few check-ins to unlock daily insights');
+        // Handle onboarding completion requirement
+        if (data.requires_onboarding_completion) {
+          setError('Complete your profile to unlock personalized insights');
+          console.log('🔍 Onboarding completion required:', data.user_status);
+        } else {
+          setError('Complete a few check-ins to unlock daily insights');
+        }
       }
     } catch (err) {
       console.error('Error fetching insights:', err);

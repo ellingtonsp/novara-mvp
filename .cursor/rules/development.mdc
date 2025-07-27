@@ -42,6 +42,48 @@ npm run bugbot:post-deploy  # Validate after deployment
 - Test both frontend and backend components
 - Validate environment configurations
 
+## 🧪 MANDATORY A/B TESTING VALIDATION
+
+### **Split Testing Requirements**
+- **ALWAYS conduct thorough A/B test validation** for any split testing features
+- **Test distribution balance**: Run 20+ iterations to verify 50/50 split (within 30% variance)
+- **Validate session consistency**: Same session ID must always return same path
+- **Test both paths end-to-end**: Verify complete user journeys for each path
+- **Check analytics tracking**: Ensure PostHog events fire correctly for each path
+
+### **A/B Test Validation Checklist**
+```bash
+# 1. Distribution Test
+node test-AB-distribution-validation.js
+
+# 2. Path A Validation  
+node test-path-A-validation.js
+
+# 3. Path B Validation
+node test-path-B-validation.js
+
+# 4. End-to-End Journey Test
+node test-AB-end-to-end.js
+
+# 5. Analytics Validation
+node test-AB-analytics.js
+```
+
+### **Required Validation Steps**
+1. **Distribution Balance**: 40-60% split for each path
+2. **Session Consistency**: Same session = same path every time
+3. **User Journey A**: Complete flow from start to finish
+4. **User Journey B**: Complete flow from start to finish  
+5. **Analytics Events**: All events fire with correct properties
+6. **No Regressions**: Existing functionality still works
+
+### **Legacy Function Protection**
+- **ALWAYS verify no legacy functions are broken** when adding new features
+- **Test existing user journeys** after implementing new features
+- **Run comprehensive regression tests** before deployment
+- **Only replace legacy functions** when explicitly requested to do so
+- **Document any breaking changes** and provide migration paths
+
 ## Development Best Practices
 - Always use stable port strategy
 - Document all changes

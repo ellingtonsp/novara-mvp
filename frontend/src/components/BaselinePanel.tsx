@@ -11,6 +11,7 @@ interface BaselineData {
   confidence_meds: number;
   confidence_costs: number;
   confidence_overall: number;
+  top_concern: string;
 }
 
 interface BaselinePanelProps {
@@ -32,7 +33,8 @@ export const BaselinePanel: React.FC<BaselinePanelProps> = ({
     nickname: userEmail.split('@')[0], // Default to email prefix
     confidence_meds: 5,
     confidence_costs: 5,
-    confidence_overall: 5
+    confidence_overall: 5,
+    top_concern: ''
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -63,6 +65,22 @@ export const BaselinePanel: React.FC<BaselinePanelProps> = ({
       min: 1,
       max: 10,
       labels: { min: 'In the dark', max: 'On top of it' }
+    },
+    {
+      id: 'confidence_overall',
+      title: 'How confident do you feel about your overall IVF journey?',
+      description: 'Your general sense of readiness and understanding',
+      type: 'slider' as const,
+      min: 1,
+      max: 10,
+      labels: { min: 'Completely overwhelmed', max: 'Ready and confident' }
+    },
+    {
+      id: 'top_concern',
+      title: 'What\'s your biggest worry right now?',
+      description: 'Optional - helps us provide more targeted support',
+      type: 'text' as const,
+      optional: true
     }
   ];
 
@@ -116,10 +134,15 @@ export const BaselinePanel: React.FC<BaselinePanelProps> = ({
             <Input
               value={formData[currentQ.id as keyof BaselineData] as string}
               onChange={(e) => handleInputChange(currentQ.id as keyof BaselineData, e.target.value)}
-              placeholder="Your preferred name"
+              placeholder={currentQ.id === 'nickname' ? 'Your preferred name' : 'Share your thoughts...'}
               className="text-lg p-4 border-[#FF6F61]/30 focus:border-[#FF6F61]"
               autoFocus
             />
+            {currentQ.optional && (
+              <p className="text-xs text-gray-500 text-center">
+                This is optional - you can skip if you prefer
+              </p>
+            )}
           </div>
         );
 

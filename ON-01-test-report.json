@@ -1,0 +1,136 @@
+{
+  "timestamp": "2025-07-27T17:57:19.447Z",
+  "summary": {
+    "passed": 11,
+    "total": 18,
+    "successRate": 61
+  },
+  "results": [
+    {
+      "test": "Session ID Generation",
+      "success": true,
+      "details": "Generated unique session IDs",
+      "data": null,
+      "timestamp": "2025-07-27T17:54:23.288Z"
+    },
+    {
+      "test": "Deterministic Path Assignment",
+      "success": true,
+      "details": "Paths assigned: control, test, control",
+      "data": null,
+      "timestamp": "2025-07-27T17:54:23.290Z"
+    },
+    {
+      "test": "50/50 Distribution",
+      "success": false,
+      "details": "Test: 100, Control: 0 (100% variance)",
+      "data": null,
+      "timestamp": "2025-07-27T17:54:23.290Z"
+    },
+    {
+      "test": "Backend Health Check",
+      "success": true,
+      "details": "Status: ok, Environment: development",
+      "data": null,
+      "timestamp": "2025-07-27T17:57:05.246Z"
+    },
+    {
+      "test": "Database Schema - onboarding_path Field",
+      "success": true,
+      "details": "User created with onboarding_path: test",
+      "data": null,
+      "timestamp": "2025-07-27T17:57:05.253Z"
+    },
+    {
+      "test": "Control Path User Creation",
+      "success": true,
+      "details": "User created: on01-test-control-1753639027731@test.com, Path: control",
+      "data": null,
+      "timestamp": "2025-07-27T17:57:07.737Z"
+    },
+    {
+      "test": "Control Path Login",
+      "success": true,
+      "details": "Login successful, Path: control",
+      "data": null,
+      "timestamp": "2025-07-27T17:57:07.742Z"
+    },
+    {
+      "test": "Control Path Baseline Logic",
+      "success": true,
+      "details": "Path: control, Needs baseline: false",
+      "data": null,
+      "timestamp": "2025-07-27T17:57:07.747Z"
+    },
+    {
+      "test": "Test Path User Creation (Fast Onboarding)",
+      "success": true,
+      "details": "User created: on01-test-test-1753639028860@test.com, Path: test",
+      "data": null,
+      "timestamp": "2025-07-27T17:57:08.863Z"
+    },
+    {
+      "test": "Test Path Baseline Requirement",
+      "success": true,
+      "details": "Path: test, Baseline completed: 0, Needs baseline: true",
+      "data": null,
+      "timestamp": "2025-07-27T17:57:08.865Z"
+    },
+    {
+      "test": "Baseline Panel Completion",
+      "success": false,
+      "details": "Baseline completed: undefined",
+      "data": null,
+      "timestamp": "2025-07-27T17:57:08.867Z"
+    },
+    {
+      "test": "Test Path Post-Baseline State",
+      "success": false,
+      "details": "Path: test, Baseline completed: 0, Still needs baseline: true",
+      "data": null,
+      "timestamp": "2025-07-27T17:57:08.869Z"
+    },
+    {
+      "test": "Control Path Insights Access",
+      "success": true,
+      "details": "Insights available: true",
+      "data": null,
+      "timestamp": "2025-07-27T17:57:13.970Z"
+    },
+    {
+      "test": "Test Path Insights Blocking",
+      "success": true,
+      "details": "Response: 403, Blocked: true",
+      "data": null,
+      "timestamp": "2025-07-27T17:57:13.978Z"
+    },
+    {
+      "test": "Analytics Endpoint Health",
+      "success": false,
+      "details": "Status: 404",
+      "data": null,
+      "timestamp": "2025-07-27T17:57:14.580Z"
+    },
+    {
+      "test": "Onboarding Completion Tracking",
+      "success": false,
+      "details": "Tracking event sent: 404",
+      "data": null,
+      "timestamp": "2025-07-27T17:57:14.582Z"
+    },
+    {
+      "test": "Control Path Complete Journey",
+      "success": false,
+      "details": "Error: invalid json response body at http://localhost:9002/api/checkins/daily reason: Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON",
+      "data": null,
+      "timestamp": "2025-07-27T17:57:18.869Z"
+    },
+    {
+      "test": "Test Path Complete Journey",
+      "success": false,
+      "details": "Error: invalid json response body at http://localhost:9002/api/checkins/daily reason: Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON",
+      "data": null,
+      "timestamp": "2025-07-27T17:57:18.878Z"
+    }
+  ]
+}

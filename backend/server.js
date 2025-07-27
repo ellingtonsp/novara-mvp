@@ -297,7 +297,7 @@ if (process.env.NODE_ENV !== 'production') {
 app.use(cors({
   origin: allowedOrigins,
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Origin', 'X-Requested-With', 'Accept'],
   exposedHeaders: ['Access-Control-Allow-Origin', 'Access-Control-Allow-Credentials'],
   preflightContinue: false,
@@ -1856,6 +1856,11 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
         confidence_meds: user.confidence_meds,
         confidence_costs: user.confidence_costs,
         confidence_overall: user.confidence_overall,
+        primary_need: user.primary_need,
+        cycle_stage: user.cycle_stage,
+        top_concern: user.top_concern,
+        baseline_completed: user.baseline_completed,
+        onboarding_path: user.onboarding_path,
         created_at: user.created_at
       },
       message: 'Login successful'
@@ -1919,6 +1924,14 @@ app.post('/api/users', authLimiter, async (req, res) => {
       status: 'active'
     };
 
+    // ON-01: Add A/B test tracking fields
+    if (req.body.onboarding_path && (req.body.onboarding_path === 'control' || req.body.onboarding_path === 'test')) {
+      userData.onboarding_path = req.body.onboarding_path;
+    }
+    if (req.body.baseline_completed !== undefined) {
+      userData.baseline_completed = req.body.baseline_completed === true;
+    }
+
     // Only add optional fields if they have values
     if (req.body.primary_need && req.body.primary_need !== '') {
       userData.primary_need = req.body.primary_need;
@@ -1962,6 +1975,11 @@ app.post('/api/users', authLimiter, async (req, res) => {
         confidence_meds: newUser.confidence_meds,
         confidence_costs: newUser.confidence_costs,
         confidence_overall: newUser.confidence_overall,
+        primary_need: newUser.primary_need,
+        cycle_stage: newUser.cycle_stage,
+        top_concern: newUser.top_concern,
+        onboarding_path: newUser.onboarding_path,
+        baseline_completed: newUser.baseline_completed,
         created_at: newUser.created_at
       },
       message: 'User created successfully'
@@ -1996,6 +2014,11 @@ app.get('/api/users/me', authenticateToken, async (req, res) => {
         confidence_meds: user.confidence_meds,
         confidence_costs: user.confidence_costs,
         confidence_overall: user.confidence_overall,
+        primary_need: user.primary_need,
+        cycle_stage: user.cycle_stage,
+        top_concern: user.top_concern,
+        baseline_completed: user.baseline_completed,
+        onboarding_path: user.onboarding_path,
         medication_status: user.medication_status,
         medication_status_updated: user.medication_status_updated,
         created_at: user.created_at
@@ -2391,6 +2414,36 @@ app.get('/api/insights/daily', authenticateToken, async (req, res) => {
       return res.status(404).json({ 
         success: false, 
         error: 'User not found' 
+      });
+    }
+
+    // 🚨 CRITICAL FIX: Check if user has completed full onboarding
+    const hasCompletedOnboarding = !!user.baseline_completed || 
+                                  (user.onboarding_path === 'control' && 
+                                   user.primary_need && 
+                                   user.cycle_stage);
+    
+    console.log('🔍 Onboarding completion check:', {
+      user_email: user.email,
+      onboarding_path: user.onboarding_path,
+      baseline_completed: user.baseline_completed,
+      primary_need: user.primary_need,
+      cycle_stage: user.cycle_stage,
+      hasCompletedOnboarding
+    });
+
+    if (!hasCompletedOnboarding) {
+      console.log('⚠️ User has not completed onboarding, blocking insights');
+      return res.status(403).json({
+        success: false,
+        error: 'Complete your profile to unlock personalized insights',
+        requires_onboarding_completion: true,
+        user_status: {
+          onboarding_path: user.onboarding_path,
+          baseline_completed: user.baseline_completed,
+          has_primary_need: !!user.primary_need,
+          has_cycle_stage: !!user.cycle_stage
+        }
       });
     }
 
@@ -3136,7 +3189,7 @@ app.patch('/api/users/medication-status', authenticateToken, async (req, res) =>
 // ON-01: Update user baseline completion data
 app.patch('/api/users/baseline', authenticateToken, async (req, res) => {
   try {
-    const { nickname, confidence_meds, confidence_costs, confidence_overall, baseline_completed } = req.body;
+    const { nickname, confidence_meds, confidence_costs, confidence_overall, top_concern, baseline_completed } = req.body;
     
     if (!nickname || confidence_meds === undefined || confidence_costs === undefined || confidence_overall === undefined) {
       return res.status(400).json({ 
@@ -3170,6 +3223,7 @@ app.patch('/api/users/baseline', authenticateToken, async (req, res) => {
       confidence_meds,
       confidence_costs,
       confidence_overall,
+      top_concern: top_concern || '', // Include top_concern field
       baseline_completed: baseline_completed === true
     };
 
@@ -3194,6 +3248,7 @@ app.patch('/api/users/baseline', authenticateToken, async (req, res) => {
     }
 
     console.log(`✅ ON-01: Updated baseline data for ${req.user.email}, baseline_completed: ${baseline_completed}`);
+    console.log('📊 ON-01: Full update data:', updateData);
 
     res.json({
       success: true,

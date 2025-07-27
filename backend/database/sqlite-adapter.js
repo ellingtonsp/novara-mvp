@@ -192,8 +192,9 @@ class SQLiteAdapter {
     
     const stmt = this.db.prepare(`
       INSERT INTO users (id, email, nickname, confidence_meds, confidence_costs, confidence_overall, 
-                        primary_need, cycle_stage, top_concern, timezone, email_opt_in, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        primary_need, cycle_stage, top_concern, timezone, email_opt_in, status,
+                        baseline_completed, onboarding_path)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     
     try {
@@ -202,7 +203,9 @@ class SQLiteAdapter {
         userData.confidence_costs || 5, userData.confidence_overall || 5,
         userData.primary_need, userData.cycle_stage, userData.top_concern,
         userData.timezone, userData.email_opt_in !== false ? 1 : 0, 
-        userData.status || 'active'
+        userData.status || 'active',
+        userData.baseline_completed === true ? 1 : 0,
+        userData.onboarding_path || null
       );
       
       // Return in Airtable format
@@ -231,10 +234,19 @@ class SQLiteAdapter {
   // NEW: Update user method for medication status and other profile updates
   async updateUser(userId, updateData) {
     try {
+      // Convert boolean fields to integers for SQLite
+      const processedData = { ...updateData };
+      if (processedData.baseline_completed !== undefined) {
+        processedData.baseline_completed = processedData.baseline_completed === true ? 1 : 0;
+      }
+      if (processedData.email_opt_in !== undefined) {
+        processedData.email_opt_in = processedData.email_opt_in === true ? 1 : 0;
+      }
+      
       // Build dynamic SQL based on provided fields
-      const fields = Object.keys(updateData);
+      const fields = Object.keys(processedData);
       const setClause = fields.map(field => `${field} = ?`).join(', ');
-      const values = fields.map(field => updateData[field]);
+      const values = fields.map(field => processedData[field]);
       
       const stmt = this.db.prepare(`UPDATE users SET ${setClause} WHERE id = ?`);
       const result = stmt.run(...values, userId);
@@ -243,7 +255,7 @@ class SQLiteAdapter {
         throw new Error('User not found or no changes made');
       }
       
-      console.log(`✅ SQLite: Updated user ${userId} with:`, updateData);
+      console.log(`✅ SQLite: Updated user ${userId} with:`, processedData);
       
       // Return updated user
       const updatedUser = this.db.prepare('SELECT * FROM users WHERE id = ?').get(userId);

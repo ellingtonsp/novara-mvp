@@ -10,6 +10,8 @@ alwaysApply: true
 - **NEVER share database IDs between environments**
 - **ALWAYS use SQLite for local development**
 - **ALWAYS validate database ID before operations**
+- **ALWAYS verify schema consistency** between environments
+- **ALWAYS use correct table names** (check existing schema first)
 
 ## Environment-Specific Database IDs
 - **Staging**: `appEOWvLjCn5c7Ght`
@@ -21,6 +23,8 @@ alwaysApply: true
 2. Verify `NODE_ENV` is set correctly
 3. Confirm `USE_LOCAL_DATABASE=true` for local development
 4. Test database connectivity
+5. **Verify schema consistency** between environments
+6. **Check table names** match existing schema
 
 ## Local Development
 ```bash
@@ -31,7 +35,36 @@ USE_LOCAL_DATABASE=true npm run local
 backend/data/novara-local.db
 ```
 
+## Schema Health & Consistency
+
+### **Table Name Validation**
+- **ALWAYS check existing schema** before making database changes
+- **Verify table names** match between SQLite and Airtable
+- **Common table names**: `users`, `daily_checkins`, `insights`, `insight_engagement`
+- **Use schema validation scripts** to check consistency
+
+### **Schema Validation Commands**
+```bash
+# Check SQLite schema
+sqlite3 backend/data/novara-local.db ".schema"
+
+# Validate table names
+node scripts/validate-schema.js
+
+# Check Airtable schema
+node scripts/airtable-schema-validator.js
+```
+
+### **Before Making Database Changes**
+1. **Check existing schema** in both environments
+2. **Verify table names** are consistent
+3. **Test schema changes** in local environment first
+4. **Validate data types** match between environments
+5. **Run migration tests** before deployment
+
 ## Troubleshooting
 - If database errors occur, check environment variables
 - Verify database permissions for SQLite file
 - Ensure proper database isolation between environments
+- **Check schema consistency** between SQLite and Airtable
+- **Verify table names** match existing schema

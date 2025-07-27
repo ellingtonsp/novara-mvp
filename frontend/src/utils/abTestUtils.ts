@@ -15,21 +15,43 @@ export interface OnboardingContext {
  * Returns 'test' for Fast Lane, 'control' for standard onboarding
  */
 export const getOnboardingPath = (): OnboardingPath => {
+  // Check if we already decided for this session
+  const currentSessionId = getSessionId();
+  const cacheKey = `novara_onboarding_path_${currentSessionId}`;
+  
+  if (typeof window !== 'undefined') {
+    const cachedPath = sessionStorage.getItem(cacheKey);
+    if (cachedPath && (cachedPath === 'control' || cachedPath === 'test')) {
+      console.log('🧪 A/B Test: Using cached path =', cachedPath);
+      return cachedPath as OnboardingPath;
+    }
+  }
   // Development testing: Check for forced path
   const forcedPath = import.meta.env.VITE_FORCE_ONBOARDING_PATH;
+  console.log('🧪 A/B Test: Checking environment variables:', {
+    VITE_FORCE_ONBOARDING_PATH: import.meta.env.VITE_FORCE_ONBOARDING_PATH,
+    VITE_DEBUG_AB_TEST: import.meta.env.VITE_DEBUG_AB_TEST,
+    VITE_AB_TEST_ENABLED: import.meta.env.VITE_AB_TEST_ENABLED,
+    forcedPath
+  });
+  
   if (forcedPath && (forcedPath === 'control' || forcedPath === 'test')) {
-    if (import.meta.env.VITE_DEBUG_AB_TEST === 'true') {
-      console.log('🧪 A/B Test: FORCED PATH =', forcedPath);
+    console.log('🧪 A/B Test: FORCED PATH =', forcedPath);
+    // Cache the forced path decision
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem(cacheKey, forcedPath);
     }
     return forcedPath;
   }
 
   // Check if A/B test is enabled
   if (import.meta.env.VITE_AB_TEST_ENABLED !== 'true') {
-    if (import.meta.env.VITE_DEBUG_AB_TEST === 'true') {
-      console.log('🧪 A/B Test: DISABLED, defaulting to control');
-    }
-    return 'control';
+    console.log('🧪 A/B Test: DISABLED by env var, but forcing enabled for testing');
+    // Temporarily force enabled for testing
+    // if (typeof window !== 'undefined') {
+    //   sessionStorage.setItem(cacheKey, 'control');
+    // }
+    // return 'control';
   }
 
   // Check if PostHog is available
@@ -39,19 +61,31 @@ export const getOnboardingPath = (): OnboardingPath => {
     // Check feature flag for fast onboarding
     const isFastLane = posthog.isFeatureEnabled('fast_onboarding_v1');
     
-    if (import.meta.env.VITE_DEBUG_AB_TEST === 'true') {
-      console.log('🧪 A/B Test: PostHog fast_onboarding_v1 =', isFastLane);
-    }
+    console.log('🧪 A/B Test: PostHog fast_onboarding_v1 =', isFastLane);
     
-    return isFastLane ? 'test' : 'control';
+    // Temporarily bypass PostHog for testing - use deterministic split instead
+    console.log('🧪 A/B Test: Temporarily bypassing PostHog for testing');
+    
+    // Fall through to deterministic split
   }
   
-  // Fallback: 50/50 split based on session
-  const sessionBasedSplit = Math.random() < 0.5;
+  // Fallback: Deterministic 50/50 split based on session ID
+  const sessionId = getSessionId();
+  const sessionHash = sessionId.split('_').pop() || sessionId;
+  const sessionBasedSplit = sessionHash.charCodeAt(0) % 2 === 0;
   const result = sessionBasedSplit ? 'test' : 'control';
   
-  if (import.meta.env.VITE_DEBUG_AB_TEST === 'true') {
-    console.log('🧪 A/B Test: PostHog not available, using session-based split =', result);
+  console.log('🧪 A/B Test: Using deterministic session-based split =', result, {
+    sessionId: currentSessionId,
+    sessionHash,
+    sessionBasedSplit,
+    sessionHashCharCode: sessionHash.charCodeAt(0)
+  });
+  
+  // Cache the decision for this session
+  if (typeof window !== 'undefined') {
+    sessionStorage.setItem(cacheKey, result);
+    console.log('🧪 A/B Test: Cached path decision =', result);
   }
   
   return result;
@@ -144,11 +178,60 @@ export const getSessionId = (): string => {
 };
 
 /**
- * Check if user needs to complete baseline panel
- * (test path users who haven't completed baseline questions)
+ * Check if user needs to complete baseline panel or full onboarding
+ * (test path users who haven't completed baseline questions OR control users without full onboarding)
  */
 export const needsBaselineCompletion = (user: any, onboardingPath: OnboardingPath): boolean => {
-  return onboardingPath === 'test' && !user?.baselineCompleted;
+  // Test path: needs baseline completion
+  if (onboardingPath === 'test') {
+    const needsBaseline = !user?.baseline_completed;
+    
+    console.log('🧪 ON-01: Test path baseline check:', {
+      user: user?.email,
+      onboardingPath,
+      baseline_completed: user?.baseline_completed,
+      needsBaseline
+    });
+    
+    return needsBaseline;
+  }
+  
+  // Control path: needs full onboarding (primary_need AND cycle_stage)
+  if (onboardingPath === 'control') {
+    const hasFullOnboarding = user?.primary_need && user?.cycle_stage;
+    const needsOnboarding = !hasFullOnboarding;
+    
+    console.log('🧪 ON-01: Control path onboarding check:', {
+      user: user?.email,
+      onboardingPath,
+      primary_need: user?.primary_need,
+      cycle_stage: user?.cycle_stage,
+      hasFullOnboarding,
+      needsOnboarding
+    });
+    
+    return needsOnboarding;
+  }
+  
+  // Fallback: assume needs completion if unsure
+  console.log('🧪 ON-01: Unknown path, defaulting to needs completion:', {
+    user: user?.email,
+    onboardingPath
+  });
+  
+  return true;
+};
+
+/**
+ * Clear onboarding path cache (useful for testing)
+ */
+export const clearOnboardingPathCache = () => {
+  if (typeof window !== 'undefined') {
+    const sessionId = getSessionId();
+    const cacheKey = `novara_onboarding_path_${sessionId}`;
+    sessionStorage.removeItem(cacheKey);
+    console.log('🧪 A/B Test: Cleared onboarding path cache');
+  }
 };
 
 /**

@@ -9,10 +9,12 @@ export interface User {
   confidence_meds: number;
   confidence_costs: number;
   confidence_overall: number;
-  created_at: string;
-  // ON-01: A/B Test fields
+  primary_need?: string;
+  cycle_stage?: string;
+  top_concern?: string;
   baseline_completed?: boolean;
   onboarding_path?: string;
+  created_at: string;
 }
 
 interface AuthContextType {
