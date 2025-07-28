@@ -1,0 +1,179 @@
+# Implementation Checkpoints & Rollback Guide
+
+## 🎯 **Purpose**
+Track implementation progress for features with clear checkpoint documentation and rollback guidance. This ensures safe, incremental development with easy recovery points.
+
+## 📋 **Checkpoint Documentation Requirements**
+
+### **For Each Feature Implementation:**
+1. **Create checkpoint document** in `docs/features/[FEATURE-ID]/checkpoints.md`
+2. **Update after each functional milestone**
+3. **Include rollback commands** for each checkpoint
+4. **Document testing status** at each checkpoint
+
+### **Checkpoint Document Structure:**
+```markdown
+# [FEATURE-ID] Implementation Checkpoints
+
+## 🎯 **Feature Overview**
+- **Epic/Story ID**: [ID]
+- **Sprint**: [Sprint Number]
+- **Status**: [In Progress/Complete]
+- **Current Step**: [Step X.Y]
+
+## 📊 **Implementation Progress**
+
+### **Step 1.1: [Foundation/Setup]**
+- **Commit**: `[commit-hash]`
+- **Date**: [YYYY-MM-DD]
+- **Status**: ✅ Complete
+- **Files Changed**: [list of files]
+- **Functionality**: [what was implemented]
+- **Testing**: [test status]
+- **Rollback Command**: `git reset --hard [commit-hash]`
+
+### **Step 1.2: [Next Step]**
+- **Commit**: `[commit-hash]`
+- **Date**: [YYYY-MM-DD]
+- **Status**: 🔄 In Progress
+- **Files Changed**: [list of files]
+- **Functionality**: [what was implemented]
+- **Testing**: [test status]
+- **Rollback Command**: `git reset --hard [commit-hash]`
+
+## 🚨 **Rollback Scenarios**
+
+### **Complete Feature Rollback:**
+```bash
+git reset --hard development
+```
+
+### **Rollback to Specific Step:**
+```bash
+git reset --hard [step-commit-hash]
+```
+
+### **Rollback to Previous Checkpoint:**
+```bash
+git reset --hard HEAD~1
+```
+
+## 🧪 **Testing Checklist**
+- [ ] Unit tests pass
+- [ ] Integration tests pass
+- [ ] Manual testing completed
+- [ ] Edge cases tested
+- [ ] Error scenarios tested
+
+## 📝 **Notes & Issues**
+- [Any known issues or limitations]
+- [Dependencies or prerequisites]
+- [Environment-specific considerations]
+```
+
+## 🔄 **Checkpoint Creation Workflow**
+
+### **Before Each Checkpoint:**
+1. **Test the current functionality**
+2. **Run all relevant tests**
+3. **Verify integration with existing features**
+4. **Document any known issues**
+
+### **During Checkpoint Creation:**
+1. **Commit with descriptive message**
+2. **Update checkpoint document**
+3. **Tag if it's a major milestone**
+4. **Update feature status**
+
+### **After Checkpoint Creation:**
+1. **Verify rollback works**
+2. **Update implementation plan**
+3. **Communicate progress to team**
+
+## 📚 **Checkpoint Best Practices**
+
+### **Commit Message Format:**
+```
+[FEATURE-ID] Step X.Y: [Brief description]
+
+- What was implemented
+- Key changes made
+- Testing status
+- Any breaking changes
+```
+
+### **Checkpoint Frequency:**
+- **Major milestones**: Every functional component
+- **Minor changes**: Group related changes
+- **Critical features**: More frequent checkpoints
+- **Simple features**: Fewer checkpoints
+
+### **Rollback Testing:**
+- **Test rollback commands** after each checkpoint
+- **Verify functionality** after rollback
+- **Document any rollback issues**
+
+## 🎯 **Current Active Features**
+
+### **ON-01: Onboarding A/B Experiment**
+- **Status**: 🔄 In Progress
+- **Current Step**: 1.2 (UI Integration)
+- **Checkpoint Document**: `docs/features/ON-01-onboarding-ab-experiment/checkpoints.md`
+- **Branch**: `feature/ON-01-simplified-ab-test`
+
+### **Template for New Features:**
+```markdown
+### **[FEATURE-ID]: [Feature Name]**
+- **Status**: [Not Started/In Progress/Complete]
+- **Current Step**: [Step X.Y]
+- **Checkpoint Document**: `docs/features/[FEATURE-ID]/checkpoints.md`
+- **Branch**: `feature/[FEATURE-ID]`
+```
+
+## 🚨 **Emergency Procedures**
+
+### **If Feature Breaks Production:**
+1. **Immediate rollback** to last stable checkpoint
+2. **Document the issue** in checkpoint document
+3. **Create hotfix branch** if needed
+4. **Update rollback guidance**
+
+### **If Checkpoint Document is Outdated:**
+1. **Update immediately** with current state
+2. **Verify all rollback commands** work
+3. **Test functionality** at each checkpoint
+4. **Communicate changes** to team
+
+## 📊 **Checkpoint Quality Checklist**
+
+### **Documentation Quality:**
+- [ ] Clear step descriptions
+- [ ] Accurate commit hashes
+- [ ] Working rollback commands
+- [ ] Complete testing status
+- [ ] Known issues documented
+
+### **Implementation Quality:**
+- [ ] Each step is functional
+- [ ] Tests pass at each checkpoint
+- [ ] Integration works correctly
+- [ ] No breaking changes introduced
+- [ ] Rollback is clean and complete
+
+## 🔄 **Continuous Improvement**
+
+### **After Each Feature Completion:**
+1. **Review checkpoint effectiveness**
+2. **Update best practices**
+3. **Improve documentation templates**
+4. **Share lessons learned**
+
+### **Regular Maintenance:**
+1. **Update checkpoint documents** monthly
+2. **Verify rollback commands** still work
+3. **Archive completed features**
+4. **Update this rule** based on learnings
+description:
+globs:
+alwaysApply: false
+---
