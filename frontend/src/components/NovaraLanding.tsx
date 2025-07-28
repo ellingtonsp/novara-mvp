@@ -161,9 +161,12 @@ const NovaraLanding = () => {
         onboarding_path: user.onboarding_path
       });
       
-      if (user.baseline_completed) {
-        // User has completed onboarding, go directly to dashboard
-        console.log('🧪 ON-01: User completed onboarding, going to dashboard');
+      // Check if user is an existing user (has confidence scores and other profile data)
+      const isExistingUser = user.confidence_meds && user.confidence_costs && user.confidence_overall && user.primary_need && user.cycle_stage;
+      
+      if (user.baseline_completed || isExistingUser) {
+        // User has completed onboarding OR is an existing user, go directly to dashboard
+        console.log('🧪 ON-01: User completed onboarding or is existing user, going to dashboard');
         setCurrentView('dashboard');
       } else {
         // User needs to complete onboarding, stay on welcome
@@ -180,12 +183,15 @@ const NovaraLanding = () => {
     // Only check for baseline completion when user is explicitly on dashboard view
     // AND not during the welcome view transition
     if (isAuthenticated && user && onboardingPath && currentView === 'dashboard') {
-      const needsBaseline = !user.baseline_completed && onboardingPath === 'test';
+      // Check if user is an existing user (has confidence scores and other profile data)
+      const isExistingUser = user.confidence_meds && user.confidence_costs && user.confidence_overall && user.primary_need && user.cycle_stage;
+      const needsBaseline = !user.baseline_completed && onboardingPath === 'test' && !isExistingUser;
       
       console.log('🧪 ON-01: Baseline completion check on dashboard transition:', {
         user: user.email,
         onboardingPath,
         baseline_completed: user.baseline_completed,
+        isExistingUser,
         needsBaseline,
         currentView
       });
