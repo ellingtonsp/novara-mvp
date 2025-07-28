@@ -15,6 +15,7 @@ import DailyInsightsDisplay from './DailyInsightsDisplay';
 import WelcomeInsight from './WelcomeInsight';
 // ON-01: A/B Test Integration
 import { getOnboardingPath, OnboardingPath } from '../utils/abTestUtils-CLEAN';
+import { OnboardingFast } from './OnboardingFast';
 
 const sliderThumbStyle = `
   input[type="range"]::-webkit-slider-thumb {
@@ -238,6 +239,45 @@ const NovaraLanding = () => {
 
   const handleCheckinComplete = () => {
     setCurrentView('insights');
+  };
+
+  // ON-01: Handle fast onboarding completion
+  const handleFastOnboardingComplete = async (data: any) => {
+    console.log('🧪 ON-01: Fast onboarding completed with data:', data);
+    
+    // Map fast onboarding data to formData format
+    const fastFormData = {
+      ...formData,
+      email: data.email,
+      cycle_stage: data.cycle_stage,
+      primary_concern: data.primary_concern,
+      // Set defaults for missing fields (will be collected in Baseline Panel)
+      nickname: '',
+      confidence_meds: 5,
+      confidence_costs: 5,
+      confidence_overall: 5,
+      email_opt_in: true
+    };
+    
+    setFormData(fastFormData);
+    
+    try {
+      const response = await apiClient.createUser(fastFormData);
+      
+      if (response.success && response.data) {
+        console.log('✅ Fast onboarding signup successful');
+        login(fastFormData.email, response.data.token, response.data.user);
+        
+        setJustSignedUp(true);
+        setShowForm(false);
+        setCurrentView('welcome');
+      } else {
+        alert(`Fast onboarding failed: ${response.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Fast onboarding error:', error);
+      alert('Connection error. Please try again.');
+    }
   };
 
   const handleClearCache = async () => {
@@ -549,10 +589,22 @@ const NovaraLanding = () => {
           </div>
         )}
 
-        {/* Signup Form Modal - Responsive */}
+        {/* ON-01: A/B Test Onboarding Modal */}
         {showForm && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-            <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            {onboardingPath === 'test' ? (
+              // Fast Lane Onboarding (3 questions)
+              <OnboardingFast
+                onComplete={handleFastOnboardingComplete}
+                onBack={() => {
+                  console.log('🧪 ON-01: User chose to go back to full onboarding');
+                  setOnboardingPath('control');
+                }}
+                initialData={formData}
+              />
+            ) : (
+              // Control Onboarding (6 questions)
+              <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-2xl bg-gradient-to-r from-[#FF6F61] to-[#CBA7FF] bg-clip-text text-transparent">
@@ -766,6 +818,7 @@ const NovaraLanding = () => {
                 </div>
               </CardContent>
             </Card>
+            )}
           </div>
         )}
         {/* Old modal code removed - now using dedicated WelcomeInsight page */}
