@@ -13,6 +13,8 @@ import { clearAllCaches } from '../utils/pwa';
 import DailyCheckinForm from './DailyCheckinForm';
 import DailyInsightsDisplay from './DailyInsightsDisplay';
 import WelcomeInsight from './WelcomeInsight';
+// ON-01: A/B Test Integration
+import { getOnboardingPath, OnboardingPath } from '../utils/abTestUtils-CLEAN';
 
 const sliderThumbStyle = `
   input[type="range"]::-webkit-slider-thumb {
@@ -115,6 +117,10 @@ const NovaraLanding = () => {
   const [loginEmail, setLoginEmail] = useState('');
   const [justSignedUp, setJustSignedUp] = useState(false);
   
+  // ON-01: A/B Test State
+  const [onboardingPath, setOnboardingPath] = useState<OnboardingPath | null>(null);
+  const [showBaselinePanel, setShowBaselinePanel] = useState(false);
+  
   // ON-01: Speed-tapper detection state (commented out for future implementation)
   // const [isSpeedTapper, setIsSpeedTapper] = useState(false);
   // const [tapTimes, setTapTimes] = useState<number[]>([]);
@@ -132,6 +138,16 @@ const NovaraLanding = () => {
     top_concern: '',
     email_opt_in: true,
   });
+  
+  // ON-01: Initialize A/B test path on component mount
+  useEffect(() => {
+    if (!isAuthenticated && !onboardingPath) {
+      const path = getOnboardingPath();
+      setOnboardingPath(path);
+      console.log('🧪 ON-01: Initialized A/B test path =', path);
+    }
+  }, [isAuthenticated, onboardingPath]);
+  
   // Remove old modal state - now using dedicated page
 
   // Add at the top of the component, after useState for formData
