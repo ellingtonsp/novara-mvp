@@ -322,13 +322,6 @@ const NovaraLanding = () => {
         console.log('✅ Fast onboarding signup successful');
         login(fastFormData.email, response.data.token, response.data.user);
         
-        // Set onboarding path and baseline completion status
-        const updatedUser = {
-          ...response.data.user,
-          onboarding_path: 'test',
-          baseline_completed: false
-        };
-        
         setJustSignedUp(true);
         setShowForm(false);
         setCurrentView('welcome');
