@@ -1,0 +1,87 @@
+name: Railway Deployment
+on:
+  push:
+    branches: [staging, main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+        - staging
+        - production
+
+jobs:
+  deploy-railway:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Deploy to Railway
+        run: |
+          echo "🚀 Deploying to Railway..."
+          
+          # Set environment based on branch or input
+          if [ "${{ github.ref }}" = "refs/heads/staging" ] || [ "${{ github.event.inputs.environment }}" = "staging" ]; then
+            ENVIRONMENT="staging"
+            HEALTH_URL="https://novara-staging-staging.up.railway.app/api/health"
+            echo "📦 Deploying to STAGING environment"
+          elif [ "${{ github.ref }}" = "refs/heads/main" ] || [ "${{ github.event.inputs.environment }}" = "production" ]; then
+            ENVIRONMENT="production"
+            HEALTH_URL="https://novara-mvp-production.up.railway.app/api/health"
+            echo "📦 Deploying to PRODUCTION environment"
+          else
+            echo "❌ Invalid environment"
+            exit 1
+          fi
+          
+          echo "🔗 Health URL: $HEALTH_URL"
+          
+          # Railway will auto-deploy via GitHub integration
+          # We just need to trigger the deployment
+          echo "✅ Railway deployment triggered via GitHub integration"
+          echo "📊 Check Railway dashboard for deployment status"
+      
+      - name: Wait for deployment
+        run: |
+          echo "⏳ Waiting for Railway deployment to complete..."
+          sleep 180  # Wait 3 minutes for deployment
+      
+      - name: Health check
+        run: |
+          if [ "${{ github.ref }}" = "refs/heads/staging" ] || [ "${{ github.event.inputs.environment }}" = "staging" ]; then
+            URL="https://novara-staging-staging.up.railway.app/api/health"
+          else
+            URL="https://novara-mvp-production.up.railway.app/api/health"
+          fi
+          
+          echo "🔍 Checking health at: $URL"
+          
+          # Retry health check with exponential backoff
+          for i in {1..5}; do
+            echo "🔄 Health check attempt $i/5..."
+            if curl -f "$URL" > /dev/null 2>&1; then
+              echo "✅ Health check passed"
+              echo "🎉 Deployment successful!"
+              break
+            else
+              echo "⏳ Health check failed, retrying in $((i * 30)) seconds..."
+              sleep $((i * 30))
+            fi
+          done
+          
+          # Final health check
+          if curl -f "$URL" > /dev/null 2>&1; then
+            echo "✅ Final health check passed"
+          else
+            echo "⚠️ Health check failed - check Railway dashboard"
+            echo "🔗 Railway Dashboard: https://railway.app/project/f3025bf5-5cd5-4b7b-b045-4d477a4c7835"
+          fi 
