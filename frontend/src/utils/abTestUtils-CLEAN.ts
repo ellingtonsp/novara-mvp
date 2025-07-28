@@ -66,16 +66,24 @@ export const getOnboardingPath = (): OnboardingPath => {
   }
   
   // Fallback: Deterministic 50/50 split based on session ID
-  const sessionId = getSessionId();
+  let sessionId = getSessionId();
+  
+  // In development, use truly random session IDs for better testing
+  if (import.meta.env.NODE_ENV === 'development' && !import.meta.env.VITE_FORCE_ONBOARDING_PATH) {
+    sessionId = generateRandomSessionId();
+    console.log('🧪 A/B Test: Development mode - using random session ID for testing');
+  }
+  
   const sessionHash = sessionId.split('_').pop() || sessionId;
   const sessionBasedSplit = sessionHash.charCodeAt(0) % 2 === 0;
   const result = sessionBasedSplit ? 'test' : 'control';
   
-  console.log('🧪 A/B Test: Using deterministic session-based split =', result, {
-    sessionId: currentSessionId,
+  console.log('🧪 A/B Test: Using session-based split =', result, {
+    sessionId: sessionId.substring(0, 30) + '...',
     sessionHash,
     sessionBasedSplit,
-    sessionHashCharCode: sessionHash.charCodeAt(0)
+    sessionHashCharCode: sessionHash.charCodeAt(0),
+    isDevelopment: import.meta.env.NODE_ENV === 'development'
   });
   
   // Cache the decision for this session
@@ -174,6 +182,19 @@ export const getSessionId = (): string => {
 };
 
 /**
+ * Development-only: Generate truly random session ID for testing
+ */
+export const generateRandomSessionId = (): string => {
+  // Use more entropy for development testing
+  const timestamp = Date.now();
+  const random1 = Math.random().toString(36).substr(2, 9);
+  const random2 = Math.random().toString(36).substr(2, 9);
+  const random3 = Math.random().toString(36).substr(2, 9);
+  
+  return `test_session_${timestamp}_${random1}_${random2}_${random3}`;
+};
+
+/**
  * Check if user needs to complete baseline panel or full onboarding
  * (test path users who haven't completed baseline questions OR control users without full onboarding)
  */
@@ -244,6 +265,30 @@ export const forceFreshPath = (): OnboardingPath => {
 };
 
 /**
+ * Development-only: Clear all A/B test storage for testing
+ */
+export const clearAllABTestStorage = () => {
+  if (typeof window !== 'undefined' && import.meta.env.NODE_ENV === 'development') {
+    // Clear session ID
+    sessionStorage.removeItem('novara_onboarding_session_id');
+    
+    // Clear all onboarding path caches
+    const keysToRemove = [];
+    for (let i = 0; i < sessionStorage.length; i++) {
+      const key = sessionStorage.key(i);
+      if (key && key.startsWith('novara_onboarding_path_')) {
+        keysToRemove.push(key);
+      }
+    }
+    
+    keysToRemove.forEach(key => sessionStorage.removeItem(key));
+    
+    console.log('🧪 A/B Test: Cleared all A/B test storage for testing');
+    console.log('🧪 A/B Test: Removed keys:', keysToRemove);
+  }
+};
+
+/**
  * Safe tracking wrapper to prevent errors from blocking user experience
  */
 export const safeTrack = (trackingFunction: () => void) => {
@@ -253,4 +298,16 @@ export const safeTrack = (trackingFunction: () => void) => {
     console.warn('Analytics tracking failed:', error);
     // Don't block user flow
   }
-}; 
+};
+
+// Development-only: Expose functions to window for testing
+if (typeof window !== 'undefined' && import.meta.env.NODE_ENV === 'development') {
+  (window as any).clearAllABTestStorage = clearAllABTestStorage;
+  (window as any).forceFreshPath = forceFreshPath;
+  (window as any).clearOnboardingPathCache = clearOnboardingPathCache;
+  
+  console.log('🧪 A/B Test: Development functions available on window:');
+  console.log('  - window.clearAllABTestStorage()');
+  console.log('  - window.forceFreshPath()');
+  console.log('  - window.clearOnboardingPathCache()');
+} 

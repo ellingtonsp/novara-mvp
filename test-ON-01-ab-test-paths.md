@@ -37,7 +37,13 @@ VITE_FORCE_ONBOARDING_PATH=
 3. Refresh page
 4. Check console for fresh path assignment
 
-### **Method 3: Incognito Mode**
+### **Method 3: A/B Test Storage Clear (Recommended)**
+1. Open browser console (F12)
+2. Run: `window.clearAllABTestStorage && window.clearAllABTestStorage()`
+3. Refresh page
+4. Check console for fresh path assignment
+
+### **Method 4: Incognito Mode**
 1. Open new incognito window
 2. Visit http://localhost:4200
 3. Check console for path assignment
