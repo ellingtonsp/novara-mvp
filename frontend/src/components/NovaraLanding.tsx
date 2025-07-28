@@ -13,8 +13,9 @@ import { clearAllCaches } from '../utils/pwa';
 import DailyCheckinForm from './DailyCheckinForm';
 import DailyInsightsDisplay from './DailyInsightsDisplay';
 import WelcomeInsight from './WelcomeInsight';
+import { BaselinePanel } from './BaselinePanel';
 // ON-01: A/B Test Integration
-import { getOnboardingPath, OnboardingPath } from '../utils/abTestUtils-CLEAN';
+import { getOnboardingPath, OnboardingPath } from '../utils/abTestUtils';
 import { OnboardingFast } from './OnboardingFast';
 
 const sliderThumbStyle = `
@@ -121,6 +122,8 @@ const NovaraLanding = () => {
   // ON-01: A/B Test State
   const [onboardingPath, setOnboardingPath] = useState<OnboardingPath | null>(null);
   const [showBaselinePanel, setShowBaselinePanel] = useState(false);
+  const [baselineStartTime, setBaselineStartTime] = useState(0);
+  const [baselineDismissed, setBaselineDismissed] = useState(false);
   
   // ON-01: Speed-tapper detection state (commented out for future implementation)
   // const [isSpeedTapper, setIsSpeedTapper] = useState(false);
@@ -148,6 +151,57 @@ const NovaraLanding = () => {
       console.log('🧪 ON-01: Initialized A/B test path =', path);
     }
   }, [isAuthenticated, onboardingPath]);
+
+  // Set initial view based on user's onboarding status
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      console.log('🧪 ON-01: Setting initial view based on user status:', {
+        email: user.email,
+        baseline_completed: user.baseline_completed,
+        onboarding_path: user.onboarding_path
+      });
+      
+      if (user.baseline_completed) {
+        // User has completed onboarding, go directly to dashboard
+        console.log('🧪 ON-01: User completed onboarding, going to dashboard');
+        setCurrentView('dashboard');
+      } else {
+        // User needs to complete onboarding, stay on welcome
+        console.log('🧪 ON-01: User needs onboarding, staying on welcome');
+        setCurrentView('welcome');
+        // Explicitly hide baseline panel during welcome view
+        setShowBaselinePanel(false);
+      }
+    }
+  }, [isAuthenticated, user]);
+
+  // ON-01: Check if user needs baseline completion when transitioning to dashboard
+  useEffect(() => {
+    // Only check for baseline completion when user is explicitly on dashboard view
+    // AND not during the welcome view transition
+    if (isAuthenticated && user && onboardingPath && currentView === 'dashboard') {
+      const needsBaseline = !user.baseline_completed && onboardingPath === 'test';
+      
+      console.log('🧪 ON-01: Baseline completion check on dashboard transition:', {
+        user: user.email,
+        onboardingPath,
+        baseline_completed: user.baseline_completed,
+        needsBaseline,
+        currentView
+      });
+      
+      if (needsBaseline) {
+        console.log('🧪 ON-01: User needs baseline completion, showing panel');
+        setShowBaselinePanel(true);
+        setBaselineStartTime(Date.now());
+      }
+    }
+    
+    // Reset baseline panel when user is on welcome view
+    if (currentView === 'welcome') {
+      setShowBaselinePanel(false);
+    }
+  }, [isAuthenticated, user, onboardingPath, currentView]);
   
   // Remove old modal state - now using dedicated page
 
@@ -268,6 +322,13 @@ const NovaraLanding = () => {
         console.log('✅ Fast onboarding signup successful');
         login(fastFormData.email, response.data.token, response.data.user);
         
+        // Set onboarding path and baseline completion status
+        const updatedUser = {
+          ...response.data.user,
+          onboarding_path: 'test',
+          baseline_completed: false
+        };
+        
         setJustSignedUp(true);
         setShowForm(false);
         setCurrentView('welcome');
@@ -291,6 +352,48 @@ const NovaraLanding = () => {
       alert('Failed to clear cache. Please try again.');
     } finally {
       setIsClearingCache(false);
+    }
+  };
+
+  // ON-01: Handle baseline panel completion
+  const handleBaselineComplete = async (data: any) => {
+    console.log('🧪 ON-01: Baseline panel completed with data:', data);
+    
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:9002'}/api/users/baseline`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          nickname: data.nickname,
+          confidence_meds: data.confidence_meds,
+          confidence_costs: data.confidence_costs,
+          confidence_overall: data.confidence_overall,
+          top_concern: data.top_concern,
+          baseline_completed: true
+        })
+      });
+
+      const result = await response.json();
+      
+      if (response.ok && result.success) {
+        console.log('🧪 ON-01: Baseline data updated successfully');
+        setShowBaselinePanel(false);
+        setBaselineDismissed(false);
+        
+        // Refresh user data to reflect baseline completion
+        // This will trigger the useEffect to hide the panel
+        window.location.reload();
+      } else {
+        console.error('🧪 ON-01: Failed to update baseline data:', result);
+        alert('Failed to save your profile. Please try again.');
+      }
+    } catch (error) {
+      console.error('🧪 ON-01: Baseline completion error:', error);
+      alert('Connection error. Please try again.');
     }
   };
 
@@ -869,7 +972,24 @@ const NovaraLanding = () => {
       <div className="hidden md:block">
         {currentView === 'welcome' && <WelcomeInsight onContinue={() => setCurrentView('dashboard')} />}
         {currentView !== 'welcome' && (
-        <section className="max-w-4xl mx-auto px-6 py-12">
+          <>
+            {/* ON-01: Baseline Panel Modal for Desktop */}
+            {showBaselinePanel && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                <BaselinePanel
+                  onComplete={handleBaselineComplete}
+                  onClose={() => {
+                    console.log('🧪 ON-01: User dismissed baseline panel before completion');
+                    setShowBaselinePanel(false);
+                    setBaselineDismissed(true);
+                  }}
+                  userEmail={user?.email || ''}
+                  sessionId={sessionStorage.getItem('novara_onboarding_session_id') || ''}
+                  startTime={baselineStartTime}
+                />
+              </div>
+            )}
+            <section className="max-w-4xl mx-auto px-6 py-12">
           <div className="text-center mb-8">
             {justSignedUp ? (
               <>
@@ -902,16 +1022,88 @@ const NovaraLanding = () => {
           
           {/* Desktop Daily Check-in Form */}
           <div className="flex justify-center">
-            <DailyCheckinForm />
+            {baselineDismissed && !user?.baseline_completed ? (
+              <div className="w-full max-w-md bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
+                <div className="w-12 h-12 rounded-full bg-yellow-100 flex items-center justify-center mx-auto mb-4">
+                  <span className="text-yellow-600 text-xl">⚠️</span>
+                </div>
+                <h3 className="text-lg font-semibold text-yellow-800 mb-2">
+                  Complete Your Profile Setup
+                </h3>
+                <p className="text-yellow-700 mb-4">
+                  To receive personalized insights and questions tailored to your journey, please complete your profile setup.
+                </p>
+                <Button
+                  onClick={() => {
+                    setBaselineDismissed(false);
+                    setShowBaselinePanel(true);
+                    setBaselineStartTime(Date.now());
+                  }}
+                  className="bg-[#FF6F61] hover:bg-[#FF6F61]/90 text-white"
+                >
+                  Complete Profile Setup
+                </Button>
+              </div>
+            ) : (
+              <DailyCheckinForm />
+            )}
           </div>
         </section>
+          </>
         )}
       </div>
 
       {/* Mobile Content */}
       <div className="block md:hidden">
         {currentView === 'welcome' && <WelcomeInsight onContinue={() => setCurrentView('dashboard')} />}
-        {currentView === 'dashboard' && <div className="p-4"><h2>Dashboard</h2><p>Welcome to your dashboard!</p></div>}
+        {currentView === 'dashboard' && (
+          <>
+            {/* ON-01: Baseline Panel Modal for Mobile */}
+            {showBaselinePanel && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                <BaselinePanel
+                  onComplete={handleBaselineComplete}
+                  onClose={() => {
+                    console.log('🧪 ON-01: User dismissed baseline panel before completion');
+                    setShowBaselinePanel(false);
+                    setBaselineDismissed(true);
+                  }}
+                  userEmail={user?.email || ''}
+                  sessionId={sessionStorage.getItem('novara_onboarding_session_id') || ''}
+                  startTime={baselineStartTime}
+                />
+              </div>
+            )}
+            <div className="p-4">
+              <h2>Dashboard</h2>
+              <p>Welcome to your dashboard!</p>
+              
+              {baselineDismissed && !user?.baseline_completed && (
+                <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center">
+                  <div className="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center mx-auto mb-3">
+                    <span className="text-yellow-600 text-lg">⚠️</span>
+                  </div>
+                  <h3 className="text-base font-semibold text-yellow-800 mb-2">
+                    Complete Your Profile Setup
+                  </h3>
+                  <p className="text-sm text-yellow-700 mb-3">
+                    To receive personalized insights and questions tailored to your journey, please complete your profile setup.
+                  </p>
+                  <Button
+                    onClick={() => {
+                      setBaselineDismissed(false);
+                      setShowBaselinePanel(true);
+                      setBaselineStartTime(Date.now());
+                    }}
+                    className="bg-[#FF6F61] hover:bg-[#FF6F61]/90 text-white text-sm py-2"
+                  >
+                    Complete Profile Setup
+                  </Button>
+                </div>
+              )}
+            </div>
+          </>
+        )}
         {currentView === 'checkin' && <div className="pb-24"><DailyCheckinForm onComplete={handleCheckinComplete} /></div>}
         {currentView === 'insights' && <div className="px-4 py-6 pb-24"><DailyInsightsDisplay /></div>}
         
