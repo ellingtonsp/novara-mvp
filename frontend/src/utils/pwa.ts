@@ -1,7 +1,7 @@
 // PWA Utility Functions
 
 // Cache version for forcing updates
-const CACHE_VERSION = 'novara-v1.1.0';
+const CACHE_VERSION = 'novara-v1.1.1';
 
 // Register service worker
 export async function registerServiceWorker() {

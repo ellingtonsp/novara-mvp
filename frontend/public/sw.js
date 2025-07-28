@@ -1,5 +1,5 @@
 // Service Worker for Novara PWA
-const CACHE_VERSION = 'novara-v1.1.0'; // Increment this for cache busting
+const CACHE_VERSION = 'novara-v1.1.1'; // Increment this for cache busting
 const STATIC_CACHE = `novara-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `novara-dynamic-${CACHE_VERSION}`;
 
