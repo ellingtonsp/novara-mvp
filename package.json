@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "description": "Novara MVP - Full Stack Application",
   "scripts": {
-    "start": "cd backend && NODE_ENV=production node server.js",
     "install": "cd backend && npm ci --omit=dev",
     "validate-environments": "node scripts/environment-validator.js",
     "validate-schema": "node scripts/airtable-schema-validator.js",
