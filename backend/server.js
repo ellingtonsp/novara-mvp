@@ -2418,10 +2418,14 @@ app.get('/api/insights/daily', authenticateToken, async (req, res) => {
     }
 
     // 🚨 CRITICAL FIX: Check if user has completed full onboarding
+    // Allow existing users with complete profile data to access insights
     const hasCompletedOnboarding = !!user.baseline_completed || 
                                   (user.onboarding_path === 'control' && 
                                    user.primary_need && 
-                                   user.cycle_stage);
+                                   user.cycle_stage) ||
+                                  // Allow existing users with complete profile data
+                                  (user.confidence_meds && user.confidence_costs && user.confidence_overall && 
+                                   user.primary_need && user.cycle_stage);
     
     console.log('🔍 Onboarding completion check:', {
       user_email: user.email,
@@ -2429,6 +2433,9 @@ app.get('/api/insights/daily', authenticateToken, async (req, res) => {
       baseline_completed: user.baseline_completed,
       primary_need: user.primary_need,
       cycle_stage: user.cycle_stage,
+      confidence_meds: user.confidence_meds,
+      confidence_costs: user.confidence_costs,
+      confidence_overall: user.confidence_overall,
       hasCompletedOnboarding
     });
 
