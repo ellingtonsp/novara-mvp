@@ -15,6 +15,24 @@ export interface OnboardingContext {
  * Returns 'test' for Fast Lane, 'control' for standard onboarding
  */
 export const getOnboardingPath = (): OnboardingPath => {
+  // Development testing: Check for forced path first
+  const forcedPath = import.meta.env.VITE_FORCE_ONBOARDING_PATH;
+  if (forcedPath && (forcedPath === 'control' || forcedPath === 'test')) {
+    console.log('🧪 A/B Test: FORCED PATH =', forcedPath);
+    // Don't cache forced paths in development for easier testing
+    if (import.meta.env.NODE_ENV === 'development') {
+      console.log('🧪 A/B Test: Development mode - not caching forced path');
+      return forcedPath;
+    }
+    // Cache in production
+    if (typeof window !== 'undefined') {
+      const currentSessionId = getSessionId();
+      const cacheKey = `novara_onboarding_path_${currentSessionId}`;
+      sessionStorage.setItem(cacheKey, forcedPath);
+    }
+    return forcedPath;
+  }
+
   // Check if we already decided for this session
   const currentSessionId = getSessionId();
   const cacheKey = `novara_onboarding_path_${currentSessionId}`;
@@ -27,15 +45,7 @@ export const getOnboardingPath = (): OnboardingPath => {
     }
   }
 
-  // Development testing: Check for forced path
-  const forcedPath = import.meta.env.VITE_FORCE_ONBOARDING_PATH;
-  if (forcedPath && (forcedPath === 'control' || forcedPath === 'test')) {
-    console.log('🧪 A/B Test: FORCED PATH =', forcedPath);
-    if (typeof window !== 'undefined') {
-      sessionStorage.setItem(cacheKey, forcedPath);
-    }
-    return forcedPath;
-  }
+
 
   // Check if PostHog is available and feature flag is enabled
   if (typeof window !== 'undefined' && (window as any).posthog) {
@@ -218,6 +228,19 @@ export const clearOnboardingPathCache = () => {
     sessionStorage.removeItem(cacheKey);
     console.log('🧪 A/B Test: Cleared onboarding path cache');
   }
+};
+
+/**
+ * Development-only: Force fresh path assignment for testing
+ */
+export const forceFreshPath = (): OnboardingPath => {
+  if (import.meta.env.NODE_ENV === 'development') {
+    clearOnboardingPathCache();
+    const path = getOnboardingPath();
+    console.log('🧪 A/B Test: Forced fresh path =', path);
+    return path;
+  }
+  return getOnboardingPath();
 };
 
 /**
