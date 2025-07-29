@@ -358,13 +358,15 @@ const NovaraLanding = () => {
       ...formData,
       email: data.email,
       cycle_stage: data.cycle_stage,
-      primary_concern: data.primary_concern,
+      primary_need: data.primary_concern, // Map primary_concern to primary_need
       // Set defaults for missing fields (will be collected in Baseline Panel)
       nickname: '',
       confidence_meds: 5,
       confidence_costs: 5,
       confidence_overall: 5,
-      email_opt_in: true
+      email_opt_in: true,
+      // Explicitly mark baseline as not completed for fast onboarding users
+      baseline_completed: false
     };
     
     setFormData(fastFormData);
