@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Heart, Users, Calendar, MessageCircle, CheckCircle, LogOut, User, Menu, X, RefreshCw } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { apiClient } from '../lib/api';
+import { API_BASE_URL } from '../lib/environment';
 // import { trackEvent, trackAuthEvent } from '../lib/analytics';
 import { clearAllCaches } from '../utils/pwa';
 // DailyCheckinForm import removed - using enhanced forms instead
@@ -407,7 +408,7 @@ const NovaraLanding = () => {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:9002'}/api/users/baseline`, {
+      const response = await fetch(`${API_BASE_URL}/api/users/baseline`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -445,7 +446,7 @@ const NovaraLanding = () => {
           status: response.status,
           statusText: response.statusText,
           result,
-          apiUrl: `${process.env.REACT_APP_API_URL || 'http://localhost:9002'}/api/users/baseline`
+          apiUrl: `${API_BASE_URL}/api/users/baseline`
         });
         
         if (response.status === 404) {
@@ -460,7 +461,7 @@ const NovaraLanding = () => {
       }
     } catch (error) {
       console.error('🧪 ON-01: Baseline completion error:', error);
-      console.error('API URL:', `${process.env.REACT_APP_API_URL || 'http://localhost:9002'}/api/users/baseline`);
+      console.error('API URL:', `${API_BASE_URL}/api/users/baseline`);
       alert('Connection error. Please check your internet connection and try again.');
     }
   };
