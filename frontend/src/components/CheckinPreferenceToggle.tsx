@@ -40,7 +40,7 @@ export const CheckinPreferenceToggle: React.FC<CheckinPreferenceToggleProps> = (
       setHasSeenOptions(true);
     } else {
       // Default to quick for new users
-      setCurrentPreference('quick_daily');
+      setLocalPreference('quick_daily');
     }
   }, [user]);
 
@@ -61,7 +61,7 @@ export const CheckinPreferenceToggle: React.FC<CheckinPreferenceToggleProps> = (
 
     // Save preference
     localStorage.setItem(`checkin_preference_${user?.email}`, JSON.stringify(preference));
-    setCurrentPreference(newPreference);
+    setLocalPreference(newPreference);
     setHasSeenOptions(true);
     setShowOptions(false);
 

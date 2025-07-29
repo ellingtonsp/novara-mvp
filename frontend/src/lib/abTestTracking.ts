@@ -77,7 +77,8 @@ function getCheckinsCount(): number {
 // A/B Test Cohort Assignment
 export function assignCheckinPreferenceCohort(): 'control' | 'treatment' {
   // Use consistent hashing to ensure same user always gets same cohort
-  const hash = userId.split('').reduce((acc, char) => {
+  const userId = localStorage.getItem('user_id') || 'anonymous';
+  const hash = userId.split('').reduce((acc: number, char: string) => {
     return char.charCodeAt(0) + ((acc << 5) - acc);
   }, 0);
   
