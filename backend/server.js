@@ -279,7 +279,8 @@ const allowedOrigins = [
   'https://novara-mvp.vercel.app', // Production frontend
   'https://novara-mvp-staging.vercel.app', // Staging frontend
   'https://novara-mvp-git-staging-novara-fertility.vercel.app', // Vercel staging frontend
-  'https://novara-1txlqsq5z-novara-fertility.vercel.app', // Current Vercel staging frontend
+  // Dynamic Vercel deployment URLs pattern
+  /^https:\/\/novara-[a-z0-9]+-novara-fertility\.vercel\.app$/
 ];
 
 // Add development origins in non-production environments
@@ -289,13 +290,28 @@ if (process.env.NODE_ENV !== 'production') {
     'http://localhost:3001',  // Alternative frontend port
     'http://localhost:4200'   // Stable frontend port (ensure it's always included)
   );
-  
-  // Add Vercel staging URL pattern for dynamic deployments
-  allowedOrigins.push(/^https:\/\/novara-.*-novara-fertility\.vercel\.app$/);
 }
 
 app.use(cors({
-  origin: allowedOrigins,
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or Postman)
+    if (!origin) return callback(null, true);
+    
+    // Check if the origin is in the allowed list or matches a pattern
+    const isAllowed = allowedOrigins.some(allowed => {
+      if (allowed instanceof RegExp) {
+        return allowed.test(origin);
+      }
+      return allowed === origin;
+    });
+    
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      console.warn(`CORS: Blocked origin ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Origin', 'X-Requested-With', 'Accept'],

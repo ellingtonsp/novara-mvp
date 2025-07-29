@@ -423,9 +423,16 @@ const NovaraLanding = () => {
         })
       });
 
-      const result = await response.json();
+      let result;
+      try {
+        result = await response.json();
+      } catch (jsonError) {
+        console.error('🧪 ON-01: Failed to parse response:', jsonError);
+        console.error('Response status:', response.status);
+        console.error('Response headers:', response.headers);
+      }
       
-      if (response.ok && result.success) {
+      if (response.ok && result?.success) {
         console.log('🧪 ON-01: Baseline data updated successfully');
         setShowBaselinePanel(false);
         setBaselineDismissed(false);
@@ -434,12 +441,27 @@ const NovaraLanding = () => {
         // This will trigger the useEffect to hide the panel
         window.location.reload();
       } else {
-        console.error('🧪 ON-01: Failed to update baseline data:', result);
-        alert('Failed to save your profile. Please try again.');
+        console.error('🧪 ON-01: Failed to update baseline data:', {
+          status: response.status,
+          statusText: response.statusText,
+          result,
+          apiUrl: `${process.env.REACT_APP_API_URL || 'http://localhost:9002'}/api/users/baseline`
+        });
+        
+        if (response.status === 404) {
+          alert('Profile update endpoint not found. Please contact support.');
+        } else if (response.status === 401 || response.status === 403) {
+          alert('Authentication error. Please log in again.');
+        } else if (response.status === 400) {
+          alert(`Validation error: ${result?.error || 'Invalid data provided'}`);
+        } else {
+          alert(`Failed to save your profile: ${result?.error || 'Unknown error'}. Please try again.`);
+        }
       }
     } catch (error) {
       console.error('🧪 ON-01: Baseline completion error:', error);
-      alert('Connection error. Please try again.');
+      console.error('API URL:', `${process.env.REACT_APP_API_URL || 'http://localhost:9002'}/api/users/baseline`);
+      alert('Connection error. Please check your internet connection and try again.');
     }
   };
 
