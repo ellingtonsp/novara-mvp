@@ -1,7 +1,7 @@
 // Outcome Metrics Dashboard - Shows users real impact of their engagement
 // Based on research: transparency about outcomes improves adherence by 34%
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
@@ -49,11 +49,62 @@ interface ResearchInsight {
   recommendation?: string;
 }
 
-export const OutcomeMetricsDashboard: React.FC = () => {
+interface OutcomeMetricsDashboardProps {
+  onNavigate?: (view: string) => void;
+}
+
+export const OutcomeMetricsDashboard: React.FC<OutcomeMetricsDashboardProps> = ({ onNavigate }) => {
   const { user } = useAuth();
   const [metrics, setMetrics] = useState<UserMetrics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedView, setSelectedView] = useState<'overview' | 'adherence' | 'mental-health' | 'predictions'>('overview');
+  
+  // Swipe handling
+  const touchStartX = useRef<number | null>(null);
+  const touchEndX = useRef<number | null>(null);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const minSwipeDistance = 50;
+  
+  const tabs = [
+    { id: 'overview', label: 'Overview', icon: Activity },
+    { id: 'adherence', label: 'Treatment', icon: Pill },
+    { id: 'mental-health', label: 'Well-being', icon: Brain },
+    { id: 'predictions', label: 'Outlook', icon: Target }
+  ];
+  
+  const currentTabIndex = tabs.findIndex(tab => tab.id === selectedView);
+  
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+  
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!touchStartX.current) return;
+    
+    touchEndX.current = e.changedTouches[0].clientX;
+    const distance = touchStartX.current - touchEndX.current;
+    
+    // Swipe left (next tab)
+    if (distance > minSwipeDistance && currentTabIndex < tabs.length - 1) {
+      setIsTransitioning(true);
+      setTimeout(() => {
+        setSelectedView(tabs[currentTabIndex + 1].id as any);
+        setIsTransitioning(false);
+      }, 150);
+    }
+    
+    // Swipe right (previous tab)
+    if (distance < -minSwipeDistance && currentTabIndex > 0) {
+      setIsTransitioning(true);
+      setTimeout(() => {
+        setSelectedView(tabs[currentTabIndex - 1].id as any);
+        setIsTransitioning(false);
+      }, 150);
+    }
+    
+    touchStartX.current = null;
+    touchEndX.current = null;
+  };
   
   useEffect(() => {
     fetchUserMetrics();
@@ -246,7 +297,7 @@ export const OutcomeMetricsDashboard: React.FC = () => {
           </div>
           <Button 
             className="mt-4 bg-[#FF6F61] hover:bg-[#FF6F61]/90 text-white text-sm py-2"
-            onClick={() => setSelectedView('overview')}
+            onClick={() => onNavigate?.('checkin')}
           >
             Start Your First Check-In
           </Button>
@@ -257,14 +308,9 @@ export const OutcomeMetricsDashboard: React.FC = () => {
   
   return (
     <div className="space-y-4">
-      {/* Navigation Tabs */}
-      <div className="flex space-x-2 overflow-x-auto pb-2">
-        {[
-          { id: 'overview', label: 'Overview', icon: Activity },
-          { id: 'adherence', label: 'Treatment', icon: Pill },
-          { id: 'mental-health', label: 'Well-being', icon: Brain },
-          { id: 'predictions', label: 'Outlook', icon: Target }
-        ].map((tab) => (
+      {/* Navigation Tabs - Desktop only */}
+      <div className="hidden sm:flex space-x-2 justify-around pb-2">
+        {tabs.map((tab) => (
           <Button
             key={tab.id}
             variant={selectedView === tab.id ? 'default' : 'outline'}
@@ -277,6 +323,46 @@ export const OutcomeMetricsDashboard: React.FC = () => {
           </Button>
         ))}
       </div>
+      
+      {/* Mobile Header with Current Section */}
+      <div className="sm:hidden space-y-2">
+        <h3 className="text-lg font-semibold text-center">
+          {tabs[currentTabIndex].label}
+        </h3>
+        
+        {/* Icon Indicators */}
+        <div className="flex justify-center items-center gap-3 pb-2">
+          {tabs.map((tab, index) => {
+            const Icon = tab.icon;
+            return (
+              <div 
+                key={index}
+                className={`transition-all duration-300 flex items-center justify-center ${
+                  index === currentTabIndex 
+                    ? 'w-10 h-10 bg-primary rounded-full text-white' 
+                    : 'w-2 h-2 bg-gray-300 rounded-full'
+                }`}
+              >
+                {index === currentTabIndex && <Icon className="h-5 w-5" />}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      
+      {/* Swipeable Content Container */}
+      <div 
+        className="relative overflow-hidden"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        style={{ minHeight: '400px' }}
+      >
+        <div
+          className={`transition-opacity ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}
+          style={{
+            transitionDuration: '150ms'
+          }}
+        >
       
       {/* Overview */}
       {selectedView === 'overview' && (
@@ -534,6 +620,8 @@ export const OutcomeMetricsDashboard: React.FC = () => {
           </Card>
         </div>
       )}
+        </div>
+      </div>
     </div>
   );
 };

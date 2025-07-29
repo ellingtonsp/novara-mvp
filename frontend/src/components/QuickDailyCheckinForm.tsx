@@ -125,7 +125,7 @@ export const QuickDailyCheckinForm: React.FC<QuickDailyCheckinFormProps> = ({
   if (showCompletion) {
     return (
       <Card className="border-green-200 bg-gradient-to-r from-green-50 to-emerald-50">
-        <CardContent className="p-6 text-center">
+        <CardContent className="p-4 sm:p-6 text-center">
           <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-3" />
           <h3 className="text-lg font-semibold text-green-800 mb-2">Quick Check-in Complete!</h3>
           <p className="text-sm text-green-600">
@@ -147,40 +147,40 @@ export const QuickDailyCheckinForm: React.FC<QuickDailyCheckinFormProps> = ({
 
   return (
     <Card className="border-purple-200 bg-gradient-to-r from-purple-50 to-pink-50">
-      <CardHeader className="pb-4">
+      <CardHeader className="p-4 sm:p-6 pb-3 sm:pb-4">
         <CardTitle className="flex items-center justify-between">
-          <span className="flex items-center gap-2 text-purple-800">
-            <Zap className="h-5 w-5" />
+          <span className="flex items-center gap-2 text-purple-800 text-base sm:text-lg">
+            <Zap className="h-4 w-4 sm:h-5 sm:w-5" />
             Quick Daily Check-in
           </span>
-          <span className="text-sm font-normal text-purple-600">
+          <span className="text-xs sm:text-sm font-normal text-purple-600">
             ~30 seconds
           </span>
         </CardTitle>
-        <p className="text-sm text-gray-600 mt-1">
+        <p className="text-xs sm:text-sm text-gray-600 mt-1">
           Just the essentials - we'll ask more detailed questions weekly
         </p>
       </CardHeader>
 
-      <CardContent className="space-y-6">
+      <CardContent className="p-4 sm:p-6 pt-0 space-y-4 sm:space-y-6">
         {/* Mood Selection - Most Predictive */}
         <div>
-          <Label className="text-base font-semibold mb-3 block">
+          <Label className="text-sm sm:text-base font-semibold mb-2 block">
             How are you feeling today?
           </Label>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-3 gap-1.5 sm:gap-2 mood-grid">
             {QUICK_MOOD_OPTIONS.map((option) => (
               <button
                 key={option.mood}
                 onClick={() => setSelectedMood(option.mood)}
-                className={`p-3 rounded-lg border-2 transition-all text-center ${
+                className={`p-2 sm:p-3 rounded-lg border-2 transition-all text-center ${
                   selectedMood === option.mood
                     ? 'border-purple-500 bg-purple-50'
                     : 'border-gray-200 hover:border-purple-300'
                 }`}
               >
-                <span className="text-2xl block mb-1">{option.icon}</span>
-                <span className="text-sm font-medium">{option.label}</span>
+                <span className="text-xl sm:text-2xl block mb-0.5 sm:mb-1">{option.icon}</span>
+                <span className="text-xs sm:text-sm font-medium">{option.label}</span>
               </button>
             ))}
           </div>
@@ -188,11 +188,11 @@ export const QuickDailyCheckinForm: React.FC<QuickDailyCheckinFormProps> = ({
 
         {/* Medication Adherence - Critical Metric */}
         <div>
-          <Label className="text-base font-semibold mb-3 block flex items-center gap-2">
+          <Label className="text-sm sm:text-base font-semibold mb-2 block flex items-center gap-2">
             <Pill className="h-4 w-4" />
             Did you take all your medications today?
           </Label>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2 sm:gap-3 medication-grid">
             <Button
               variant={tookMedications === true ? 'default' : 'outline'}
               onClick={() => setTookMedications(true)}
@@ -267,8 +267,8 @@ export const QuickDailyCheckinForm: React.FC<QuickDailyCheckinFormProps> = ({
         </div>
 
         {/* Value Proposition */}
-        <div className="p-3 bg-purple-100 rounded-lg">
-          <p className="text-xs text-purple-700 flex items-center gap-1">
+        <div className="bg-purple-100 rounded-lg" style={{ padding: '12px 16px' }}>
+          <p className="text-xs text-purple-700 flex items-center justify-center gap-1 m-0">
             <Sparkles className="h-3 w-3" />
             These 3 metrics predict 82% of treatment outcomes
           </p>

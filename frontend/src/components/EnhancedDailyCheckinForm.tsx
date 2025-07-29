@@ -90,7 +90,7 @@ const SIDE_EFFECTS_OPTIONS = [
 
 const COPING_STRATEGIES = [
   'Deep breathing',
-  'Meditation/mindfulness',
+  'Meditation/\nmindfulness',
   'Gentle exercise',
   'Talked to partner',
   'Talked to friend',
@@ -128,7 +128,7 @@ export const EnhancedDailyCheckinForm: React.FC<EnhancedDailyCheckinFormProps> =
   const [hasInteractedWithInjection, setHasInteractedWithInjection] = useState(false);
   const [hasInteractedWithAppointment, setHasInteractedWithAppointment] = useState(false);
   const [tookMedications, setTookMedications] = useState<boolean | null>(null);
-  const [missedDoses, setMissedDoses] = useState<number>(0);
+  const [missedDoses, setMissedDoses] = useState<number | ''>(1);
   const [injectionConfidence, setInjectionConfidence] = useState<number>(7);
   const [sideEffects, setSideEffects] = useState<string[]>([]);
   const [hasAppointment, setHasAppointment] = useState<boolean | null>(null);
@@ -179,7 +179,7 @@ export const EnhancedDailyCheckinForm: React.FC<EnhancedDailyCheckinFormProps> =
     let risk = 0;
     if (anxietyLevel > 7) risk += 25;
     if (confidence < 4) risk += 20;
-    if (missedDoses > 0) risk += 30;
+    if (typeof missedDoses === 'number' && missedDoses > 0) risk += 30;
     if (sideEffects.length > 3) risk += 15;
     return Math.min(risk, 90);
   };
@@ -217,7 +217,7 @@ export const EnhancedDailyCheckinForm: React.FC<EnhancedDailyCheckinFormProps> =
       const enhancedData = {
         anxiety_level: anxietyLevel,
         took_all_medications: tookMedications || false,
-        missed_doses: missedDoses,
+        missed_doses: typeof missedDoses === 'number' ? missedDoses : 0,
         injection_confidence: injectionConfidence,
         side_effects: sideEffects,
         appointment_within_3_days: hasAppointment || false,
@@ -262,8 +262,10 @@ export const EnhancedDailyCheckinForm: React.FC<EnhancedDailyCheckinFormProps> =
           time_to_complete_ms: Date.now() - startTime
         });
         
-        alert('Check-in completed! Your personalized insights are ready.');
-        onComplete?.();
+        setShowResults(true);
+        setTimeout(() => {
+          onComplete?.();
+        }, 2000);
       } else {
         throw new Error('Failed to submit check-in');
       }
@@ -469,8 +471,9 @@ export const EnhancedDailyCheckinForm: React.FC<EnhancedDailyCheckinFormProps> =
                         min="1"
                         max="10"
                         value={missedDoses}
-                        onChange={(e) => setMissedDoses(Number(e.target.value))}
+                        onChange={(e) => setMissedDoses(e.target.value ? Number(e.target.value) : '')}
                         className="w-full mt-1 p-2 border rounded"
+                        placeholder="Enter number"
                       />
                     </div>
                   )}
@@ -502,14 +505,14 @@ export const EnhancedDailyCheckinForm: React.FC<EnhancedDailyCheckinFormProps> =
                 
                 <div>
                   <Label className="mb-2 block">Any side effects today?</Label>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-3 side-effects-grid">
                     {SIDE_EFFECTS_OPTIONS.map((effect) => (
                       <label
                         key={effect}
-                        className={`flex items-center p-2 rounded border cursor-pointer ${
+                        className={`flex items-center justify-center min-h-[60px] p-3 rounded-lg border cursor-pointer text-sm text-center ${
                           sideEffects.includes(effect)
                             ? 'bg-orange-50 border-orange-300'
-                            : 'bg-white border-gray-200'
+                            : 'bg-white border-gray-200 hover:bg-gray-50'
                         }`}
                       >
                         <input
@@ -522,9 +525,9 @@ export const EnhancedDailyCheckinForm: React.FC<EnhancedDailyCheckinFormProps> =
                               setSideEffects(sideEffects.filter(s => s !== effect));
                             }
                           }}
-                          className="mr-2"
+                          className="sr-only"
                         />
-                        <span className="text-sm">{effect}</span>
+                        <span>{effect}</span>
                       </label>
                     ))}
                   </div>
@@ -553,7 +556,7 @@ export const EnhancedDailyCheckinForm: React.FC<EnhancedDailyCheckinFormProps> =
               
               <div className="space-y-4">
                 <div>
-                  <p className="font-medium mb-2">Do you have an appointment in the next 3 days?</p>
+                  <p className="font-medium mb-2 text-sm sm:text-base">Appointment in next 3 days?</p>
                   <div className="flex gap-3">
                     <Button
                       variant={hasAppointment === true ? 'default' : 'outline'}
@@ -598,14 +601,14 @@ export const EnhancedDailyCheckinForm: React.FC<EnhancedDailyCheckinFormProps> =
                 
                 <div>
                   <Label className="mb-2 block">What coping strategies did you use today?</Label>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-3 coping-strategies-grid">
                     {COPING_STRATEGIES.map((strategy) => (
                       <label
                         key={strategy}
-                        className={`flex items-center p-2 rounded border cursor-pointer text-sm ${
+                        className={`flex items-center justify-center min-h-[80px] p-3 rounded-lg border cursor-pointer text-sm text-center ${
                           copingStrategies.includes(strategy)
                             ? 'bg-green-50 border-green-300'
-                            : 'bg-white border-gray-200'
+                            : 'bg-white border-gray-200 hover:bg-gray-50'
                         }`}
                       >
                         <input
@@ -618,9 +621,9 @@ export const EnhancedDailyCheckinForm: React.FC<EnhancedDailyCheckinFormProps> =
                               setCopingStrategies(copingStrategies.filter(s => s !== strategy));
                             }
                           }}
-                          className="mr-2"
+                          className="sr-only"
                         />
-                        {strategy}
+                        <span className="whitespace-pre-line">{strategy}</span>
                       </label>
                     ))}
                   </div>
@@ -664,14 +667,14 @@ export const EnhancedDailyCheckinForm: React.FC<EnhancedDailyCheckinFormProps> =
               <Label className="text-base font-semibold mb-3 block">
                 What would you like to know more about?
               </Label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-3 info-needs-grid">
                 {INFO_NEEDS.map((need) => (
                   <label
                     key={need}
-                    className={`flex items-center p-2 rounded border cursor-pointer text-sm ${
+                    className={`flex items-center justify-center min-h-[80px] p-3 rounded-lg border cursor-pointer text-sm text-center ${
                       infoNeeds.includes(need)
                         ? 'bg-purple-50 border-purple-300'
-                        : 'bg-white border-gray-200'
+                        : 'bg-white border-gray-200 hover:bg-gray-50'
                     }`}
                   >
                     <input
@@ -684,9 +687,9 @@ export const EnhancedDailyCheckinForm: React.FC<EnhancedDailyCheckinFormProps> =
                           setInfoNeeds(infoNeeds.filter(n => n !== need));
                         }
                       }}
-                      className="mr-2"
+                      className="sr-only"
                     />
-                    {need}
+                    <span>{need}</span>
                   </label>
                 ))}
               </div>

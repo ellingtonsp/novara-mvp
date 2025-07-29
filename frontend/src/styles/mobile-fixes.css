@@ -120,10 +120,16 @@
     max-width: 100vw !important;
   }
   
-  /* Fix grid layouts that might overflow */
-  .grid {
+  /* Fix grid layouts that might overflow - but exclude specific functional grids */
+  .grid:not(.mobile-nav-grid):not(.mood-grid):not(.medication-grid):not([class*="grid-cols-2"]):not([class*="grid-cols-3"]) {
     grid-template-columns: 1fr !important;
     gap: 1rem !important;
+  }
+  
+  /* Preserve padding for info boxes */
+  .info-box {
+    padding-top: 0.75rem !important;
+    padding-bottom: 0.75rem !important;
   }
 }
 

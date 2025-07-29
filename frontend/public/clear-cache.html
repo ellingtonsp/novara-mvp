@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clear Service Worker Cache</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 600px;
+      margin: 50px auto;
+      padding: 20px;
+      text-align: center;
+    }
+    button {
+      background: #3b82f6;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      margin: 10px;
+    }
+    button:hover {
+      background: #2563eb;
+    }
+    .status {
+      margin-top: 20px;
+      padding: 10px;
+      border-radius: 4px;
+    }
+    .success {
+      background: #10b981;
+      color: white;
+    }
+    .error {
+      background: #ef4444;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <h1>Service Worker Cache Manager</h1>
+  <p>Use this tool to clear all service worker caches and force a fresh reload.</p>
+  
+  <button onclick="clearAllCaches()">Clear All Caches</button>
+  <button onclick="unregisterServiceWorker()">Unregister Service Worker</button>
+  <button onclick="forceReload()">Force Reload</button>
+  
+  <div id="status"></div>
+  
+  <script>
+    const statusDiv = document.getElementById('status');
+    
+    async function clearAllCaches() {
+      try {
+        const cacheNames = await caches.keys();
+        await Promise.all(cacheNames.map(name => caches.delete(name)));
+        showStatus(`Cleared ${cacheNames.length} caches: ${cacheNames.join(', ')}`, 'success');
+      } catch (error) {
+        showStatus(`Error clearing caches: ${error.message}`, 'error');
+      }
+    }
+    
+    async function unregisterServiceWorker() {
+      try {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(registrations.map(reg => reg.unregister()));
+        showStatus(`Unregistered ${registrations.length} service worker(s)`, 'success');
+      } catch (error) {
+        showStatus(`Error unregistering service worker: ${error.message}`, 'error');
+      }
+    }
+    
+    function forceReload() {
+      showStatus('Reloading page...', 'success');
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 1000);
+    }
+    
+    function showStatus(message, type) {
+      statusDiv.textContent = message;
+      statusDiv.className = `status ${type}`;
+    }
+    
+    // Show current cache status on load
+    window.addEventListener('load', async () => {
+      try {
+        const cacheNames = await caches.keys();
+        if (cacheNames.length > 0) {
+          showStatus(`Found ${cacheNames.length} cache(s): ${cacheNames.join(', ')}`, 'success');
+        } else {
+          showStatus('No caches found', 'success');
+        }
+      } catch (error) {
+        showStatus(`Error checking caches: ${error.message}`, 'error');
+      }
+    });
+  </script>
+</body>
+</html>

@@ -484,7 +484,7 @@ const NovaraLanding = () => {
   // Mobile Navigation Component
   const MobileNavigation = () => (
     <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 safe-area-pb z-40">
-      <div className="grid grid-cols-3 gap-1 p-2">
+      <div className="grid mobile-nav-grid grid-cols-3 gap-1 p-2">
         <button
           onClick={() => setCurrentView('dashboard')}
           className={`flex flex-col items-center p-3 rounded-xl transition-colors ${
@@ -1302,7 +1302,7 @@ const NovaraLanding = () => {
               </div>
               
               {/* Outcome Metrics Dashboard for Mobile */}
-              <OutcomeMetricsDashboard />
+              <OutcomeMetricsDashboard onNavigate={(view) => setCurrentView(view as any)} />
               
               {/* Smart Checklist */}
               <div>

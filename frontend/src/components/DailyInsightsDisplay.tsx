@@ -390,7 +390,7 @@ const DailyInsightsDisplay: React.FC = () => {
   const colors = getColorScheme(insight.type);
 
   return (
-    <Card ref={insightRef} className={`w-full mx-auto mb-6 border-2 ${colors.border} ${colors.bg} shadow-sm`}>
+    <Card ref={insightRef} className={`w-full max-w-2xl mx-auto mb-6 border-2 ${colors.border} ${colors.bg} shadow-sm overflow-hidden`}>
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex items-center space-x-3">
@@ -450,34 +450,34 @@ const DailyInsightsDisplay: React.FC = () => {
           )}
 
           {/* Mobile Action Buttons */}
-          <div className="flex space-x-3 pt-2">
+          <div className="flex flex-wrap gap-2 pt-2">
             <button
               onClick={handleLike}
-              className="flex-1 bg-white/80 hover:bg-white text-gray-700 py-3 px-4 rounded-xl font-medium transition-colors active:scale-95 flex items-center justify-center space-x-2"
+              className="flex-1 min-w-[80px] bg-white/80 hover:bg-white text-gray-700 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors active:scale-95 flex items-center justify-center gap-1"
             >
-              <ThumbsUp className="w-4 h-4" />
-              <span>Helpful</span>
+              <ThumbsUp className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Helpful</span>
             </button>
             <button
               onClick={handleSave}
-              className="flex-1 bg-white/80 hover:bg-white text-gray-700 py-3 px-4 rounded-xl font-medium transition-colors active:scale-95 flex items-center justify-center space-x-2"
+              className="flex-1 min-w-[80px] bg-white/80 hover:bg-white text-gray-700 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors active:scale-95 flex items-center justify-center gap-1"
             >
-              <Bookmark className="w-4 h-4" />
-              <span>Save</span>
+              <Bookmark className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Save</span>
             </button>
-                         <button
-               onClick={handleShare}
-               className="flex-1 bg-white/80 hover:bg-white text-gray-700 py-3 px-4 rounded-xl font-medium transition-colors active:scale-95 flex items-center justify-center space-x-2"
-             >
-               <Share className="w-4 h-4" />
-               <span>Share</span>
-             </button>
+            <button
+              onClick={handleShare}
+              className="flex-1 min-w-[80px] bg-white/80 hover:bg-white text-gray-700 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors active:scale-95 flex items-center justify-center gap-1"
+            >
+              <Share className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Share</span>
+            </button>
             <button
               onClick={handleRefresh}
               disabled={isRefreshing}
-              className="px-4 py-3 bg-white/80 hover:bg-white text-gray-700 rounded-xl font-medium transition-colors active:scale-95 disabled:opacity-50"
+              className="min-w-[44px] px-3 py-2.5 bg-white/80 hover:bg-white text-gray-700 rounded-lg text-sm font-medium transition-colors active:scale-95 disabled:opacity-50"
             >
-              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
             </button>
           </div>
         </div>
