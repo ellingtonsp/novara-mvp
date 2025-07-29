@@ -60,10 +60,16 @@
     "bugbot:local": "node scripts/bugbot-local-monitor.js",
     "bugbot:pre-deploy": "npm run bugbot:local && npm run safety:check",
     "bugbot:post-deploy": "node scripts/bugbot-post-deploy-check.js",
-    "bugbot:monitor": "npm run bugbot:local && npm run monitor:all"
+    "bugbot:monitor": "npm run bugbot:local && npm run monitor:all",
+    "test:pwa-cache": "node scripts/test-pwa-cache-functionality.js",
+    "test:pwa-cache:production-only": "SKIP_LOCAL_TESTS=true node scripts/test-pwa-cache-functionality.js",
+    "test:existing-user-onboarding": "node scripts/test-existing-user-onboarding.js",
+    "test:ui-comprehensive": "npm run test:pwa-cache:production-only && npm run test:existing-user-onboarding"
   },
   "dependencies": {
     "axios": "^1.11.0",
-    "node-fetch": "^2.7.0"
+    "better-sqlite3": "^12.2.0",
+    "node-fetch": "^2.7.0",
+    "uuid": "^11.1.0"
   }
 }

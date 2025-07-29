@@ -279,7 +279,8 @@ const allowedOrigins = [
   'https://novara-mvp.vercel.app', // Production frontend
   'https://novara-mvp-staging.vercel.app', // Staging frontend
   'https://novara-mvp-git-staging-novara-fertility.vercel.app', // Vercel staging frontend
-  'https://novara-1txlqsq5z-novara-fertility.vercel.app', // Current Vercel staging frontend
+  // Dynamic Vercel deployment URLs pattern
+  /^https:\/\/novara-[a-z0-9]+-novara-fertility\.vercel\.app$/
 ];
 
 // Add development origins in non-production environments
@@ -289,13 +290,28 @@ if (process.env.NODE_ENV !== 'production') {
     'http://localhost:3001',  // Alternative frontend port
     'http://localhost:4200'   // Stable frontend port (ensure it's always included)
   );
-  
-  // Add Vercel staging URL pattern for dynamic deployments
-  allowedOrigins.push(/^https:\/\/novara-.*-novara-fertility\.vercel\.app$/);
 }
 
 app.use(cors({
-  origin: allowedOrigins,
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or Postman)
+    if (!origin) return callback(null, true);
+    
+    // Check if the origin is in the allowed list or matches a pattern
+    const isAllowed = allowedOrigins.some(allowed => {
+      if (allowed instanceof RegExp) {
+        return allowed.test(origin);
+      }
+      return allowed === origin;
+    });
+    
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      console.warn(`CORS: Blocked origin ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Origin', 'X-Requested-With', 'Accept'],
@@ -2568,6 +2584,284 @@ app.get('/api/insights/daily', authenticateToken, async (req, res) => {
   }
 });
 
+// Get User Metrics (Protected Route)
+app.get('/api/users/metrics', authenticateToken, async (req, res) => {
+  try {
+    console.log(`📊 Fetching metrics for user: ${req.user.email}`);
+
+    // Find user
+    const user = await findUserByEmail(req.user.email);
+    if (!user) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'User not found' 
+      });
+    }
+
+    // Get all check-ins for this user
+    let userRecords = [];
+    
+    if (databaseAdapter.isUsingLocalDatabase()) {
+      // Use local database method - get all check-ins
+      const result = await databaseAdapter.localDb.getUserCheckins(user.id, 30);
+      userRecords = result.records || [];
+    } else {
+      // Use Airtable with filter formula
+      const checkinsUrl = `${config.airtable.baseUrl}/DailyCheckins?filterByFormula=user_id='${user.email}'&sort[0][field]=date_submitted&sort[0][direction]=desc&maxRecords=100`;
+      const response = await databaseAdapter.fetchCheckins(checkinsUrl, {
+        headers: {
+          'Authorization': `Bearer ${config.airtable.apiKey}`,
+        }
+      });
+
+      const result = await response.json();
+      
+      if (!response.ok) {
+        console.error('❌ Airtable error fetching check-ins for metrics:', result);
+        return res.status(422).json({ 
+          success: false, 
+          error: 'Failed to retrieve check-ins for metrics' 
+        });
+      }
+      
+      userRecords = result.records || [];
+    }
+
+    console.log(`📊 Found ${userRecords.length} check-ins for metrics`);
+
+    const checkins = userRecords.map(record => ({
+      id: record.id,
+      mood_today: record.fields.mood_today || '',
+      primary_concern_today: record.fields.primary_concern_today || null,
+      confidence_today: record.fields.confidence_today || 5,
+      user_note: record.fields.user_note || null,
+      medication_taken: record.fields.medication_taken || 'not tracked',
+      side_effects: record.fields.side_effects || null,
+      partner_involved: record.fields.partner_involved || false,
+      coping_strategies: record.fields.coping_strategies || [],
+      date_submitted: record.fields.date_submitted || '',
+      created_at: record.fields.created_at || record.createdTime
+    }));
+
+    // Calculate metrics
+    const now = new Date();
+    const lastWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const lastMonth = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    // Filter check-ins by time period
+    const lastWeekCheckins = checkins.filter(c => new Date(c.date_submitted) >= lastWeek);
+    const lastMonthCheckins = checkins.filter(c => new Date(c.date_submitted) >= lastMonth);
+
+    // Medication adherence calculations
+    const medicationData = lastWeekCheckins.filter(c => c.medication_taken !== 'not tracked');
+    const medicationTaken = medicationData.filter(c => c.medication_taken === 'yes').length;
+    const medicationAdherenceRate = medicationData.length > 0 
+      ? Math.round((medicationTaken / medicationData.length) * 100) 
+      : 0;
+    const missedDosesLastWeek = medicationData.filter(c => c.medication_taken === 'no').length;
+
+    // Calculate trend by comparing last week to previous week
+    const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+    const previousWeekCheckins = checkins.filter(c => {
+      const date = new Date(c.date_submitted);
+      return date >= twoWeeksAgo && date < lastWeek;
+    });
+    const prevMedicationData = previousWeekCheckins.filter(c => c.medication_taken !== 'not tracked');
+    const prevMedicationTaken = prevMedicationData.filter(c => c.medication_taken === 'yes').length;
+    const prevAdherenceRate = prevMedicationData.length > 0 
+      ? (prevMedicationTaken / prevMedicationData.length) * 100 
+      : 0;
+
+    let medicationAdherenceTrend = 'stable';
+    if (medicationAdherenceRate > prevAdherenceRate + 5) medicationAdherenceTrend = 'improving';
+    else if (medicationAdherenceRate < prevAdherenceRate - 5) medicationAdherenceTrend = 'declining';
+
+    // Mental health metrics (PHQ-4 approximation from mood data)
+    const moodScores = {
+      'amazing': 1,
+      'good': 2,
+      'okay': 3,
+      'tough': 4,
+      'very tough': 5
+    };
+    
+    const recentMoods = lastWeekCheckins.map(c => moodScores[c.mood_today] || 3);
+    const averageMoodScore = recentMoods.length > 0 
+      ? recentMoods.reduce((a, b) => a + b, 0) / recentMoods.length 
+      : 3;
+    
+    // Convert to PHQ-4 scale (0-12, where lower is better)
+    const currentPHQ4Score = Math.round((averageMoodScore - 1) * 3);
+    
+    // Calculate anxiety average (using confidence scores)
+    const anxietyScores = lastWeekCheckins.map(c => 10 - (c.confidence_today || 5));
+    const anxietyAverage = anxietyScores.length > 0 
+      ? Math.round(anxietyScores.reduce((a, b) => a + b, 0) / anxietyScores.length * 10) / 10
+      : 5;
+
+    // PHQ-4 trend
+    const prevMoodScores = previousWeekCheckins.map(c => moodScores[c.mood_today] || 3);
+    const prevAvgMoodScore = prevMoodScores.length > 0 
+      ? prevMoodScores.reduce((a, b) => a + b, 0) / prevMoodScores.length 
+      : 3;
+    const prevPHQ4Score = Math.round((prevAvgMoodScore - 1) * 3);
+
+    let phq4Trend = 'stable';
+    if (currentPHQ4Score < prevPHQ4Score - 1) phq4Trend = 'improving';
+    else if (currentPHQ4Score > prevPHQ4Score + 1) phq4Trend = 'worsening';
+
+    // Engagement metrics
+    const checkInStreak = calculateCheckInStreak(checkins);
+    const totalCheckIns = checkins.length;
+
+    // Calculate insight engagement rate (placeholder - would need insight interaction data)
+    const insightEngagementRate = 76; // Would calculate from actual engagement data
+
+    // Calculate checklist completion rate (placeholder - would need checklist data)
+    const checklistCompletionRate = 82; // Would calculate from actual checklist data
+
+    // Coping strategies analysis
+    const allCopingStrategies = lastMonthCheckins
+      .filter(c => c.coping_strategies && c.coping_strategies.length > 0)
+      .flatMap(c => c.coping_strategies);
+    
+    const strategyCount = {};
+    allCopingStrategies.forEach(strategy => {
+      strategyCount[strategy] = (strategyCount[strategy] || 0) + 1;
+    });
+    
+    const copingStrategiesUsed = Object.keys(strategyCount).slice(0, 3);
+    const mostEffectiveStrategy = copingStrategiesUsed[0] || 'None tracked yet';
+
+    // Partner involvement rate
+    const partnerCheckins = lastMonthCheckins.filter(c => c.partner_involved === true);
+    const partnerInvolvementRate = lastMonthCheckins.length > 0 
+      ? Math.round((partnerCheckins.length / lastMonthCheckins.length) * 100)
+      : 0;
+
+    // Calculate cycle completion probability based on multiple factors
+    let probabilityScore = 50; // Base score
+    
+    // Adherence factor (up to +20)
+    if (medicationAdherenceRate >= 90) probabilityScore += 20;
+    else if (medicationAdherenceRate >= 80) probabilityScore += 15;
+    else if (medicationAdherenceRate >= 70) probabilityScore += 10;
+    else probabilityScore += 5;
+
+    // Mental health factor (up to +15)
+    if (currentPHQ4Score < 3) probabilityScore += 15;
+    else if (currentPHQ4Score < 6) probabilityScore += 10;
+    else if (currentPHQ4Score < 9) probabilityScore += 5;
+
+    // Engagement factor (up to +15)
+    if (checkInStreak >= 7) probabilityScore += 15;
+    else if (checkInStreak >= 3) probabilityScore += 10;
+    else probabilityScore += 5;
+
+    const cycleCompletionProbability = Math.min(95, Math.max(25, probabilityScore));
+
+    // Determine risk and protective factors
+    const riskFactors = [];
+    const protectiveFactors = [];
+
+    // Risk factors
+    if (medicationAdherenceRate < 80) riskFactors.push('Low medication adherence');
+    if (currentPHQ4Score >= 6) riskFactors.push('Elevated anxiety/depression');
+    if (checkInStreak < 3) riskFactors.push('Inconsistent tracking');
+    if (anxietyAverage > 6) riskFactors.push('High anxiety days');
+    const sideEffectsCount = lastWeekCheckins.filter(c => c.side_effects && c.side_effects.length > 0).length;
+    if (sideEffectsCount > 3) riskFactors.push('Frequent side effects');
+
+    // Protective factors
+    if (medicationAdherenceRate >= 85) protectiveFactors.push('Strong medication adherence');
+    if (partnerInvolvementRate >= 50) protectiveFactors.push('Active partner support');
+    if (checkInStreak >= 7) protectiveFactors.push('Consistent daily check-ins');
+    if (copingStrategiesUsed.length > 0) protectiveFactors.push('Active coping strategies');
+    if (currentPHQ4Score < 6) protectiveFactors.push('Good mental health');
+
+    const metrics = {
+      // Adherence metrics
+      medicationAdherenceRate,
+      medicationAdherenceTrend,
+      missedDosesLastWeek,
+      
+      // Mental health metrics
+      currentPHQ4Score,
+      phq4Trend,
+      anxietyAverage,
+      
+      // Engagement metrics
+      checkInStreak,
+      totalCheckIns,
+      insightEngagementRate,
+      checklistCompletionRate,
+      
+      // Support utilization
+      copingStrategiesUsed,
+      mostEffectiveStrategy,
+      partnerInvolvementRate,
+      
+      // Predictive metrics
+      cycleCompletionProbability,
+      riskFactors,
+      protectiveFactors,
+
+      // Metadata
+      lastUpdated: new Date().toISOString(),
+      dataRange: {
+        from: lastMonth.toISOString().split('T')[0],
+        to: now.toISOString().split('T')[0]
+      }
+    };
+
+    console.log(`✅ Generated metrics for user: ${req.user.email}`);
+    
+    res.json({ 
+      success: true, 
+      metrics,
+      user_id: user.id
+    });
+
+  } catch (error) {
+    console.error('❌ Error generating user metrics:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to generate user metrics',
+      details: error.message 
+    });
+  }
+});
+
+// Helper function to calculate check-in streak
+function calculateCheckInStreak(checkins) {
+  if (!checkins || checkins.length === 0) return 0;
+  
+  // Sort by date descending
+  const sortedCheckins = [...checkins].sort((a, b) => 
+    new Date(b.date_submitted).getTime() - new Date(a.date_submitted).getTime()
+  );
+  
+  let streak = 0;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  for (let i = 0; i < sortedCheckins.length; i++) {
+    const checkinDate = new Date(sortedCheckins[i].date_submitted);
+    checkinDate.setHours(0, 0, 0, 0);
+    
+    const expectedDate = new Date(today);
+    expectedDate.setDate(expectedDate.getDate() - i);
+    
+    if (checkinDate.getTime() === expectedDate.getTime()) {
+      streak++;
+    } else {
+      break;
+    }
+  }
+  
+  return streak;
+}
+
 // Track Insight Engagement (Protected Route)
 app.post('/api/insights/engagement', authenticateToken, async (req, res) => {
   try {
@@ -2764,6 +3058,7 @@ app.get('/api/checkins-test', (req, res) => {
       'GET /api/checkins': 'Get user check-in history (protected)',
       'GET /api/insights/daily': 'Get personalized daily insights (protected)', // NEW!
       'POST /api/insights/engagement': 'Track insight engagement (protected)', // NEW!
+      'GET /api/users/metrics': 'Get user engagement metrics (protected)', // NEW!
       'GET /api/users/insight': 'Get user micro-insight (protected)',
       'GET /api/checkins-test': 'This test endpoint'
     },

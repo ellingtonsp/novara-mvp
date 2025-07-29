@@ -1,18 +1,19 @@
 # Novara Product Roadmap
 
-## 🌱 Sprint 1 — "Instrument & Retain" (2 weeks, ≈20 SP)
+## 🌱 Sprint 1 — "Instrument & Retain" (2 weeks, ≈22 SP)
 
 | Epic | ID | Story (Status) | SP |
 |---|----|----|----|
 | **E1 Advanced Analytics** | **AN-01** | ✅ Event tracking for signup, check-in, insight view & share → PostHog funnels | 5 |
 | **E2 Insight Polish** | **CM-01** | ✅ Positive-reflection NLP so good-day check-ins feel recognised | 3 |
 |  | **ON-01** | ✅ Onboarding AB Experiment (Fast Lane vs. Control) - Core framework deployed | 3 |
+|  | **AP-01** | ⬜ Cycle-Aware Appointment Prep Checklist - personalized prep based on cycle stage | 2 |
 |  | **VP-01** | ⬜ ROI banner: "5× check-ins → 15 % ↑ med-adherence" under logo | 2 |
 | **E3 Growth Loops** | **GR-01** | 🟡 Welcome micro-insight email within 10 min of signup | 2 |
 |  | **ON-02** | ⬜ Delay push-permission prompt until after first insight | 2 |
 | **E4 Compliance Hardening** | **CO-01** | 🟡 Encrypt all PII at rest (Postgres AES-256) + key-rotation doc | 5 |
 
-**Sprint Goal:** Prove we can measure activation, delight early adopters, and answer HIPAA questions.
+**Sprint Goal:** Prove we can measure activation, delight early adopters with practical value, and answer HIPAA questions.
 
 ## Success Metrics (Quarterly)
 - **Lead Time** < 2 weeks (idea → prod)
@@ -57,6 +58,7 @@
 4. **Roadmap-Driven AI Alignment** — Cursor Rules now encode sprint priorities, ensuring tasks map to Epics/Stories.
 5. **Technical Debt Reduction** — Schema migrations, local SQLite reliability, removal of flaky dependencies.
 6. **A/B Testing Infrastructure** — ON-01 A/B test framework successfully deployed with deterministic 50/50 split and regression fixes applied.
+7. **Practical Value Focus** — AP-01 introduces tangible, actionable value immediately after first check-in to reduce user anxiety and demonstrate practical utility.
 
 ---
 

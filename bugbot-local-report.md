@@ -1,17 +1,44 @@
 # 🐛 BugBot Local Development Report
 
-**Generated:** 2025-07-26T23:13:08.296Z
+**Generated:** 2025-07-28T17:15:08.624Z
 **Environment:** local
 
 ## 📊 Summary
 
-- **Total Issues:** 1
-- **Errors:** 0
-- **Warnings:** 1
+- **Total Issues:** 6
+- **Errors:** 4
+- **Warnings:** 2
 
 ## 🚨 Issues Found
 
+### 🚨 Errors (Must Fix)
+
+#### Missing environment variable: VITE_APP_ENV
+- **Type:** missing_env_var
+- **Details:** Required in frontend environment
+- **Fix:** `Add VITE_APP_ENV=value to frontend/.env.development`
+
+#### Missing environment variable: AIRTABLE_API_KEY
+- **Type:** missing_env_var
+- **Details:** Required in backend environment
+- **Fix:** `Add AIRTABLE_API_KEY=value to backend/.env.development`
+
+#### Missing environment variable: AIRTABLE_BASE_ID
+- **Type:** missing_env_var
+- **Details:** Required in backend environment
+- **Fix:** `Add AIRTABLE_BASE_ID=value to backend/.env.development`
+
+#### Working on protected branch: staging
+- **Type:** protected_branch_development
+- **Details:** You should work on feature branches, not protected branches
+- **Fix:** `Run: git checkout -b feature/your-feature-name`
+
 ### ⚠️ Warnings (Recommended)
+
+#### Ports 4200, 9002 are occupied
+- **Type:** port_conflict
+- **Details:** These ports might conflict with Novara development servers
+- **Fix:** `Run: ./scripts/kill-local-servers.sh`
 
 #### Uncommitted changes detected
 - **Type:** uncommitted_changes
@@ -20,6 +47,7 @@
 
 ## 🔧 Recommendations
 
+- 🚨 Fix all errors before starting development
 - ⚠️ Address warnings to improve development experience
 
 ## 📋 Quick Fix Commands
