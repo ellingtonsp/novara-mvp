@@ -213,7 +213,7 @@ const NovaraLanding = () => {
         currentView
       });
       
-      if (needsBaseline) {
+      if (needsBaseline && !baselineDismissed) {
         console.log('🧪 ON-01: User needs baseline completion, showing panel');
         setShowBaselinePanel(true);
         setBaselineStartTime(Date.now());
@@ -224,7 +224,7 @@ const NovaraLanding = () => {
     if (currentView === 'welcome') {
       setShowBaselinePanel(false);
     }
-  }, [isAuthenticated, user, onboardingPath, currentView]);
+  }, [isAuthenticated, user, onboardingPath, currentView, baselineDismissed]);
   
   // Load check-in preference
   useEffect(() => {
