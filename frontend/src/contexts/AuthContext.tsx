@@ -26,6 +26,7 @@ interface AuthContextType {
   signup: (userData: any) => Promise<void>;
   refreshToken: () => Promise<boolean>;
   isTokenExpired: () => boolean;
+  updateUser: (updates: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -230,6 +231,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     console.log('👋 User logged out');
   };
 
+  const updateUser = (updates: Partial<User>) => {
+    if (!user) return;
+    
+    const updatedUser = { ...user, ...updates };
+    localStorage.setItem('user', JSON.stringify(updatedUser));
+    setUser(updatedUser);
+    console.log('✅ User data updated:', updates);
+  };
+
   const signup = async (_userData: any) => {
     throw new Error('Use apiClient.createUser() directly for signup');
   };
@@ -248,6 +258,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     signup,
     refreshToken,
     isTokenExpired: checkTokenExpired,
+    updateUser,
   };
 
   return (

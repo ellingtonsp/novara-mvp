@@ -48,7 +48,7 @@ const sliderThumbStyle = `
 `;
 
 const NovaraLanding = () => {
-  const { user, isAuthenticated, isLoading, login, logout } = useAuth();
+  const { user, isAuthenticated, isLoading, login, logout, updateUser } = useAuth();
   const [isClearingCache, setIsClearingCache] = useState(false);
   const [checkinPreference, setCheckinPreference] = useState<'quick_daily' | 'comprehensive_daily'>('quick_daily');
   const [showWeeklyReminder, setShowWeeklyReminder] = useState(false);
@@ -440,12 +440,20 @@ const NovaraLanding = () => {
       
       if (response.ok && result?.success) {
         console.log('🧪 ON-01: Baseline data updated successfully');
+        
+        // Update user data in context
+        updateUser({
+          nickname: data.nickname,
+          confidence_meds: data.confidence_meds,
+          confidence_costs: data.confidence_costs,
+          confidence_overall: data.confidence_overall,
+          top_concern: data.top_concern,
+          baseline_completed: true
+        });
+        
+        // Hide the panel
         setShowBaselinePanel(false);
         setBaselineDismissed(false);
-        
-        // Refresh user data to reflect baseline completion
-        // This will trigger the useEffect to hide the panel
-        window.location.reload();
       } else {
         console.error('🧪 ON-01: Failed to update baseline data:', {
           status: response.status,
