@@ -1,9 +1,21 @@
-const Database = require('better-sqlite3');
+// Try to load better-sqlite3 if available (optional dependency)
+let Database;
+try {
+  Database = require('better-sqlite3');
+} catch (error) {
+  console.log('📦 better-sqlite3 not available - SQLite features disabled');
+  Database = null;
+}
 const path = require('path');
 const fs = require('fs');
 
 class SQLiteAdapter {
   constructor() {
+    // Check if Database is available
+    if (!Database) {
+      throw new Error('SQLite adapter cannot be used without better-sqlite3. Please use Airtable adapter for production.');
+    }
+    
     const dbPath = path.join(__dirname, '../data/novara-local.db');
     
     // Ensure data directory exists
