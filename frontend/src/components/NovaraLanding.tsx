@@ -11,11 +11,16 @@ import { apiClient } from '../lib/api';
 // import { trackEvent, trackAuthEvent } from '../lib/analytics';
 import { clearAllCaches } from '../utils/pwa';
 import DailyCheckinForm from './DailyCheckinForm';
+import { EnhancedDailyCheckinForm } from './EnhancedDailyCheckinForm';
+import { QuickDailyCheckinForm } from './QuickDailyCheckinForm';
+import { CheckinPreferenceToggle } from './CheckinPreferenceToggle';
 import DailyInsightsDisplay from './DailyInsightsDisplay';
 import WelcomeInsight from './WelcomeInsight';
 import { BaselinePanel } from './BaselinePanel';
+import ChecklistCard from './ChecklistCard';
+import { OutcomeMetricsDashboard } from './OutcomeMetricsDashboard';
 // ON-01: A/B Test Integration
-import { getOnboardingPath, OnboardingPath } from '../utils/abTestUtils';
+import { getOnboardingPath, OnboardingPath, trackOnboardingPathSelected, generateSessionId } from '../utils/abTestUtils';
 import { OnboardingFast } from './OnboardingFast';
 
 const sliderThumbStyle = `
@@ -44,6 +49,8 @@ const sliderThumbStyle = `
 const NovaraLanding = () => {
   const { user, isAuthenticated, isLoading, login, logout } = useAuth();
   const [isClearingCache, setIsClearingCache] = useState(false);
+  const [checkinPreference, setCheckinPreference] = useState<'quick_daily' | 'comprehensive_daily'>('quick_daily');
+  const [showWeeklyReminder, setShowWeeklyReminder] = useState(false);
   
   // Load DM Sans font
   useEffect(() => {
@@ -149,6 +156,12 @@ const NovaraLanding = () => {
       const path = getOnboardingPath();
       setOnboardingPath(path);
       console.log('🧪 ON-01: Initialized A/B test path =', path);
+      
+      // Track the path selection event
+      trackOnboardingPathSelected(path, {
+        sessionId: generateSessionId(),
+        startTime: Date.now()
+      });
     }
   }, [isAuthenticated, onboardingPath]);
 
@@ -208,6 +221,15 @@ const NovaraLanding = () => {
       setShowBaselinePanel(false);
     }
   }, [isAuthenticated, user, onboardingPath, currentView]);
+  
+  // Load check-in preference
+  useEffect(() => {
+    const savedPref = localStorage.getItem(`checkin_preference_${user?.email}`);
+    if (savedPref) {
+      const pref = JSON.parse(savedPref);
+      setCheckinPreference(pref.type);
+    }
+  }, [user]);
   
   // Remove old modal state - now using dedicated page
 
@@ -298,7 +320,32 @@ const NovaraLanding = () => {
   };
 
   const handleCheckinComplete = () => {
+    // Track check-in count for preference prompt
+    const count = parseInt(localStorage.getItem(`checkin_count_${user?.email}`) || '0') + 1;
+    localStorage.setItem(`checkin_count_${user?.email}`, count.toString());
+    
+    // Check if it's time for weekly comprehensive check-in
+    const lastComprehensive = localStorage.getItem(`last_comprehensive_${user?.email}`);
+    const daysSince = lastComprehensive 
+      ? Math.floor((Date.now() - new Date(lastComprehensive).getTime()) / (1000 * 60 * 60 * 24))
+      : 7;
+    
+    if (checkinPreference === 'quick_daily' && daysSince >= 7) {
+      setShowWeeklyReminder(true);
+    }
+    
     setCurrentView('insights');
+  };
+  
+  const handlePreferenceChange = (newPref: 'quick_daily' | 'comprehensive_daily') => {
+    setCheckinPreference(newPref);
+  };
+  
+  const handleSwitchToComprehensive = () => {
+    localStorage.setItem(`last_comprehensive_${user?.email}`, new Date().toISOString());
+    setShowWeeklyReminder(false);
+    // Temporarily show comprehensive form
+    setCheckinPreference('comprehensive_daily');
   };
 
   // ON-01: Handle fast onboarding completion
@@ -965,6 +1012,53 @@ const NovaraLanding = () => {
             </div>
           </div>
         </header>
+        
+        {/* Desktop Navigation Tabs */}
+        <div className="bg-white border-b border-gray-200">
+          <div className="max-w-4xl mx-auto px-6">
+            <div className="flex space-x-8">
+              <button
+                onClick={() => setCurrentView('dashboard')}
+                className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
+                  currentView === 'dashboard'
+                    ? 'border-[#FF6F61] text-[#FF6F61]'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <div className="flex items-center space-x-2">
+                  <Heart className="w-4 h-4" />
+                  <span>Home</span>
+                </div>
+              </button>
+              <button
+                onClick={() => setCurrentView('checkin')}
+                className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
+                  currentView === 'checkin'
+                    ? 'border-[#FF6F61] text-[#FF6F61]'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <div className="flex items-center space-x-2">
+                  <MessageCircle className="w-4 h-4" />
+                  <span>Check-in</span>
+                </div>
+              </button>
+              <button
+                onClick={() => setCurrentView('insights')}
+                className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
+                  currentView === 'insights'
+                    ? 'border-[#FF6F61] text-[#FF6F61]'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <div className="flex items-center space-x-2">
+                  <Calendar className="w-4 h-4" />
+                  <span>Insights</span>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Desktop Content */}
@@ -989,65 +1083,157 @@ const NovaraLanding = () => {
               </div>
             )}
             <section className="max-w-4xl mx-auto px-6 py-12">
-          <div className="text-center mb-8">
-            {justSignedUp ? (
-              <>
-                <div className="w-16 h-16 rounded-full bg-gradient-to-r from-[#FF6F61] to-[#CBA7FF] flex items-center justify-center mx-auto mb-4">
-                  <CheckCircle className="w-8 h-8 text-white" />
+              {/* Desktop Dashboard View */}
+              {currentView === 'dashboard' && (
+                <div className="space-y-8">
+                  <div className="text-center">
+                    <h2 className="text-3xl font-bold mb-4">
+                      Welcome back, {user?.nickname || user?.email?.split('@')[0]}! 👋
+                    </h2>
+                    <p className="text-lg text-gray-600">
+                      Your personalized dashboard shows how your actions impact outcomes
+                    </p>
+                  </div>
+                  
+                  {/* Outcome Metrics Dashboard */}
+                  <div className="mb-8">
+                    <OutcomeMetricsDashboard />
+                  </div>
+                  
+                  {/* Smart Checklist Card */}
+                  <div>
+                    <h3 className="text-xl font-semibold text-gray-800 mb-4">Today's Smart Prep Checklist</h3>
+                    <ChecklistCard
+                      onComplete={() => {
+                        console.log('Desktop checklist completed');
+                      }}
+                      className="w-full"
+                    />
+                  </div>
                 </div>
-                <h2 className="text-3xl font-bold mb-4">
-                  Welcome to Novara, {user?.nickname || user?.email?.split('@')[0]}! 🌟
-                </h2>
-                <p className="text-lg text-gray-600 mb-6">
-                  Your journey has officially begun. Let's start with your first daily check-in to help us understand how you're feeling today.
-                </p>
-              </>
-            ) : (
-              <>
-                <h2 className="text-3xl font-bold mb-4">
-                  Welcome back, {user?.nickname || user?.email?.split('@')[0]}! 👋
-                </h2>
-                <p className="text-lg text-gray-600 mb-6">
-                  Ready for today's check-in? Share how you're feeling and get personalized insights.
-                </p>
-              </>
-            )}
-          </div>
-          
-          {/* Desktop Daily Insights Display */}
-          <div className="flex justify-center mb-6">
-            <DailyInsightsDisplay />
-          </div>
-          
-          {/* Desktop Daily Check-in Form */}
-          <div className="flex justify-center">
-            {baselineDismissed && !user?.baseline_completed ? (
-              <div className="w-full max-w-md bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
-                <div className="w-12 h-12 rounded-full bg-yellow-100 flex items-center justify-center mx-auto mb-4">
-                  <span className="text-yellow-600 text-xl">⚠️</span>
+              )}
+              
+              {/* Desktop Check-in View */}
+              {currentView === 'checkin' && (
+                <div>
+                  <div className="text-center mb-8">
+                    {justSignedUp ? (
+                      <>
+                        <div className="w-16 h-16 rounded-full bg-gradient-to-r from-[#FF6F61] to-[#CBA7FF] flex items-center justify-center mx-auto mb-4">
+                          <CheckCircle className="w-8 h-8 text-white" />
+                        </div>
+                        <h2 className="text-3xl font-bold mb-4">
+                          Welcome to Novara, {user?.nickname || user?.email?.split('@')[0]}! 🌟
+                        </h2>
+                        <p className="text-lg text-gray-600 mb-6">
+                          Your journey has officially begun. Let's start with your first daily check-in to help us understand how you're feeling today.
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <h2 className="text-3xl font-bold mb-4">
+                          Daily Check-in
+                        </h2>
+                        <p className="text-lg text-gray-600 mb-6">
+                          Share how you're feeling today and get personalized insights.
+                        </p>
+                      </>
+                    )}
+                  </div>
+                  
+                  {/* Desktop Daily Check-in Form */}
+                  <div className="flex justify-center">
+                    {baselineDismissed && !user?.baseline_completed ? (
+                      <div className="w-full max-w-md bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
+                        <div className="w-12 h-12 rounded-full bg-yellow-100 flex items-center justify-center mx-auto mb-4">
+                          <span className="text-yellow-600 text-xl">⚠️</span>
+                        </div>
+                        <h3 className="text-lg font-semibold text-yellow-800 mb-2">
+                          Complete Your Profile Setup
+                        </h3>
+                        <p className="text-yellow-700 mb-4">
+                          To receive personalized insights and questions tailored to your journey, please complete your profile setup.
+                        </p>
+                        <Button
+                          onClick={() => {
+                            setBaselineDismissed(false);
+                            setShowBaselinePanel(true);
+                            setBaselineStartTime(Date.now());
+                          }}
+                          className="bg-[#FF6F61] hover:bg-[#FF6F61]/90 text-white"
+                        >
+                          Complete Profile Setup
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="w-full max-w-2xl">
+                        <CheckinPreferenceToggle 
+                          currentPreference={checkinPreference}
+                          onPreferenceChange={handlePreferenceChange}
+                        />
+                        
+                        {showWeeklyReminder && (
+                          <Card className="border-purple-200 bg-gradient-to-r from-purple-50 to-pink-50 mb-4">
+                            <CardContent className="p-4">
+                              <p className="text-sm text-purple-800 font-medium mb-2">
+                                📅 It's been a week! Time for your comprehensive check-in.
+                              </p>
+                              <p className="text-xs text-purple-600 mb-3">
+                                This helps us provide deeper insights and better personalization.
+                              </p>
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  onClick={handleSwitchToComprehensive}
+                                  className="bg-purple-600 hover:bg-purple-700"
+                                >
+                                  Do comprehensive check-in
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => setShowWeeklyReminder(false)}
+                                >
+                                  Maybe later
+                                </Button>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )}
+                        
+                        {checkinPreference === 'quick_daily' ? (
+                          <QuickDailyCheckinForm 
+                            onComplete={handleCheckinComplete}
+                            onSwitchToFull={handleSwitchToComprehensive}
+                          />
+                        ) : (
+                          <EnhancedDailyCheckinForm onComplete={handleCheckinComplete} />
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <h3 className="text-lg font-semibold text-yellow-800 mb-2">
-                  Complete Your Profile Setup
-                </h3>
-                <p className="text-yellow-700 mb-4">
-                  To receive personalized insights and questions tailored to your journey, please complete your profile setup.
-                </p>
-                <Button
-                  onClick={() => {
-                    setBaselineDismissed(false);
-                    setShowBaselinePanel(true);
-                    setBaselineStartTime(Date.now());
-                  }}
-                  className="bg-[#FF6F61] hover:bg-[#FF6F61]/90 text-white"
-                >
-                  Complete Profile Setup
-                </Button>
-              </div>
-            ) : (
-              <DailyCheckinForm />
-            )}
-          </div>
-        </section>
+              )}
+              
+              {/* Desktop Insights View */}
+              {currentView === 'insights' && (
+                <div>
+                  <div className="text-center mb-8">
+                    <h2 className="text-3xl font-bold mb-4">
+                      Your Insights
+                    </h2>
+                    <p className="text-lg text-gray-600 mb-6">
+                      Personalized insights based on your check-ins and journey progress.
+                    </p>
+                  </div>
+                  
+                  {/* Desktop Daily Insights Display */}
+                  <div className="flex justify-center">
+                    <DailyInsightsDisplay />
+                  </div>
+                </div>
+              )}
+            </section>
           </>
         )}
       </div>
@@ -1073,9 +1259,24 @@ const NovaraLanding = () => {
                 />
               </div>
             )}
-            <div className="p-4">
-              <h2>Dashboard</h2>
-              <p>Welcome to your dashboard!</p>
+            <div className="p-4 space-y-6">
+              <div>
+                <h2 className="text-2xl font-bold mb-2">Your Dashboard</h2>
+                <p className="text-gray-600">Track how your actions impact outcomes</p>
+              </div>
+              
+              {/* Outcome Metrics Dashboard for Mobile */}
+              <OutcomeMetricsDashboard />
+              
+              {/* Smart Checklist */}
+              <div>
+                <h3 className="text-lg font-semibold mb-3">Today's Smart Prep</h3>
+                <ChecklistCard
+                  onComplete={(completionData) => {
+                    console.log('Checklist completed:', completionData);
+                  }}
+                />
+              </div>
               
               {baselineDismissed && !user?.baseline_completed && (
                 <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center">
@@ -1103,7 +1304,52 @@ const NovaraLanding = () => {
             </div>
           </>
         )}
-        {currentView === 'checkin' && <div className="pb-24"><DailyCheckinForm onComplete={handleCheckinComplete} /></div>}
+        {currentView === 'checkin' && (
+          <div className="pb-24 px-4">
+            <CheckinPreferenceToggle 
+              currentPreference={checkinPreference}
+              onPreferenceChange={handlePreferenceChange}
+            />
+            
+            {showWeeklyReminder && (
+              <Card className="border-purple-200 bg-gradient-to-r from-purple-50 to-pink-50 mb-4">
+                <CardContent className="p-4">
+                  <p className="text-sm text-purple-800 font-medium mb-2">
+                    📅 It's been a week! Time for your comprehensive check-in.
+                  </p>
+                  <p className="text-xs text-purple-600 mb-3">
+                    This helps us provide deeper insights and better personalization.
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={handleSwitchToComprehensive}
+                      className="bg-purple-600 hover:bg-purple-700"
+                    >
+                      Do comprehensive check-in
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setShowWeeklyReminder(false)}
+                    >
+                      Maybe later
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            
+            {checkinPreference === 'quick_daily' ? (
+              <QuickDailyCheckinForm 
+                onComplete={handleCheckinComplete}
+                onSwitchToFull={handleSwitchToComprehensive}
+              />
+            ) : (
+              <EnhancedDailyCheckinForm onComplete={handleCheckinComplete} />
+            )}
+          </div>
+        )}
         {currentView === 'insights' && <div className="px-4 py-6 pb-24"><DailyInsightsDisplay /></div>}
         
         {currentView !== 'welcome' && <MobileNavigation />}

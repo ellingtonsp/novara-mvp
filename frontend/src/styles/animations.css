@@ -1,0 +1,23 @@
+/* Animation styles for cache update notification */
+
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out forwards;
+}
+
+/* Ensure notification stays above mobile navigation */
+@media (max-width: 768px) {
+  .fixed.bottom-20 {
+    bottom: 5rem; /* Above mobile nav */
+  }
+}

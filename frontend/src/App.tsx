@@ -5,7 +5,10 @@ import { initializeAnalytics } from './lib/analytics'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { initializePWA, checkCacheStatus, clearAllCaches } from './utils/pwa'
 import { environmentConfig } from './lib/environment'
+import { CacheUpdateNotification } from './components/CacheUpdateNotification'
 import './App.css'
+import './styles/animations.css'
+import './styles/slider.css'
 
 function App() {
   // Initialize PostHog analytics on app load - AN-01 Event Tracking Instrumentation
@@ -62,6 +65,7 @@ function App() {
     <ErrorBoundary>
       <AuthProvider>
         <NovaraLanding />
+        <CacheUpdateNotification />
       </AuthProvider>
     </ErrorBoundary>
   )
