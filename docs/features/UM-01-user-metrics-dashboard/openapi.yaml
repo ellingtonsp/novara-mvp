@@ -1,0 +1,154 @@
+openapi: 3.0.0
+info:
+  title: User Metrics API
+  version: 1.0.0
+  description: API for calculating and retrieving user engagement metrics
+
+paths:
+  /api/users/metrics:
+    get:
+      summary: Get user metrics
+      description: Calculate and return comprehensive metrics based on user's check-in history
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Successful response with metrics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  metrics:
+                    $ref: '#/components/schemas/UserMetrics'
+                  user_id:
+                    type: string
+                    example: "rec123abc"
+        '401':
+          description: Unauthorized - Invalid or missing token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error during calculation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    UserMetrics:
+      type: object
+      required:
+        - medicationAdherenceRate
+        - medicationAdherenceTrend
+        - missedDosesLastWeek
+        - currentPHQ4Score
+        - phq4Trend
+        - anxietyAverage
+        - checkInStreak
+        - totalCheckIns
+        - cycleCompletionProbability
+      properties:
+        medicationAdherenceRate:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: Percentage of medications taken as prescribed
+        medicationAdherenceTrend:
+          type: string
+          enum: [improving, stable, declining]
+          description: Trend compared to previous week
+        missedDosesLastWeek:
+          type: integer
+          minimum: 0
+          description: Number of missed doses in last 7 days
+        currentPHQ4Score:
+          type: integer
+          minimum: 0
+          maximum: 12
+          description: Patient Health Questionnaire-4 score approximation
+        phq4Trend:
+          type: string
+          enum: [improving, stable, worsening]
+        anxietyAverage:
+          type: number
+          minimum: 0
+          maximum: 10
+        checkInStreak:
+          type: integer
+          minimum: 0
+          description: Consecutive days of check-ins
+        totalCheckIns:
+          type: integer
+          minimum: 0
+        insightEngagementRate:
+          type: integer
+          minimum: 0
+          maximum: 100
+        checklistCompletionRate:
+          type: integer
+          minimum: 0
+          maximum: 100
+        copingStrategiesUsed:
+          type: array
+          items:
+            type: string
+        mostEffectiveStrategy:
+          type: string
+        partnerInvolvementRate:
+          type: integer
+          minimum: 0
+          maximum: 100
+        cycleCompletionProbability:
+          type: integer
+          minimum: 0
+          maximum: 100
+        riskFactors:
+          type: array
+          items:
+            type: string
+        protectiveFactors:
+          type: array
+          items:
+            type: string
+        lastUpdated:
+          type: string
+          format: date-time
+        dataRange:
+          type: object
+          properties:
+            from:
+              type: string
+              format: date
+            to:
+              type: string
+              format: date
+
+    Error:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+        details:
+          type: string

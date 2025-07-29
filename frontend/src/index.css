@@ -1,3 +1,6 @@
+/* Import mobile fixes before tailwind */
+@import './styles/mobile-fixes.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

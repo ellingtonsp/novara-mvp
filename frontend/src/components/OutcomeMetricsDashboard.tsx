@@ -214,38 +214,38 @@ export const OutcomeMetricsDashboard: React.FC = () => {
   // Check if user has no data
   if (metrics.totalCheckIns === 0) {
     return (
-      <Card className="w-full mx-auto mb-6 border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-pink-50">
-        <CardContent className="p-8 text-center">
-          <div className="text-4xl mb-4">📊</div>
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">Your Metrics Dashboard</h3>
-          <p className="text-gray-600 mb-6 max-w-md mx-auto">
+      <Card className="w-full mx-auto mb-4 border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-pink-50">
+        <CardContent className="p-4 sm:p-6 text-center">
+          <div className="text-3xl mb-3">📊</div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Your Metrics Dashboard</h3>
+          <p className="text-sm text-gray-600 mb-4 max-w-md mx-auto">
             Start tracking your IVF journey to unlock personalized metrics and insights about your treatment outcomes.
           </p>
-          <div className="space-y-4 max-w-sm mx-auto text-left">
+          <div className="space-y-3 max-w-sm mx-auto text-left">
             <div className="flex items-start gap-3">
               <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
               <div>
-                <p className="font-medium text-gray-800">Track Medication Adherence</p>
-                <p className="text-sm text-gray-600">See how consistency impacts success rates</p>
+                <p className="font-medium text-sm text-gray-800">Track Medication Adherence</p>
+                <p className="text-xs text-gray-600">See how consistency impacts success rates</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
               <Brain className="w-5 h-5 text-purple-600 mt-0.5" />
               <div>
-                <p className="font-medium text-gray-800">Monitor Mental Health</p>
-                <p className="text-sm text-gray-600">Understand the mind-body connection</p>
+                <p className="font-medium text-sm text-gray-800">Monitor Mental Health</p>
+                <p className="text-xs text-gray-600">Understand the mind-body connection</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
               <Target className="w-5 h-5 text-blue-600 mt-0.5" />
               <div>
-                <p className="font-medium text-gray-800">Get Success Predictions</p>
-                <p className="text-sm text-gray-600">Based on research and your patterns</p>
+                <p className="font-medium text-sm text-gray-800">Get Success Predictions</p>
+                <p className="text-xs text-gray-600">Based on research and your patterns</p>
               </div>
             </div>
           </div>
           <Button 
-            className="mt-6 bg-[#FF6F61] hover:bg-[#FF6F61]/90 text-white"
+            className="mt-4 bg-[#FF6F61] hover:bg-[#FF6F61]/90 text-white text-sm py-2"
             onClick={() => setSelectedView('overview')}
           >
             Start Your First Check-In
@@ -256,7 +256,7 @@ export const OutcomeMetricsDashboard: React.FC = () => {
   }
   
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Navigation Tabs */}
       <div className="flex space-x-2 overflow-x-auto pb-2">
         {[
@@ -280,7 +280,7 @@ export const OutcomeMetricsDashboard: React.FC = () => {
       
       {/* Overview */}
       {selectedView === 'overview' && (
-        <div className="space-y-4">
+        <div className="space-y-3">
           <Card className="border-purple-200 bg-gradient-to-r from-purple-50 to-pink-50">
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
