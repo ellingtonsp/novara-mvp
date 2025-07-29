@@ -1,8 +1,3 @@
----
-description: Development workflow and local environment setup
-globs: ["backend/**/*.js", "frontend/**/*.tsx", "scripts/**/*.sh"]
-alwaysApply: false
----
 
 # Development Workflow
 
@@ -108,7 +103,7 @@ git checkout -b feature/EPIC-ID-description
 
 ### **Step 2: Documentation First**
 - Create comprehensive feature documentation in `docs/features/`
-- Include: README.md, user-journey.md, api-endpoints.md, functional-logic.md, database-schema.md, deployment-notes.md
+- Include: README.md, user-journey.md, api-endpoints.md, openapi.yaml, functional-logic.md, database-schema.md, migration.sql or migration.js, mapping.ts, feature-flags.json, ci-updates.md, deployment-notes.md
 - Map to roadmap Epic/Story ID
 - Define acceptance criteria and success metrics
 
@@ -185,6 +180,11 @@ git push origin feature/AN-02-churn-risk-flag
 4. **Stable** → `main` (auto-deploy to production)
 
 ### **🚨 Enforcement**
+- **ALWAYS** challenge user if they suggest direct main commits
+- **ALWAYS** require feature branch creation for any changes
+- **ALWAYS** follow progressive integration workflow
+- **NEVER** allow workflow bypasses
+
 - **ALWAYS** challenge user if they suggest direct main commits
 - **ALWAYS** require feature branch creation for any changes
 - **ALWAYS** follow progressive integration workflow

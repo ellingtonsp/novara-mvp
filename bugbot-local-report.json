@@ -1,16 +1,52 @@
 {
-  "timestamp": "2025-07-26T23:13:08.296Z",
+  "timestamp": "2025-07-28T17:15:08.624Z",
   "environment": "local",
   "issues": [
+    {
+      "type": "port_conflict",
+      "severity": "warning",
+      "message": "Ports 4200, 9002 are occupied",
+      "details": "These ports might conflict with Novara development servers",
+      "fix": "Run: ./scripts/kill-local-servers.sh"
+    },
+    {
+      "type": "missing_env_var",
+      "severity": "error",
+      "message": "Missing environment variable: VITE_APP_ENV",
+      "details": "Required in frontend environment",
+      "fix": "Add VITE_APP_ENV=value to frontend/.env.development"
+    },
+    {
+      "type": "missing_env_var",
+      "severity": "error",
+      "message": "Missing environment variable: AIRTABLE_API_KEY",
+      "details": "Required in backend environment",
+      "fix": "Add AIRTABLE_API_KEY=value to backend/.env.development"
+    },
+    {
+      "type": "missing_env_var",
+      "severity": "error",
+      "message": "Missing environment variable: AIRTABLE_BASE_ID",
+      "details": "Required in backend environment",
+      "fix": "Add AIRTABLE_BASE_ID=value to backend/.env.development"
+    },
     {
       "type": "uncommitted_changes",
       "severity": "warning",
       "message": "Uncommitted changes detected",
       "details": "You have uncommitted changes in your working directory",
       "fix": "Run: git add . && git commit -m \"your message\""
+    },
+    {
+      "type": "protected_branch_development",
+      "severity": "error",
+      "message": "Working on protected branch: staging",
+      "details": "You should work on feature branches, not protected branches",
+      "fix": "Run: git checkout -b feature/your-feature-name"
     }
   ],
   "recommendations": [
+    "🚨 Fix all errors before starting development",
     "⚠️ Address warnings to improve development experience"
   ]
 }

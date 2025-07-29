@@ -1,8 +1,3 @@
----
-description: Documentation standards and requirements
-globs: ["docs/**/*.md", "README.md"]
-alwaysApply: false
----
 
 # Documentation Standards
 
@@ -16,11 +11,17 @@ alwaysApply: false
 ```
 /docs/features/[feature-name]/
 ├── README.md (overview)
+├── user-journey.md
 ├── api-endpoints.md
+├── openapi.yaml            # NEW – formal contract for CI contract tests
+├── functional-logic.md
 ├── database-schema.md
+├── migration.sql or migration.js  # NEW – exact migration stub referenced in docs
+├── mapping.ts              # NEW – static data mapping or config tables required by feature
+├── feature-flags.json      # NEW – PostHog flag payload for automated rollout scripts
+├── ci-updates.md           # NEW – notes on required CI changes (workflows, coverage paths)
 ├── deployment-notes.md
-├── testing-guide.md
-└── user-journey.md
+└── testing-guide.md
 ```
 
 ## Code Documentation
@@ -36,6 +37,11 @@ alwaysApply: false
 - Maintain test coverage reports
 
 ## Deployment Documentation
+- Document environment-specific configurations
+- Include rollback procedures
+- Document monitoring and alerting setup
+- Maintain deployment checklists
+
 - Document environment-specific configurations
 - Include rollback procedures
 - Document monitoring and alerting setup

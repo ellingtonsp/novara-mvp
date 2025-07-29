@@ -1,8 +1,3 @@
----
-description: Available automation scripts and npm commands
-globs: ["scripts/**/*.sh", "scripts/**/*.js", "package.json"]
-alwaysApply: false
----
 
 # Automation & Scripts
 
@@ -35,7 +30,7 @@ track:deployments   # Monitor deployment metrics
 
 # Documentation
 docs:generate       # Generate feature documentation
-docs:validate       # Validate documentation completeness
+docs:validate       # Validate documentation completeness (must assert presence of openapi.yaml, migration file, mapping.ts, feature-flags.json, ci-updates.md)
 ```
 
 ## Key Automation Scripts
@@ -66,6 +61,11 @@ docs:validate       # Validate documentation completeness
 - `./scripts/monitoring/performance-monitor.js` - Performance monitoring
 
 ## Script Features
+- **Non-hanging scripts**: All scripts terminate properly with timeouts
+- **Safety-first scripts**: Built-in validation and error handling
+- **Environment-aware**: Automatically detect and use correct environment
+- **Comprehensive logging**: Detailed logs for debugging and monitoring
+
 - **Non-hanging scripts**: All scripts terminate properly with timeouts
 - **Safety-first scripts**: Built-in validation and error handling
 - **Environment-aware**: Automatically detect and use correct environment

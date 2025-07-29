@@ -9,10 +9,10 @@ export default defineConfig({
     react(),
     visualizer({
       filename: 'dist/stats.html',
-      open: true,
+      open: false, // Don't auto-open in dev
       gzipSize: true,
       brotliSize: true,
-    }),
+    })
   ],
   resolve: {
     alias: {
@@ -25,6 +25,10 @@ export default defineConfig({
     // Optimize chunk size
     rollupOptions: {
       output: {
+        // Use content hash for cache busting
+        entryFileNames: 'assets/[name].[hash].js',
+        chunkFileNames: 'assets/[name].[hash].js',
+        assetFileNames: 'assets/[name].[hash].[ext]',
         manualChunks: {
           // Separate vendor chunks for better caching
           vendor: ['react', 'react-dom'],

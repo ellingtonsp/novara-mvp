@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-07-26T20:26:23.373Z",
+  "timestamp": "2025-07-29T00:49:19.380Z",
   "environment": "staging",
   "checks": [
     {
@@ -15,7 +15,7 @@
       "status": "success",
       "data": {
         "status": "ok",
-        "timestamp": "2025-07-26T20:26:26.212Z",
+        "timestamp": "2025-07-29T00:49:19.896Z",
         "service": "Novara API",
         "environment": "staging",
         "version": "1.0.3",
