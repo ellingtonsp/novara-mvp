@@ -1,7 +1,9 @@
 // PWA Utility Functions
+// Handles Progressive Web App features including enhanced cache management
 
-// Cache version for forcing updates
-const CACHE_VERSION = 'novara-v1.1.0';
+// Cache version for forcing updates - should match service worker
+const CACHE_VERSION = 'v2.0.0';
+const CACHE_PREFIX = 'novara-';
 
 // Register service worker
 export async function registerServiceWorker() {
@@ -47,9 +49,45 @@ export async function clearAllCaches() {
         })
       );
       console.log('All caches cleared');
+      
+      // Force service worker update
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (const registration of registrations) {
+          registration.update();
+        }
+      }
       return true;
     } catch (error) {
       console.error('Failed to clear caches:', error);
+      return false;
+    }
+  }
+  return false;
+}
+
+// Clear only outdated caches
+export async function clearOutdatedCaches() {
+  if ('caches' in window) {
+    try {
+      const cacheNames = await caches.keys();
+      const outdatedCaches = cacheNames.filter(name => 
+        name.startsWith(CACHE_PREFIX) && !name.includes(CACHE_VERSION)
+      );
+      
+      await Promise.all(
+        outdatedCaches.map(name => {
+          console.log(`Deleting outdated cache: ${name}`);
+          return caches.delete(name);
+        })
+      );
+      
+      if (outdatedCaches.length > 0) {
+        console.log(`Cleared ${outdatedCaches.length} outdated caches`);
+      }
+      return true;
+    } catch (error) {
+      console.error('Failed to clear outdated caches:', error);
       return false;
     }
   }
@@ -80,43 +118,47 @@ export async function forceServiceWorkerUpdate() {
   return false;
 }
 
-// Check if cache needs clearing (for debugging)
-export async function checkCacheStatus() {
-  if ('caches' in window) {
-    try {
-      const cacheNames = await caches.keys();
-      const cacheInfo = await Promise.all(
-        cacheNames.map(async (cacheName) => {
-          const cache = await caches.open(cacheName);
-          const keys = await cache.keys();
-          return {
-            name: cacheName,
-            size: keys.length,
-            isCurrentVersion: cacheName.includes(CACHE_VERSION)
-          };
-        })
-      );
-      return cacheInfo;
-    } catch (error) {
-      console.error('Failed to check cache status:', error);
-      return [];
-    }
+// Check cache status with enhanced information
+export async function checkCacheStatus(): Promise<CacheStatus[]> {
+  if (!('caches' in window)) {
+    return [];
   }
-  return [];
-}
 
-// Show update notification
-function showUpdateNotification() {
-  if (confirm('A new version of Novara is available. Would you like to update now?')) {
-    // Send message to service worker to skip waiting
-    if (navigator.serviceWorker.controller) {
-      navigator.serviceWorker.controller.postMessage({
-        type: 'SKIP_WAITING'
+  try {
+    const cacheNames = await caches.keys();
+    const statuses: CacheStatus[] = [];
+
+    for (const name of cacheNames) {
+      const cache = await caches.open(name);
+      const keys = await cache.keys();
+      
+      // Check if cache name includes current version
+      const isCurrentVersion = name.includes(CACHE_VERSION);
+      
+      statuses.push({
+        name,
+        size: keys.length,
+        lastUpdated: new Date().toISOString(),
+        isCurrentVersion
       });
     }
-    
-    // Reload the page
-    window.location.reload();
+
+    return statuses;
+  } catch (error) {
+    console.error('Failed to check cache status:', error);
+    return [];
+  }
+}
+
+// Show update notification - now handled by CacheUpdateNotification component
+function showUpdateNotification() {
+  // Broadcast update available event
+  if ('BroadcastChannel' in window) {
+    const channel = new BroadcastChannel('sw-updates');
+    channel.postMessage({
+      type: 'UPDATE_AVAILABLE',
+      version: CACHE_VERSION
+    });
   }
 }
 
@@ -216,16 +258,31 @@ export function addToHomeScreen() {
   return showInstallPrompt();
 }
 
+// Define PWA capabilities interface
+export interface PWACapabilities {
+  isInstallable: boolean;
+  isOfflineCapable: boolean;
+  hasNotificationSupport: boolean;
+  hasBackgroundSync: boolean;
+  hasCacheAPI: boolean;
+}
+
+// Define cache status interface
+export interface CacheStatus {
+  name: string;
+  size: number;
+  lastUpdated: string;
+  isCurrentVersion: boolean;
+}
+
 // Get PWA capabilities
-export function getPWACapabilities() {
+export function getPWACapabilities(): PWACapabilities {
   return {
-    serviceWorker: 'serviceWorker' in navigator,
-    notifications: 'Notification' in window,
-    pushManager: 'PushManager' in window,
-    backgroundSync: 'serviceWorker' in navigator && 'sync' in window.ServiceWorkerRegistration.prototype,
-    cache: 'caches' in window,
-    indexedDB: 'indexedDB' in window,
-    installed: isAppInstalled()
+    isInstallable: 'serviceWorker' in navigator && 'beforeinstallprompt' in window,
+    isOfflineCapable: 'serviceWorker' in navigator,
+    hasNotificationSupport: 'Notification' in window,
+    hasBackgroundSync: 'serviceWorker' in navigator && 'sync' in ServiceWorkerRegistration.prototype,
+    hasCacheAPI: 'caches' in window
   };
 }
 
