@@ -197,8 +197,11 @@ const NovaraLanding = () => {
     // Only check for baseline completion when user is explicitly on dashboard view
     // AND not during the welcome view transition
     if (isAuthenticated && user && onboardingPath && currentView === 'dashboard') {
-      // Check if user is an existing user (has confidence scores and other profile data)
-      const isExistingUser = user.confidence_meds && user.confidence_costs && user.confidence_overall && user.primary_need && user.cycle_stage;
+      // Check if user is an existing user (has meaningful profile data, not just defaults)
+      // A user is existing if they have a nickname OR non-default confidence scores
+      const hasNickname = user.nickname && user.nickname.trim() !== '';
+      const hasNonDefaultScores = user.confidence_meds !== 5 || user.confidence_costs !== 5 || user.confidence_overall !== 5;
+      const isExistingUser = hasNickname || hasNonDefaultScores || user.baseline_completed;
       const needsBaseline = !user.baseline_completed && onboardingPath === 'test' && !isExistingUser;
       
       console.log('🧪 ON-01: Baseline completion check on dashboard transition:', {
