@@ -6,7 +6,7 @@
 |---|----|----|----|
 | **E1 Advanced Analytics** | **AN-01** | ✅ Event tracking for signup, check-in, insight view & share → PostHog funnels | 5 |
 | **E2 Insight Polish** | **CM-01** | ✅ Positive-reflection NLP so good-day check-ins feel recognised | 3 |
-|  | **ON-01** | 🟡 Onboarding AB Experiment (Fast Lane vs. Control) | 3 |
+|  | **ON-01** | ✅ Onboarding AB Experiment (Fast Lane vs. Control) - Core framework deployed | 3 |
 |  | **VP-01** | ⬜ ROI banner: "5× check-ins → 15 % ↑ med-adherence" under logo | 2 |
 | **E3 Growth Loops** | **GR-01** | 🟡 Welcome micro-insight email within 10 min of signup | 2 |
 |  | **ON-02** | ⬜ Delay push-permission prompt until after first insight | 2 |
@@ -56,7 +56,7 @@
 3. **Security & Data Governance** — PII encryption, environment isolation, secret-management policies.
 4. **Roadmap-Driven AI Alignment** — Cursor Rules now encode sprint priorities, ensuring tasks map to Epics/Stories.
 5. **Technical Debt Reduction** — Schema migrations, local SQLite reliability, removal of flaky dependencies.
-6. **A/B Testing Infrastructure** — ON-01 A/B test framework implemented with deterministic 50/50 split, but landing page logic needs validation.
+6. **A/B Testing Infrastructure** — ON-01 A/B test framework successfully deployed with deterministic 50/50 split and regression fixes applied.
 
 ---
 
