@@ -28,9 +28,11 @@ export interface SignupEvent {
 export interface CheckinSubmittedEvent {
   user_id: string;
   mood_score: number;
-  symptom_flags: string[];
+  symptom_flags?: string[];
   cycle_day?: number;
   time_to_complete_ms?: number;
+  checkin_type?: 'quick' | 'comprehensive';
+  medication_taken?: boolean;
 }
 
 export interface InsightViewedEvent {
