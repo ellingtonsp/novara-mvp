@@ -11,25 +11,26 @@ This error occurs due to **configuration conflicts** between Dockerfile and rail
 
 ### **✅ MANDATORY RAILWAY DEPLOYMENT METHOD**
 
-**ALWAYS use CLI deployment from backend directory:**
+**ALWAYS use GitHub Actions for deployments:**
 ```bash
-cd backend && railway up
+git push origin main           # Triggers production deployment via GitHub Actions
+git push origin staging        # Triggers staging deployment via GitHub Actions
 ```
 
-**NEVER rely on auto-deployments** with railway.json startCommand - they fail consistently.
+**NEVER use Railway CLI commands** - they cause build issues and conflicts.
 
 ### **🚨 FORBIDDEN ACTIONS**
-- ❌ Don't deploy from project root with `railway up`
-- ❌ Don't rely on railway.json startCommand for auto-deployments
-- ❌ Don't ignore the CLI method that works
+- ❌ Don't use railway CLI commands (`railway up`, `railway link`, etc.)
+- ❌ Don't deploy manually via Railway CLI
+- ❌ Don't modify railway.json startCommand
 - ❌ Don't make direct commits to main branch (violates cursor rules)
 
 ### **✅ REQUIRED ACTIONS**
-- ✅ Always use `cd backend && railway up`
+- ✅ Always use GitHub Actions via git push
+- ✅ Check GitHub Actions status for deployment success
 - ✅ Always test health endpoint after deployment
 - ✅ Always follow proper branch strategy (development → staging → main)
-- ✅ Always document configuration changes
-- ✅ Always use standardized deployment scripts
+- ✅ Retrigger failed deployments through GitHub interface only
 
 ## 🔧 **Railway Configuration Fix**
 
@@ -57,8 +58,9 @@ cd backend && railway up
 - [ ] Follow branch strategy (development → staging → main)
 
 ### **Deployment**
-- [ ] Use CLI method: `cd backend && railway up`
-- [ ] Wait for deployment to complete
+- [ ] Use GitHub Actions: `git push origin main` (for production)
+- [ ] Check GitHub Actions status in repository
+- [ ] Wait for deployment to complete (green checkmark)
 - [ ] Test health endpoint: `curl https://novara-mvp-production.up.railway.app/api/health`
 
 ### **Post-Deployment**
