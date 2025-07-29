@@ -25,17 +25,8 @@ export const CenteredSlider: React.FC<CenteredSliderProps> = ({
     onChange(newValue);
   };
 
-  // For visual centering, we need to transform the actual value
-  // to a position where 5 appears at 50%
-  const transformValueToPosition = (val: number): number => {
-    if (val <= 5) {
-      // Values 1-5 map to positions 1-5 (first half of our custom range)
-      return val;
-    } else {
-      // Values 6-10 map to positions 6-10 (second half)
-      return val;
-    }
-  };
+  // Note: transformValueToPosition was removed as it wasn't needed
+  // The visual centering is handled by getTrackFillPercentage below
 
   // Calculate the visual percentage for the track fill
   const getTrackFillPercentage = (val: number): number => {

@@ -8,8 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 import { 
-  Heart, Clock, CheckCircle, Loader2, Pill, AlertCircle, 
-  Brain, Calendar, TrendingUp, Target, Activity 
+  Heart, CheckCircle, Loader2, Pill, 
+  Brain, TrendingUp
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { trackCheckinSubmitted } from '../lib/analytics';
@@ -21,38 +21,7 @@ interface EnhancedDailyCheckinFormProps {
   onComplete?: () => void;
 }
 
-interface EnhancedCheckinData {
-  // Existing fields
-  mood_today: string;
-  confidence_today: number;
-  primary_concern_today?: string;
-  user_note?: string;
-  
-  // New evidence-based fields
-  anxiety_level: number;
-  took_all_medications: boolean;
-  missed_doses: number;
-  injection_confidence?: number;
-  side_effects: string[];
-  side_effect_severity?: Record<string, number>;
-  
-  // Appointment prep
-  appointment_within_3_days: boolean;
-  appointment_anxiety?: number;
-  questions_prepared?: boolean;
-  
-  // Coping & support
-  coping_strategies_used: string[];
-  partner_involved_today: boolean;
-  
-  // Information needs
-  wish_knew_more_about: string[];
-  
-  // PHQ-4 results (if due)
-  phq4_score?: number;
-  phq4_anxiety?: number;
-  phq4_depression?: number;
-}
+// Enhanced checkin data interface - not used directly but shows the data structure
 
 // Mood options with supportive, validating messages
 const ENHANCED_MOOD_OPTIONS = [

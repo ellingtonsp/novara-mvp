@@ -5,10 +5,10 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Progress } from '@/components/ui/progress';
+// Progress import removed - not used
 import { 
-  Zap, Heart, Pill, CheckCircle, Loader2, 
-  Calendar, Sparkles, ChevronRight 
+  Zap, Pill, CheckCircle, Loader2, 
+  Sparkles, ChevronRight 
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { trackCheckinSubmitted } from '../lib/analytics';

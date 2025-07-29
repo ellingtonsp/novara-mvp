@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+// Button import removed - using standard HTML buttons instead
 import { 
   Settings, Zap, Calendar, Check, Info,
   TrendingUp, Clock, Heart 
@@ -24,11 +24,11 @@ interface CheckinPreferenceToggleProps {
 
 export const CheckinPreferenceToggle: React.FC<CheckinPreferenceToggleProps> = ({ 
   onPreferenceChange,
-  currentPreference: propPreference 
+  currentPreference 
 }) => {
   const { user } = useAuth();
   const [showOptions, setShowOptions] = useState(false);
-  const [currentPreference, setCurrentPreference] = useState<'quick_daily' | 'comprehensive_daily'>('quick_daily');
+  const [localPreference, setLocalPreference] = useState<'quick_daily' | 'comprehensive_daily'>(currentPreference || 'quick_daily');
   const [hasSeenOptions, setHasSeenOptions] = useState(false);
 
   useEffect(() => {
@@ -36,7 +36,7 @@ export const CheckinPreferenceToggle: React.FC<CheckinPreferenceToggleProps> = (
     const savedPref = localStorage.getItem(`checkin_preference_${user?.email}`);
     if (savedPref) {
       const pref: CheckinPreference = JSON.parse(savedPref);
-      setCurrentPreference(pref.type);
+      setLocalPreference(pref.type);
       setHasSeenOptions(true);
     } else {
       // Default to quick for new users
@@ -70,7 +70,7 @@ export const CheckinPreferenceToggle: React.FC<CheckinPreferenceToggleProps> = (
       user_id: user?.id || '',
       preference: newPreference,
       reason,
-      previous_preference: currentPreference,
+      previous_preference: localPreference,
       checkins_before_switch: parseInt(localStorage.getItem(`checkin_count_${user?.email}`) || '0')
     });
 
@@ -86,7 +86,7 @@ export const CheckinPreferenceToggle: React.FC<CheckinPreferenceToggleProps> = (
         className="flex items-center gap-2 text-sm text-purple-600 hover:text-purple-800 transition-colors"
       >
         <Settings className="h-4 w-4" />
-        {currentPreference === 'quick_daily' ? 'Quick daily check-ins' : 'Comprehensive daily check-ins'}
+        {localPreference === 'quick_daily' ? 'Quick daily check-ins' : 'Comprehensive daily check-ins'}
       </button>
     );
   }
@@ -115,7 +115,7 @@ export const CheckinPreferenceToggle: React.FC<CheckinPreferenceToggleProps> = (
           <button
             onClick={() => handlePreferenceChange('quick_daily', 'prefer_quick')}
             className={`w-full p-4 rounded-lg border-2 transition-all text-left ${
-              currentPreference === 'quick_daily' 
+              localPreference === 'quick_daily' 
                 ? 'border-purple-500 bg-purple-50' 
                 : 'border-gray-200 hover:border-purple-300'
             }`}
@@ -125,7 +125,7 @@ export const CheckinPreferenceToggle: React.FC<CheckinPreferenceToggleProps> = (
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
                   <h4 className="font-semibold text-gray-800">Quick Daily Check-ins</h4>
-                  {currentPreference === 'quick_daily' && (
+                  {localPreference === 'quick_daily' && (
                     <Check className="h-4 w-4 text-purple-600" />
                   )}
                 </div>
@@ -153,7 +153,7 @@ export const CheckinPreferenceToggle: React.FC<CheckinPreferenceToggleProps> = (
           <button
             onClick={() => handlePreferenceChange('comprehensive_daily', 'want_detailed')}
             className={`w-full p-4 rounded-lg border-2 transition-all text-left ${
-              currentPreference === 'comprehensive_daily' 
+              localPreference === 'comprehensive_daily' 
                 ? 'border-purple-500 bg-purple-50' 
                 : 'border-gray-200 hover:border-purple-300'
             }`}
@@ -163,7 +163,7 @@ export const CheckinPreferenceToggle: React.FC<CheckinPreferenceToggleProps> = (
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
                   <h4 className="font-semibold text-gray-800">Comprehensive Daily Check-ins</h4>
-                  {currentPreference === 'comprehensive_daily' && (
+                  {localPreference === 'comprehensive_daily' && (
                     <Check className="h-4 w-4 text-purple-600" />
                   )}
                 </div>

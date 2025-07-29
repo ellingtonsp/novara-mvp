@@ -5,12 +5,12 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
-  TrendingUp, Target, Activity, Brain, Heart, 
-  Calendar, AlertCircle, Trophy, Info, ChevronRight,
+  Target, Activity, Brain, 
+  AlertCircle, Trophy, Info, ChevronRight,
   Pill, CheckCircle 
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { apiClient } from '../lib/api';
+// apiClient import removed - using mock data for now
 import { Progress } from '@/components/ui/progress';
 
 interface UserMetrics {

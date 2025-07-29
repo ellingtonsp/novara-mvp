@@ -4,7 +4,7 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, TrendingUp, Heart } from 'lucide-react';
+import { TrendingUp, Heart } from 'lucide-react';
 import { track } from '../lib/analytics';
 
 interface PHQ4Props {
@@ -86,6 +86,7 @@ export const PHQ4Assessment: React.FC<PHQ4Props> = ({
   const [responses, setResponses] = useState<Record<string, number>>({});
   const [showResults, setShowResults] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState(0);
+  const [assessmentResult, setAssessmentResult] = useState<PHQ4Result | null>(null);
 
   const handleResponse = (questionId: string, value: number) => {
     const newResponses = { ...responses, [questionId]: value };
@@ -130,6 +131,7 @@ export const PHQ4Assessment: React.FC<PHQ4Props> = ({
     });
 
     setShowResults(true);
+    setAssessmentResult(result);
     onComplete(result);
   };
 
@@ -143,9 +145,8 @@ export const PHQ4Assessment: React.FC<PHQ4Props> = ({
     }
   };
 
-  if (showResults && responses['depression2'] !== undefined) {
-    const result = calculateAndShowResults(responses);
-    const outcomeData = OUTCOME_IMPACTS[result.riskLevel];
+  if (showResults && assessmentResult) {
+    const outcomeData = OUTCOME_IMPACTS[assessmentResult.riskLevel];
 
     return (
       <Card className="border-purple-200 bg-gradient-to-r from-purple-50 to-pink-50">
@@ -157,11 +158,11 @@ export const PHQ4Assessment: React.FC<PHQ4Props> = ({
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="text-center">
-            <p className={`text-2xl font-bold ${getRiskColor(result.riskLevel)}`}>
-              {result.riskLevel.charAt(0).toUpperCase() + result.riskLevel.slice(1)} Symptoms
+            <p className={`text-2xl font-bold ${getRiskColor(assessmentResult.riskLevel)}`}>
+              {assessmentResult.riskLevel.charAt(0).toUpperCase() + assessmentResult.riskLevel.slice(1)} Symptoms
             </p>
             <p className="text-sm text-gray-600 mt-1">
-              Score: {result.totalScore}/12 (Anxiety: {result.anxietyScore}, Depression: {result.depressionScore})
+              Score: {assessmentResult.totalScore}/12 (Anxiety: {assessmentResult.anxietyScore}, Depression: {assessmentResult.depressionScore})
             </p>
           </div>
 
@@ -187,11 +188,11 @@ export const PHQ4Assessment: React.FC<PHQ4Props> = ({
                 </div>
               </div>
 
-              {result.riskLevel !== 'minimal' && (
+              {assessmentResult.riskLevel !== 'minimal' && (
                 <div className="mt-3 p-3 bg-blue-50 rounded-lg">
                   <p className="text-sm text-blue-800">
                     <strong>Good news:</strong> Users who engage with our support tools show 
-                    {result.riskLevel === 'mild' ? ' 15%' : result.riskLevel === 'moderate' ? ' 28%' : ' 45%'} improvement 
+                    {assessmentResult.riskLevel === 'mild' ? ' 15%' : assessmentResult.riskLevel === 'moderate' ? ' 28%' : ' 45%'} improvement 
                     in treatment outcomes. We'll provide targeted support based on your needs.
                   </p>
                 </div>

@@ -410,20 +410,20 @@ export function getSmartSuggestions(context: UserContext): string[] {
     return acc;
   }, {} as Record<string, number>);
 
-  if (moodCounts?.anxious >= 2) {
+  if ((moodCounts?.anxious || 0) >= 2) {
     suggestions.push('I noticed anxiety in your recent check-ins. Consider discussing anxiety management strategies with your care team');
   }
   
-  if (moodCounts?.overwhelmed >= 2) {
+  if ((moodCounts?.overwhelmed || 0) >= 2) {
     suggestions.push('Feeling overwhelmed is showing up frequently. Breaking tasks into smaller steps might help');
   }
   
-  if (moodCounts?.frustrated >= 2) {
+  if ((moodCounts?.frustrated || 0) >= 2) {
     suggestions.push('Your frustration is valid. Consider preparing specific questions about what\'s bothering you');
   }
 
   // Positive mood recognition
-  if (moodCounts?.hopeful >= 2 || moodCounts?.grateful >= 2) {
+  if ((moodCounts?.hopeful || 0) >= 2 || (moodCounts?.grateful || 0) >= 2) {
     suggestions.push('Your positive outlook is wonderful! Use this energy to advocate for yourself');
   }
 

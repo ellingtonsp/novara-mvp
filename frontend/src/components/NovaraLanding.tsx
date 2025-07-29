@@ -10,7 +10,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { apiClient } from '../lib/api';
 // import { trackEvent, trackAuthEvent } from '../lib/analytics';
 import { clearAllCaches } from '../utils/pwa';
-import DailyCheckinForm from './DailyCheckinForm';
+// DailyCheckinForm import removed - using enhanced forms instead
 import { EnhancedDailyCheckinForm } from './EnhancedDailyCheckinForm';
 import { QuickDailyCheckinForm } from './QuickDailyCheckinForm';
 import { CheckinPreferenceToggle } from './CheckinPreferenceToggle';
@@ -1272,8 +1272,8 @@ const NovaraLanding = () => {
               <div>
                 <h3 className="text-lg font-semibold mb-3">Today's Smart Prep</h3>
                 <ChecklistCard
-                  onComplete={(completionData) => {
-                    console.log('Checklist completed:', completionData);
+                  onComplete={() => {
+                    console.log('Checklist completed');
                   }}
                 />
               </div>

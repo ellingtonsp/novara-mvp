@@ -293,12 +293,12 @@ export async function initializePWA() {
   console.log('PWA Capabilities:', capabilities);
   
   // Register service worker
-  if (capabilities.serviceWorker) {
+  if ('serviceWorker' in navigator) {
     await registerServiceWorker();
   }
   
   // Request notification permission
-  if (capabilities.notifications) {
+  if (capabilities.hasNotificationSupport) {
     await requestNotificationPermission();
   }
   

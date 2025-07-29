@@ -26,29 +26,29 @@ export function trackCheckinPreferenceOutcome(metrics: CheckinPreferenceMetrics)
   });
 }
 
-export function trackWeeklyReminderResponse(userId: string, response: 'accepted' | 'dismissed' | 'ignored') {
+export function trackWeeklyReminderResponse(response: 'accepted' | 'dismissed' | 'ignored') {
   track('weekly_reminder_response', {
-    user_id: userId,
+    user_id: localStorage.getItem('user_id') || '',
     response,
-    days_since_last_comprehensive: getDaysSinceLastComprehensive(userId),
-    current_preference: getCurrentPreference(userId),
+    days_since_last_comprehensive: getDaysSinceLastComprehensive(),
+    current_preference: getCurrentPreference(),
     timestamp: new Date().toISOString()
   });
 }
 
-export function trackCheckinTypeConversion(userId: string, from: string, to: string, trigger: string) {
+export function trackCheckinTypeConversion(from: string, to: string, trigger: string) {
   track('checkin_type_conversion', {
-    user_id: userId,
+    user_id: localStorage.getItem('user_id') || '',
     from_type: from,
     to_type: to,
     trigger, // 'user_initiated', 'weekly_reminder', 'preference_toggle'
-    checkins_before_conversion: getCheckinsCount(userId),
+    checkins_before_conversion: getCheckinsCount(),
     timestamp: new Date().toISOString()
   });
 }
 
 // Helper functions
-function getDaysSinceLastComprehensive(userId: string): number {
+function getDaysSinceLastComprehensive(): number {
   const email = localStorage.getItem('user_email'); // Assume we store this
   const lastComprehensive = localStorage.getItem(`last_comprehensive_${email}`);
   if (!lastComprehensive) return -1;
@@ -56,7 +56,7 @@ function getDaysSinceLastComprehensive(userId: string): number {
   return Math.floor((Date.now() - new Date(lastComprehensive).getTime()) / (1000 * 60 * 60 * 24));
 }
 
-function getCurrentPreference(userId: string): string {
+function getCurrentPreference(): string {
   const email = localStorage.getItem('user_email');
   const savedPref = localStorage.getItem(`checkin_preference_${email}`);
   if (!savedPref) return 'unknown';
@@ -69,13 +69,13 @@ function getCurrentPreference(userId: string): string {
   }
 }
 
-function getCheckinsCount(userId: string): number {
+function getCheckinsCount(): number {
   const email = localStorage.getItem('user_email');
   return parseInt(localStorage.getItem(`checkin_count_${email}`) || '0');
 }
 
 // A/B Test Cohort Assignment
-export function assignCheckinPreferenceCohort(userId: string): 'control' | 'treatment' {
+export function assignCheckinPreferenceCohort(): 'control' | 'treatment' {
   // Use consistent hashing to ensure same user always gets same cohort
   const hash = userId.split('').reduce((acc, char) => {
     return char.charCodeAt(0) + ((acc << 5) - acc);
@@ -95,7 +95,7 @@ export function assignCheckinPreferenceCohort(userId: string): 'control' | 'trea
 }
 
 // Calculate retention metrics
-export async function calculateRetentionMetrics(userId: string) {
+export async function calculateRetentionMetrics() {
   const email = localStorage.getItem('user_email');
   const firstCheckinDate = localStorage.getItem(`first_checkin_${email}`);
   

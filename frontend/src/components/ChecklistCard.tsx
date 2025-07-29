@@ -4,9 +4,9 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, Circle, CheckSquare, Square, Calendar, Heart, Sparkles, Info } from 'lucide-react';
+import { CheckCircle, CheckSquare, Square, Calendar, Heart, Sparkles, Info } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { getChecklistForStage, ChecklistItem } from '../lib/checklistMapping';
+import { getChecklistForStage } from '../lib/checklistMapping';
 import { generateEnhancedChecklist, getUserContext, getSmartSuggestions, EnhancedChecklistItem } from '../lib/enhancedChecklistLogic';
 import { track } from '../lib/analytics';
 
