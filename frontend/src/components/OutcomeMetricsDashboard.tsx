@@ -10,7 +10,7 @@ import {
   Pill, CheckCircle 
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-// apiClient import removed - using mock data for now
+import { API_BASE_URL } from '../lib/environment';
 import { Progress } from '@/components/ui/progress';
 
 interface UserMetrics {
@@ -61,30 +61,72 @@ export const OutcomeMetricsDashboard: React.FC = () => {
   
   const fetchUserMetrics = async () => {
     try {
-      // In production, this would fetch from API
-      // For now, calculate from local data
-      const mockMetrics: UserMetrics = {
-        medicationAdherenceRate: 88,
-        medicationAdherenceTrend: 'stable',
-        missedDosesLastWeek: 1,
-        currentPHQ4Score: 4,
-        phq4Trend: 'improving',
-        anxietyAverage: 5.2,
-        checkInStreak: 7,
-        totalCheckIns: 42,
-        insightEngagementRate: 76,
-        checklistCompletionRate: 82,
-        copingStrategiesUsed: ['Deep breathing', 'Partner support', 'Exercise'],
-        mostEffectiveStrategy: 'Deep breathing',
-        partnerInvolvementRate: 65,
-        cycleCompletionProbability: 87,
-        riskFactors: ['High anxiety days', 'Side effects'],
-        protectiveFactors: ['Strong partner support', 'Regular check-ins', 'Active coping']
-      };
+      const token = localStorage.getItem('token');
       
-      setMetrics(mockMetrics);
+      if (!token) {
+        console.error('No authentication token found');
+        setIsLoading(false);
+        return;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/api/users/metrics`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
+        setMetrics(data.metrics);
+        console.log('✅ User metrics loaded successfully');
+      } else {
+        console.error('Failed to fetch metrics:', data.error);
+        // Fallback to empty metrics if user has no data
+        const emptyMetrics: UserMetrics = {
+          medicationAdherenceRate: 0,
+          medicationAdherenceTrend: 'stable',
+          missedDosesLastWeek: 0,
+          currentPHQ4Score: 0,
+          phq4Trend: 'stable',
+          anxietyAverage: 0,
+          checkInStreak: 0,
+          totalCheckIns: 0,
+          insightEngagementRate: 0,
+          checklistCompletionRate: 0,
+          copingStrategiesUsed: [],
+          mostEffectiveStrategy: 'None tracked yet',
+          partnerInvolvementRate: 0,
+          cycleCompletionProbability: 50,
+          riskFactors: ['No data available yet'],
+          protectiveFactors: ['Start tracking to see your strengths']
+        };
+        setMetrics(emptyMetrics);
+      }
     } catch (error) {
       console.error('Failed to fetch metrics:', error);
+      // Network error - show fallback
+      const fallbackMetrics: UserMetrics = {
+        medicationAdherenceRate: 0,
+        medicationAdherenceTrend: 'stable',
+        missedDosesLastWeek: 0,
+        currentPHQ4Score: 0,
+        phq4Trend: 'stable',
+        anxietyAverage: 0,
+        checkInStreak: 0,
+        totalCheckIns: 0,
+        insightEngagementRate: 0,
+        checklistCompletionRate: 0,
+        copingStrategiesUsed: [],
+        mostEffectiveStrategy: 'None tracked yet',
+        partnerInvolvementRate: 0,
+        cycleCompletionProbability: 50,
+        riskFactors: ['Unable to load data'],
+        protectiveFactors: ['Check your connection']
+      };
+      setMetrics(fallbackMetrics);
     } finally {
       setIsLoading(false);
     }
@@ -168,6 +210,50 @@ export const OutcomeMetricsDashboard: React.FC = () => {
   }
   
   if (!metrics) return null;
+  
+  // Check if user has no data
+  if (metrics.totalCheckIns === 0) {
+    return (
+      <Card className="w-full mx-auto mb-6 border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-pink-50">
+        <CardContent className="p-8 text-center">
+          <div className="text-4xl mb-4">📊</div>
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">Your Metrics Dashboard</h3>
+          <p className="text-gray-600 mb-6 max-w-md mx-auto">
+            Start tracking your IVF journey to unlock personalized metrics and insights about your treatment outcomes.
+          </p>
+          <div className="space-y-4 max-w-sm mx-auto text-left">
+            <div className="flex items-start gap-3">
+              <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
+              <div>
+                <p className="font-medium text-gray-800">Track Medication Adherence</p>
+                <p className="text-sm text-gray-600">See how consistency impacts success rates</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <Brain className="w-5 h-5 text-purple-600 mt-0.5" />
+              <div>
+                <p className="font-medium text-gray-800">Monitor Mental Health</p>
+                <p className="text-sm text-gray-600">Understand the mind-body connection</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <Target className="w-5 h-5 text-blue-600 mt-0.5" />
+              <div>
+                <p className="font-medium text-gray-800">Get Success Predictions</p>
+                <p className="text-sm text-gray-600">Based on research and your patterns</p>
+              </div>
+            </div>
+          </div>
+          <Button 
+            className="mt-6 bg-[#FF6F61] hover:bg-[#FF6F61]/90 text-white"
+            onClick={() => setSelectedView('overview')}
+          >
+            Start Your First Check-In
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
   
   return (
     <div className="space-y-6">
