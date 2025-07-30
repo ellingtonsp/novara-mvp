@@ -103,6 +103,59 @@ router.get('/engagement', authenticateToken, asyncHandler(async (req, res) => {
 }));
 
 /**
+ * GET /api/insights/micro
+ * Get micro insights for welcome screen
+ */
+router.get('/micro', authenticateToken, asyncHandler(async (req, res) => {
+  console.log(`🔍 Getting micro insights for user: ${req.user.email}`);
+
+  // Find user
+  const user = await userService.findByEmail(req.user.email);
+  if (!user) {
+    throw new AppError('User not found', 404);
+  }
+
+  // For now, return a simple micro insight
+  // TODO: Implement proper micro insights based on user data
+  const microInsight = {
+    type: 'welcome',
+    message: user.nickname ? `Welcome back, ${user.nickname}!` : 'Welcome back!',
+    subMessage: 'Ready to track your journey today?',
+    icon: '👋'
+  };
+
+  res.json({
+    success: true,
+    insight: microInsight
+  });
+}));
+
+/**
+ * POST /api/insights/engagement
+ * Track user engagement with insights
+ */
+router.post('/engagement', authenticateToken, asyncHandler(async (req, res) => {
+  console.log(`📊 Tracking insight engagement for user: ${req.user.email}`);
+
+  const { insight_id, action, context } = req.body;
+
+  // Log engagement for analytics
+  console.log('Insight engagement:', {
+    user: req.user.email,
+    insight_id,
+    action,
+    context
+  });
+
+  // TODO: Store engagement data for analytics
+
+  res.json({
+    success: true,
+    message: 'Engagement tracked successfully'
+  });
+}));
+
+/**
  * POST /api/insights/generate
  * Force generation of new insight
  */
