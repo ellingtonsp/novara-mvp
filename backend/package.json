@@ -4,18 +4,23 @@
   "description": "Backend for Novara MVP",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
+    "start": "node server-switcher.js",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "dev": "nodemon server.js",
+    "dev": "nodemon server-switcher.js",
     "local": "NODE_ENV=development USE_LOCAL_DATABASE=true nodemon server.js",
     "test:regression": "node production-regression-test.js",
     "db:setup": "psql $DATABASE_URL < ../database/schema.sql",
     "db:migrate": "node scripts/migrate-to-postgres.js",
     "db:validate": "node scripts/validate-postgres-migration.js",
     "audit:fields": "node scripts/audit-field-mappings.js",
-    "check:deploy": "node scripts/pre-deployment-check.js"
+    "check:deploy": "node scripts/pre-deployment-check.js",
+    "start:legacy": "node server.js",
+    "start:refactored": "USE_REFACTORED_SERVER=true node server-switcher.js",
+    "dev:legacy": "nodemon server.js",
+    "dev:refactored": "USE_REFACTORED_SERVER=true nodemon server-switcher.js",
+    "test:refactored": "node test-refactored.js"
   },
   "dependencies": {
     "@sentry/node": "^9.41.0",

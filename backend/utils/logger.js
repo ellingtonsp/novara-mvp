@@ -157,4 +157,14 @@ logger.airtable = (operation, table, meta = {}) => {
   });
 };
 
+// Additional helper methods
+logger.logAuth = async (data) => {
+  logger.info(`Auth Event: ${data.event_type}`, {
+    type: 'auth',
+    event_type: data.event_type,
+    user_id: data.user_id,
+    email: data.email
+  });
+};
+
 module.exports = logger; 
