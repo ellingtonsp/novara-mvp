@@ -22,6 +22,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Improvement Guidelines:
 - If you fail to fix a UI problem based on my feedback, rethink the approach for that element and implement a better solution
 
+## ⚠️ CRITICAL: Before Adding New Fields
+
+When adding new fields to any table (especially daily_checkins):
+1. **Add to Airtable** in both staging and production
+2. **Add to PRODUCTION_AIRTABLE_SCHEMA** in backend/server.js
+3. **Add to response objects** in the relevant endpoints
+4. **Run pre-deployment check**: `node backend/scripts/pre-deployment-check.js`
+
+Missing step 2 will cause silent failures - fields won't save!
+
 ## Common Development Commands
 
 ### Local Development (Stable Ports)
@@ -34,4 +44,5 @@ cd backend && npm run local  # Backend on port 9002
 cd frontend && npm run dev   # Frontend on port 4200
 ```
 
-[... rest of the existing content remains unchanged ...]
+## Deployment Notes
+- Railway deployments are handled via GitHub
