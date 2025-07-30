@@ -168,33 +168,33 @@ const ChecklistCard: React.FC<ChecklistCardProps> = ({ onComplete, className = '
 
   return (
     <Card className={`border-purple-200 bg-gradient-to-r from-purple-50 to-pink-50 ${className}`}>
-      <CardHeader className="pb-3">
+      <CardHeader className="pb-2 px-3 sm:px-6">
         <div className="flex items-center justify-between mb-2">
-          <CardTitle className="flex items-center gap-2 text-purple-800">
-            <Calendar className="h-5 w-5" />
+          <CardTitle className="flex items-center gap-2 text-purple-800 text-base sm:text-lg">
+            <Calendar className="h-4 w-4 sm:h-5 sm:w-5" />
             Your Smart Prep Checklist
           </CardTitle>
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setShowPersonalizedInfo(!showPersonalizedInfo)}
-            className="text-purple-600 hover:text-purple-800"
+            className="text-purple-600 hover:text-purple-800 p-1 sm:p-2"
           >
             <Info className="h-4 w-4" />
           </Button>
         </div>
-        <div className="text-sm text-purple-600">
+        <div className="text-xs sm:text-sm text-purple-600">
           Personalized for your {user.cycle_stage.replace('_', ' ')} stage
           {checklist.filter(item => item.isContextual).length > 0 && (
-            <span className="ml-2 inline-flex items-center gap-1 text-purple-700 font-medium">
+            <div className="mt-1 flex items-center gap-1 text-purple-700 font-medium">
               <Sparkles className="h-3 w-3" />
-              {checklist.filter(item => item.isContextual).length} items added based on your recent check-ins
-            </span>
+              <span>{checklist.filter(item => item.isContextual).length} items added based on your recent check-ins</span>
+            </div>
           )}
         </div>
         
         {/* Progress bar */}
-        <div className="mt-2">
+        <div className="mt-3">
           <div className="flex justify-between text-xs text-purple-600 mb-1">
             <span>{completedIds.length} of {checklist.length} complete</span>
             <span>{Math.round(progressPercentage)}%</span>
@@ -208,17 +208,17 @@ const ChecklistCard: React.FC<ChecklistCardProps> = ({ onComplete, className = '
         </div>
       </CardHeader>
 
-      <CardContent className="pt-0">
+      <CardContent className="pt-0 px-3 sm:px-6 pb-3 sm:pb-6">
         {/* Personalized info panel */}
         {showPersonalizedInfo && smartSuggestions.length > 0 && (
-          <div className="mb-4 p-3 bg-purple-100 rounded-lg">
-            <h4 className="text-sm font-semibold text-purple-800 mb-2 flex items-center gap-1">
-              <Sparkles className="h-4 w-4" />
+          <div className="mb-3 p-2 sm:p-3 bg-purple-100 rounded-lg">
+            <h4 className="text-xs sm:text-sm font-semibold text-purple-800 mb-2 flex items-center gap-1">
+              <Sparkles className="h-3 w-3 sm:h-4 sm:w-4" />
               Smart Insights
             </h4>
             <ul className="space-y-1">
               {smartSuggestions.map((suggestion, index) => (
-                <li key={index} className="text-sm text-purple-700">
+                <li key={index} className="text-xs sm:text-sm text-purple-700">
                   • {suggestion}
                 </li>
               ))}
@@ -226,14 +226,14 @@ const ChecklistCard: React.FC<ChecklistCardProps> = ({ onComplete, className = '
           </div>
         )}
         
-        <div className="space-y-3">
+        <div className="space-y-1.5">
           {checklist.map((item) => {
             const isCompleted = completedIds.includes(item.id);
             
             return (
               <div
                 key={item.id}
-                className={`p-3 rounded-lg border transition-all duration-200 cursor-pointer hover:shadow-sm relative ${
+                className={`p-2 sm:p-3 rounded-lg border transition-all duration-200 cursor-pointer hover:shadow-sm relative ${
                   isCompleted 
                     ? 'bg-green-50 border-green-200' 
                     : item.priority === 'high' 
@@ -248,36 +248,31 @@ const ChecklistCard: React.FC<ChecklistCardProps> = ({ onComplete, className = '
                 )}
                 
                 <div className="flex items-start gap-3">
-                  <button className="mt-0.5 focus:outline-none">
+                  <button className="mt-0.5 focus:outline-none flex-shrink-0">
                     {isCompleted ? (
-                      <CheckSquare className="h-5 w-5 text-green-500" />
+                      <CheckSquare className="h-4 w-4 text-green-500" />
                     ) : (
-                      <Square className="h-5 w-5 text-gray-400 hover:text-purple-500" />
+                      <Square className="h-4 w-4 text-gray-400 hover:text-purple-500" />
                     )}
                   </button>
                   
-                  <div className="flex-1">
-                    <div className="flex items-start justify-between gap-2">
-                      <h4 className={`font-medium ${isCompleted ? 'text-green-800 line-through' : 'text-gray-800'}`}>
-                        {item.title}
-                      </h4>
-                      {item.isContextual && !isCompleted && (
-                        <Sparkles className="h-4 w-4 text-purple-500 flex-shrink-0" />
-                      )}
-                    </div>
-                    <p className={`text-sm mt-1 ${isCompleted ? 'text-green-600' : 'text-gray-600'}`}>
+                  <div className="flex-1 min-w-0 text-left">
+                    <h4 className={`font-medium text-sm leading-tight ${isCompleted ? 'text-green-800 line-through' : 'text-gray-800'}`}>
+                      {item.title}
+                    </h4>
+                    <p className={`text-xs mt-1 leading-relaxed ${isCompleted ? 'text-green-600' : 'text-gray-600'}`}>
                       {item.description}
                     </p>
                     
-                    {/* Personalized reason */}
+                    {/* Personalized reason - hidden on mobile */}
                     {item.personalizedReason && !isCompleted && (
-                      <p className="text-xs mt-2 text-purple-600 italic">
+                      <p className="hidden sm:block text-xs mt-2 text-purple-600 italic">
                         💡 {item.personalizedReason}
                       </p>
                     )}
                     
-                    <div className="flex items-center gap-2 mt-2">
-                      <span className={`inline-block px-2 py-1 rounded-full text-xs ${
+                    <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                      <span className={`inline-block px-1.5 py-0.5 rounded-full text-[10px] sm:text-xs ${
                         item.category === 'medical' ? 'bg-blue-100 text-blue-700' :
                         item.category === 'comfort' ? 'bg-pink-100 text-pink-700' :
                         item.category === 'logistics' ? 'bg-yellow-100 text-yellow-700' :
@@ -286,11 +281,16 @@ const ChecklistCard: React.FC<ChecklistCardProps> = ({ onComplete, className = '
                         {item.category}
                       </span>
                       
-                      {/* Priority badge */}
+                      {/* Priority badge - smaller on mobile */}
                       {item.priority === 'high' && !isCompleted && (
-                        <span className="inline-block px-2 py-1 rounded-full text-xs bg-red-100 text-red-700 font-medium">
-                          High Priority
+                        <span className="inline-block px-1.5 py-0.5 rounded-full text-[10px] sm:text-xs bg-red-100 text-red-700 font-medium">
+                          Priority
                         </span>
+                      )}
+                      
+                      {/* Contextual sparkle - inline on mobile */}
+                      {item.isContextual && !isCompleted && (
+                        <Sparkles className="h-3 w-3 text-purple-500 inline sm:hidden" />
                       )}
                     </div>
                   </div>
@@ -301,10 +301,10 @@ const ChecklistCard: React.FC<ChecklistCardProps> = ({ onComplete, className = '
         </div>
 
         {completedIds.length > 0 && completedIds.length < checklist.length && (
-          <div className="mt-4 p-3 bg-purple-100 rounded-lg">
+          <div className="mt-3 sm:mt-4 p-2 sm:p-3 bg-purple-100 rounded-lg">
             <div className="flex items-center gap-2 text-purple-700">
-              <Heart className="h-4 w-4" />
-              <span className="text-sm font-medium">
+              <Heart className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="text-xs sm:text-sm font-medium">
                 You're doing great! {checklist.length - completedIds.length} more to go.
               </span>
             </div>

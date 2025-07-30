@@ -16,6 +16,8 @@ import { trackCheckinSubmitted } from '../lib/analytics';
 import { API_BASE_URL } from '../lib/environment';
 import { PHQ4Assessment, PHQ4Result } from './PHQ4Assessment';
 import { CenteredSlider } from './CenteredSlider';
+import { MetricTooltip } from './MetricTooltip';
+import { getLocalDateString } from '../lib/dateUtils';
 
 interface EnhancedDailyCheckinFormProps {
   onComplete?: () => void;
@@ -230,14 +232,18 @@ export const EnhancedDailyCheckinForm: React.FC<EnhancedDailyCheckinFormProps> =
         phq4_depression: phq4Result?.depressionScore
       };
       
+      // Get today's date in user's local timezone
+      const todayString = getLocalDateString();
+      
       // Store enhanced data for the checklist to use
-      localStorage.setItem(`enhanced_checkin_${user?.email}_${new Date().toISOString().split('T')[0]}`, JSON.stringify(enhancedData));
+      localStorage.setItem(`enhanced_checkin_${user?.email}_${todayString}`, JSON.stringify(enhancedData));
       
       // Send only basic fields to backend
       const checkinData = {
         mood_today: selectedMood,
         confidence_today: confidence,
         user_note: userNote,
+        date_submitted: todayString,
         // Add enhanced data summary to the note
         primary_concern_today: sideEffects.length > 0 ? 'medication_side_effects' : 
                               anxietyLevel > 7 ? 'anxiety_management' :
@@ -263,9 +269,7 @@ export const EnhancedDailyCheckinForm: React.FC<EnhancedDailyCheckinFormProps> =
         });
         
         setShowResults(true);
-        setTimeout(() => {
-          onComplete?.();
-        }, 2000);
+        // User stays on success page - no auto-redirect
       } else {
         throw new Error('Failed to submit check-in');
       }
@@ -316,15 +320,15 @@ export const EnhancedDailyCheckinForm: React.FC<EnhancedDailyCheckinFormProps> =
             </h4>
             
             <div className="grid grid-cols-2 gap-3">
-              <div className="bg-green-50 rounded p-3">
-                <p className="text-xs text-green-600 font-medium">Cycle Completion Probability</p>
-                <p className="text-2xl font-bold text-green-800">{outcomePredictions?.completionProbability}%</p>
+              <div className="bg-green-50 rounded p-3 text-center">
+                <p className="text-xs text-green-600 font-medium h-8 flex items-center justify-center">Cycle Completion<br />Probability</p>
+                <p className="text-2xl font-bold text-green-800 mt-2">{outcomePredictions?.completionProbability}%</p>
               </div>
-              <div className={`rounded p-3 ${
+              <div className={`rounded p-3 text-center ${
                 outcomePredictions?.adherenceRisk > 50 ? 'bg-red-50' : 'bg-yellow-50'
               }`}>
-                <p className="text-xs text-gray-600 font-medium">Adherence Risk</p>
-                <p className={`text-2xl font-bold ${
+                <p className="text-xs text-gray-600 font-medium h-8 flex items-center justify-center">Adherence Risk</p>
+                <p className={`text-2xl font-bold mt-2 ${
                   outcomePredictions?.adherenceRisk > 50 ? 'text-red-800' : 'text-yellow-800'
                 }`}>{outcomePredictions?.adherenceRisk}%</p>
               </div>
@@ -343,6 +347,26 @@ export const EnhancedDailyCheckinForm: React.FC<EnhancedDailyCheckinFormProps> =
           <p className="text-center text-gray-600">
             Your insights are being personalized based on your check-in data...
           </p>
+          
+          <Button 
+            onClick={() => {
+              if (onComplete) {
+                onComplete();
+              } else {
+                // Reset to allow another check-in if no onComplete handler
+                setShowResults(false);
+                setCurrentStep(1);
+                setSelectedMood('');
+                setAnxietyLevel(5);
+                setConfidence(5);
+                setHasInteractedWithConfidence(false);
+                setHasInteractedWithAnxiety(false);
+              }
+            }}
+            className="w-full bg-[#FF6F61] hover:bg-[#FF6F61]/90 mt-4"
+          >
+            Continue
+          </Button>
         </CardContent>
       </Card>
     );
@@ -368,9 +392,11 @@ export const EnhancedDailyCheckinForm: React.FC<EnhancedDailyCheckinFormProps> =
         {currentStep === 1 && (
           <div className="space-y-6">
             <div>
-              <Label className="text-base font-semibold mb-3 block">
-                How are you feeling today? (Select your primary mood)
-              </Label>
+              <MetricTooltip metric="mood">
+                <Label className="text-base font-semibold mb-3 block">
+                  How are you feeling today? (Select your primary mood)
+                </Label>
+              </MetricTooltip>
               <div className="grid grid-cols-2 gap-2">
                 {ENHANCED_MOOD_OPTIONS.map((option) => (
                   <button
@@ -393,13 +419,15 @@ export const EnhancedDailyCheckinForm: React.FC<EnhancedDailyCheckinFormProps> =
             </div>
             
             <div>
-              <Label className="text-base font-semibold mb-3 block">
-                Current anxiety level
-              </Label>
+              <MetricTooltip metric="anxiety">
+                <Label className="text-base font-semibold mb-3 block">
+                  Current anxiety level
+                </Label>
+              </MetricTooltip>
               <div className="space-y-2">
-                <div className="flex justify-between text-sm text-gray-600">
+                <div className="flex justify-between items-center text-sm text-gray-600 relative">
                   <span>Calm</span>
-                  <span className={`font-bold ${hasInteractedWithAnxiety ? 'text-purple-600' : 'text-gray-400'}`}>
+                  <span className={`font-bold absolute left-1/2 -translate-x-1/2 ${hasInteractedWithAnxiety ? 'text-purple-600' : 'text-gray-400'}`}>
                     {hasInteractedWithAnxiety ? anxietyLevel : '—'}
                   </span>
                   <span>Very anxious</span>
@@ -435,10 +463,12 @@ export const EnhancedDailyCheckinForm: React.FC<EnhancedDailyCheckinFormProps> =
         {currentStep === 2 && (
           <div className="space-y-6">
             <div>
-              <Label className="text-base font-semibold mb-3 block flex items-center gap-2">
-                <Pill className="h-4 w-4" />
-                Medication Tracking
-              </Label>
+              <MetricTooltip metric="medication">
+                <Label className="text-base font-semibold mb-3 block flex items-center gap-2">
+                  <Pill className="h-4 w-4" />
+                  Medication Tracking
+                </Label>
+              </MetricTooltip>
               
               <div className="space-y-4">
                 <div className="bg-white rounded-lg p-4">
@@ -483,9 +513,9 @@ export const EnhancedDailyCheckinForm: React.FC<EnhancedDailyCheckinFormProps> =
                   <div>
                     <Label className="mb-2 block">Injection confidence level</Label>
                     <div className="space-y-2">
-                      <div className="flex justify-between text-sm text-gray-600">
+                      <div className="flex justify-between items-center text-sm text-gray-600 relative">
                         <span>Low</span>
-                        <span className={`font-bold ${hasInteractedWithInjection ? 'text-purple-600' : 'text-gray-400'}`}>
+                        <span className={`font-bold absolute left-1/2 -translate-x-1/2 ${hasInteractedWithInjection ? 'text-purple-600' : 'text-gray-400'}`}>
                           {hasInteractedWithInjection ? injectionConfidence : '—'}
                         </span>
                         <span>High</span>
@@ -578,9 +608,9 @@ export const EnhancedDailyCheckinForm: React.FC<EnhancedDailyCheckinFormProps> =
                     <div className="mt-3">
                       <Label className="mb-2 block">Pre-appointment anxiety level</Label>
                       <div className="space-y-2">
-                        <div className="flex justify-between text-sm text-gray-600">
+                        <div className="flex justify-between items-center text-sm text-gray-600 relative">
                           <span>Calm</span>
-                          <span className={`font-bold ${hasInteractedWithAppointment ? 'text-purple-600' : 'text-gray-400'}`}>
+                          <span className={`font-bold absolute left-1/2 -translate-x-1/2 ${hasInteractedWithAppointment ? 'text-purple-600' : 'text-gray-400'}`}>
                             {hasInteractedWithAppointment ? appointmentAnxiety : '—'}
                           </span>
                           <span>Anxious</span>
@@ -696,13 +726,15 @@ export const EnhancedDailyCheckinForm: React.FC<EnhancedDailyCheckinFormProps> =
             </div>
             
             <div>
-              <Label className="text-base font-semibold mb-2 block">
-                Overall confidence today
-              </Label>
+              <MetricTooltip metric="confidence">
+                <Label className="text-base font-semibold mb-2 block">
+                  Overall confidence today
+                </Label>
+              </MetricTooltip>
               <div className="space-y-2">
-                <div className="flex justify-between text-sm text-gray-600">
+                <div className="flex justify-between items-center text-sm text-gray-600 relative">
                   <span>Low</span>
-                  <span className={`font-bold ${hasInteractedWithConfidence ? 'text-purple-600' : 'text-gray-400'}`}>
+                  <span className={`font-bold absolute left-1/2 -translate-x-1/2 ${hasInteractedWithConfidence ? 'text-purple-600' : 'text-gray-400'}`}>
                     {hasInteractedWithConfidence ? confidence : '—'}
                   </span>
                   <span>High</span>

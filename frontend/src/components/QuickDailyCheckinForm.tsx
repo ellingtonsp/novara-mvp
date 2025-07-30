@@ -14,6 +14,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { trackCheckinSubmitted } from '../lib/analytics';
 import { API_BASE_URL } from '../lib/environment';
 import { CenteredSlider } from './CenteredSlider';
+import { MetricTooltip } from './MetricTooltip';
+import { getLocalDateString } from '../lib/dateUtils';
 
 interface QuickDailyCheckinFormProps {
   onComplete?: () => void;
@@ -51,26 +53,32 @@ export const QuickDailyCheckinForm: React.FC<QuickDailyCheckinFormProps> = ({
     setIsSubmitting(true);
 
     try {
+      // Get today's date in user's local timezone
+      const todayString = getLocalDateString();
+      
       // Store quick check-in data
       const quickData = {
         isQuickCheckin: true,
         mood: selectedMood,
         tookMedications,
         confidence,
-        checkinTime: new Date().toISOString()
+        checkinTime: new Date().toISOString(),
+        localDate: todayString
       };
       
       localStorage.setItem(
-        `quick_checkin_${user?.email}_${new Date().toISOString().split('T')[0]}`, 
+        `quick_checkin_${user?.email}_${todayString}`, 
         JSON.stringify(quickData)
       );
 
       // Submit to backend
+      
       const checkinData = {
         mood_today: selectedMood,
         confidence_today: confidence,
         user_note: `Quick check-in: ${tookMedications ? 'Took all medications' : 'Missed medications'}`,
-        primary_concern_today: !tookMedications ? 'medication_adherence' : undefined
+        primary_concern_today: !tookMedications ? 'medication_adherence' : undefined,
+        date_submitted: todayString
       };
 
       const response = await fetch(`${API_BASE_URL}/api/checkins`, {
@@ -93,24 +101,7 @@ export const QuickDailyCheckinForm: React.FC<QuickDailyCheckinFormProps> = ({
         });
 
         setShowCompletion(true);
-        
-        // Check if it's time for weekly comprehensive check-in
-        const lastComprehensive = localStorage.getItem(`last_comprehensive_${user?.email}`);
-        const daysSinceComprehensive = lastComprehensive 
-          ? Math.floor((Date.now() - new Date(lastComprehensive).getTime()) / (1000 * 60 * 60 * 24))
-          : 7;
-
-        if (daysSinceComprehensive >= 7) {
-          setTimeout(() => {
-            if (onSwitchToFull) {
-              onSwitchToFull();
-            }
-          }, 2000);
-        } else {
-          setTimeout(() => {
-            onComplete?.();
-          }, 2000);
-        }
+        // User stays on success page - no auto-redirect
       } else {
         throw new Error('Failed to submit check-in');
       }
@@ -123,6 +114,12 @@ export const QuickDailyCheckinForm: React.FC<QuickDailyCheckinFormProps> = ({
   };
 
   if (showCompletion) {
+    const lastComprehensive = localStorage.getItem(`last_comprehensive_${user?.email}`);
+    const daysSinceComprehensive = lastComprehensive 
+      ? Math.floor((Date.now() - new Date(lastComprehensive).getTime()) / (1000 * 60 * 60 * 24))
+      : 7;
+    const isWeeklyDue = daysSinceComprehensive >= 7;
+
     return (
       <Card className="border-green-200 bg-gradient-to-r from-green-50 to-emerald-50">
         <CardContent className="p-4 sm:p-6 text-center">
@@ -132,14 +129,43 @@ export const QuickDailyCheckinForm: React.FC<QuickDailyCheckinFormProps> = ({
             Great job staying consistent! Your personalized insights are ready.
           </p>
           {/* Show weekly reminder if due */}
-          {localStorage.getItem(`last_comprehensive_${user?.email}`) && 
-           Math.floor((Date.now() - new Date(localStorage.getItem(`last_comprehensive_${user?.email}`)!).getTime()) / (1000 * 60 * 60 * 24)) >= 7 && (
+          {isWeeklyDue && (
             <div className="mt-4 p-3 bg-purple-100 rounded-lg">
               <p className="text-sm text-purple-800 font-medium">
                 📅 It's been a week! Time for your comprehensive check-in for deeper insights.
               </p>
             </div>
           )}
+          
+          <div className="mt-4 space-y-2">
+            <Button 
+              onClick={() => {
+                if (onComplete) {
+                  onComplete();
+                } else {
+                  // Reset form if no onComplete handler
+                  setShowCompletion(false);
+                  setSelectedMood('');
+                  setTookMedications(null);
+                  setConfidence(5);
+                  setHasInteractedWithSlider(false);
+                }
+              }}
+              className="w-full bg-[#FF6F61] hover:bg-[#FF6F61]/90"
+            >
+              Continue
+            </Button>
+            
+            {isWeeklyDue && onSwitchToFull && (
+              <Button
+                onClick={onSwitchToFull}
+                variant="outline"
+                className="w-full"
+              >
+                Take Comprehensive Check-in
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
     );
@@ -165,9 +191,11 @@ export const QuickDailyCheckinForm: React.FC<QuickDailyCheckinFormProps> = ({
       <CardContent className="p-4 sm:p-6 pt-0 space-y-4 sm:space-y-6">
         {/* Mood Selection - Most Predictive */}
         <div>
-          <Label className="text-sm sm:text-base font-semibold mb-2 block">
-            How are you feeling today?
-          </Label>
+          <MetricTooltip metric="mood">
+            <Label className="text-sm sm:text-base font-semibold mb-2 block">
+              How are you feeling today?
+            </Label>
+          </MetricTooltip>
           <div className="grid grid-cols-3 gap-1.5 sm:gap-2 mood-grid">
             {QUICK_MOOD_OPTIONS.map((option) => (
               <button
@@ -175,8 +203,8 @@ export const QuickDailyCheckinForm: React.FC<QuickDailyCheckinFormProps> = ({
                 onClick={() => setSelectedMood(option.mood)}
                 className={`p-2 sm:p-3 rounded-lg border-2 transition-all text-center ${
                   selectedMood === option.mood
-                    ? 'border-purple-500 bg-purple-50'
-                    : 'border-gray-200 hover:border-purple-300'
+                    ? 'border-purple-500 bg-purple-500 text-white'
+                    : 'border-gray-200 hover:border-purple-300 bg-white'
                 }`}
               >
                 <span className="text-xl sm:text-2xl block mb-0.5 sm:mb-1">{option.icon}</span>
@@ -188,10 +216,12 @@ export const QuickDailyCheckinForm: React.FC<QuickDailyCheckinFormProps> = ({
 
         {/* Medication Adherence - Critical Metric */}
         <div>
-          <Label className="text-sm sm:text-base font-semibold mb-2 block flex items-center gap-2">
-            <Pill className="h-4 w-4" />
-            Did you take all your medications today?
-          </Label>
+          <MetricTooltip metric="medication">
+            <Label className="text-sm sm:text-base font-semibold mb-2 block flex items-center gap-2">
+              <Pill className="h-4 w-4" />
+              Did you take all your medications today?
+            </Label>
+          </MetricTooltip>
           <div className="grid grid-cols-2 gap-2 sm:gap-3 medication-grid">
             <Button
               variant={tookMedications === true ? 'default' : 'outline'}
@@ -214,9 +244,11 @@ export const QuickDailyCheckinForm: React.FC<QuickDailyCheckinFormProps> = ({
 
         {/* Confidence - Centered Slider */}
         <div>
-          <Label className="text-base font-semibold mb-2 block">
-            Overall confidence today
-          </Label>
+          <MetricTooltip metric="confidence">
+            <Label className="text-base font-semibold mb-2 block">
+              Overall confidence today
+            </Label>
+          </MetricTooltip>
           <div className="space-y-2">
             <div className="flex justify-between text-sm text-gray-600">
               <span>Low</span>

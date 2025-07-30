@@ -17,6 +17,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **ALWAYS** run BugBot validation before and after deployments
 - **ALWAYS** align work with current sprint priorities from roadmap
 - **ALWAYS** use stable ports: Frontend 4200, Backend 9002
+- **ALWAYS** be sure to follow safe port guidance in our documentation
 
 ### Improvement Guidelines:
 - If you fail to fix a UI problem based on my feedback, rethink the approach for that element and implement a better solution

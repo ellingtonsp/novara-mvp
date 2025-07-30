@@ -12,12 +12,14 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { API_BASE_URL } from '../lib/environment';
 import { Progress } from '@/components/ui/progress';
+import { MetricTooltip } from './MetricTooltip';
 
 interface UserMetrics {
   // Adherence metrics
   medicationAdherenceRate: number;
   medicationAdherenceTrend: 'improving' | 'stable' | 'declining';
   missedDosesLastWeek: number;
+  totalMedicationCheckIns: number;
   
   // Mental health metrics
   currentPHQ4Score: number;
@@ -27,7 +29,7 @@ interface UserMetrics {
   // Engagement metrics
   checkInStreak: number;
   totalCheckIns: number;
-  insightEngagementRate: number;
+  insightEngagementRate: number; // Now represents daily check-in completion rate
   checklistCompletionRate: number;
   
   // Support utilization
@@ -140,6 +142,7 @@ export const OutcomeMetricsDashboard: React.FC<OutcomeMetricsDashboardProps> = (
           medicationAdherenceRate: 0,
           medicationAdherenceTrend: 'stable',
           missedDosesLastWeek: 0,
+          totalMedicationCheckIns: 0,
           currentPHQ4Score: 0,
           phq4Trend: 'stable',
           anxietyAverage: 0,
@@ -163,6 +166,7 @@ export const OutcomeMetricsDashboard: React.FC<OutcomeMetricsDashboardProps> = (
         medicationAdherenceRate: 0,
         medicationAdherenceTrend: 'stable',
         missedDosesLastWeek: 0,
+        totalMedicationCheckIns: 0,
         currentPHQ4Score: 0,
         phq4Trend: 'stable',
         anxietyAverage: 0,
@@ -192,10 +196,10 @@ export const OutcomeMetricsDashboard: React.FC<OutcomeMetricsDashboardProps> = (
         yourValue: metrics.medicationAdherenceRate,
         benchmark: 78,
         impact: metrics.medicationAdherenceRate > 85 
-          ? '23% higher pregnancy rates vs. <85% adherence' 
-          : 'Improving to >85% could increase success by 23%',
+          ? 'Associated with lower cycle cancellation rates' 
+          : 'Higher adherence may be associated with better outcomes',
         recommendation: metrics.medicationAdherenceRate < 85 
-          ? 'Set specific medication alarms and track in app' 
+          ? 'Consider setting medication reminders' 
           : undefined
       },
       {
@@ -210,25 +214,14 @@ export const OutcomeMetricsDashboard: React.FC<OutcomeMetricsDashboardProps> = (
           : undefined
       },
       {
-        metric: 'Check-in Consistency',
-        yourValue: metrics.checkInStreak,
-        benchmark: 5,
-        impact: metrics.checkInStreak >= 7 
-          ? '35% better at identifying helpful patterns' 
-          : 'Consistent tracking improves personalization',
-        recommendation: metrics.checkInStreak < 7 
+        metric: 'Daily Check-in Rate',
+        yourValue: metrics.insightEngagementRate,
+        benchmark: 70,
+        impact: metrics.insightEngagementRate >= 70 
+          ? 'Consistent tracking improves pattern identification' 
+          : 'Daily tracking enhances personalized support',
+        recommendation: metrics.insightEngagementRate < 70 
           ? 'Try setting a daily reminder' 
-          : undefined
-      },
-      {
-        metric: 'Partner Involvement',
-        yourValue: metrics.partnerInvolvementRate,
-        benchmark: 50,
-        impact: metrics.partnerInvolvementRate > 60 
-          ? '27% better treatment satisfaction with partner support' 
-          : 'Partner involvement linked to better outcomes',
-        recommendation: metrics.partnerInvolvementRate < 60 
-          ? 'Share your dashboard with your partner' 
           : undefined
       }
     ];
@@ -277,7 +270,7 @@ export const OutcomeMetricsDashboard: React.FC<OutcomeMetricsDashboardProps> = (
               <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
               <div>
                 <p className="font-medium text-sm text-gray-800">Track Medication Adherence</p>
-                <p className="text-xs text-gray-600">See how consistency impacts success rates</p>
+                <p className="text-xs text-gray-600">Research suggests consistency correlates with treatment completion</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
@@ -306,6 +299,15 @@ export const OutcomeMetricsDashboard: React.FC<OutcomeMetricsDashboardProps> = (
     );
   }
   
+  // Debug logging
+  console.log('🔍 OutcomeMetricsDashboard render:', {
+    totalCheckIns: metrics?.totalCheckIns,
+    totalMedicationCheckIns: metrics?.totalMedicationCheckIns,
+    medicationAdherenceRate: metrics?.medicationAdherenceRate,
+    missedDosesLastWeek: metrics?.missedDosesLastWeek,
+    thresholdMet: (metrics?.totalMedicationCheckIns || 0) >= 3
+  });
+
   return (
     <div className="space-y-4">
       {/* Navigation Tabs - Desktop only */}
@@ -368,39 +370,47 @@ export const OutcomeMetricsDashboard: React.FC<OutcomeMetricsDashboardProps> = (
       {selectedView === 'overview' && (
         <div className="space-y-3">
           <Card className="border-purple-200 bg-gradient-to-r from-purple-50 to-pink-50">
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <span className="flex items-center gap-2 text-purple-800">
-                  <Trophy className="h-5 w-5" />
-                  Your Impact Score
-                </span>
-                <span className="text-2xl font-bold text-purple-600">
-                  {metrics.cycleCompletionProbability}%
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center justify-between text-base sm:text-lg">
+                <MetricTooltip metric="impact">
+                  <span className="flex items-center gap-2 text-purple-800">
+                    <Trophy className="h-5 w-5" />
+                    Your Engagement Level
+                  </span>
+                </MetricTooltip>
+                <span className="text-xl font-bold text-purple-600">
+                  {metrics.cycleCompletionProbability > 75 ? 'Strong' : 
+                   metrics.cycleCompletionProbability > 50 ? 'Building' : 'Developing'}
                 </span>
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <p className="text-sm text-gray-600 mb-4">
-                Based on your engagement patterns, you have an {metrics.cycleCompletionProbability}% 
-                probability of completing your current cycle - that's {
-                  metrics.cycleCompletionProbability > 75 ? 'excellent!' : 'good, with room to improve.'
-                }
+            <CardContent className="pt-0">
+              <p className="text-sm text-gray-600 mb-3">
+                Your current engagement patterns {
+                  metrics.cycleCompletionProbability > 75 ? 'align well with patients who successfully navigate their treatment journey' : 
+                  metrics.cycleCompletionProbability > 50 ? 'show positive momentum and may benefit from targeted support' :
+                  'suggest opportunities to explore additional resources and support options'
+                }.
               </p>
               
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <div>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span>Medication Adherence</span>
-                    <span className={getAdherenceColor(metrics.medicationAdherenceRate)}>
-                      {metrics.medicationAdherenceRate}%
+                  <div className="flex justify-between items-center text-sm mb-1">
+                    <MetricTooltip metric="medication">
+                      <span>Medication Adherence</span>
+                    </MetricTooltip>
+                    <span className={metrics.totalMedicationCheckIns >= 3 && metrics.medicationAdherenceRate > 0 ? getAdherenceColor(metrics.medicationAdherenceRate) : 'text-gray-400'}>
+                      {metrics.totalMedicationCheckIns >= 3 && metrics.medicationAdherenceRate > 0 ? `${metrics.medicationAdherenceRate}%` : '—'}
                     </span>
                   </div>
-                  <Progress value={metrics.medicationAdherenceRate} className="h-2" />
+                  <Progress value={metrics.totalMedicationCheckIns >= 3 && metrics.medicationAdherenceRate > 0 ? metrics.medicationAdherenceRate : 0} className="h-2" />
                 </div>
                 
                 <div>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span>Mental Health Score</span>
+                  <div className="flex justify-between items-center text-sm mb-1">
+                    <MetricTooltip metric="mood">
+                      <span>Mental Health Score</span>
+                    </MetricTooltip>
                     <span className={getPHQ4Color(metrics.currentPHQ4Score)}>
                       {12 - metrics.currentPHQ4Score}/12
                     </span>
@@ -409,8 +419,10 @@ export const OutcomeMetricsDashboard: React.FC<OutcomeMetricsDashboardProps> = (
                 </div>
                 
                 <div>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span>Engagement Rate</span>
+                  <div className="flex justify-between items-center text-sm mb-1">
+                    <MetricTooltip metric="engagement">
+                      <span>Engagement Score</span>
+                    </MetricTooltip>
                     <span className="text-purple-600">{metrics.insightEngagementRate}%</span>
                   </div>
                   <Progress value={metrics.insightEngagementRate} className="h-2" />
@@ -427,12 +439,23 @@ export const OutcomeMetricsDashboard: React.FC<OutcomeMetricsDashboardProps> = (
               </CardHeader>
               <CardContent>
                 <ul className="space-y-2">
-                  {metrics.protectiveFactors.map((factor, idx) => (
-                    <li key={idx} className="flex items-start gap-2 text-sm text-green-700">
-                      <CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                      {factor}
-                    </li>
-                  ))}
+                  {(() => {
+                    // Always show encouraging strengths, even when data-driven ones aren't available
+                    const strengths = metrics.protectiveFactors.length > 0 
+                      ? metrics.protectiveFactors
+                      : [
+                          'Taking proactive steps in your fertility journey',
+                          'Using this app shows commitment to your health',
+                          'Building health awareness through tracking'
+                        ];
+                    
+                    return strengths.map((factor, idx) => (
+                      <li key={idx} className="flex items-start gap-2 text-sm text-green-700">
+                        <CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                        {factor}
+                      </li>
+                    ));
+                  })()}
                 </ul>
               </CardContent>
             </Card>
@@ -467,15 +490,57 @@ export const OutcomeMetricsDashboard: React.FC<OutcomeMetricsDashboardProps> = (
               <div className="bg-white rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
                   <h4 className="font-semibold text-gray-800">Current Adherence Rate</h4>
-                  <span className={`text-2xl font-bold ${getAdherenceColor(metrics.medicationAdherenceRate)}`}>
-                    {metrics.medicationAdherenceRate}%
-                  </span>
+                  {metrics.totalMedicationCheckIns >= 3 ? (
+                    <span className={`text-2xl font-bold ${metrics.medicationAdherenceRate === 0 ? 'text-gray-400' : getAdherenceColor(metrics.medicationAdherenceRate)}`}>
+                      {metrics.medicationAdherenceRate === 0 ? '—' : `${metrics.medicationAdherenceRate}%`}
+                    </span>
+                  ) : (
+                    <span className="text-2xl font-bold text-gray-400">—</span>
+                  )}
                 </div>
-                <Progress value={metrics.medicationAdherenceRate} className="h-3 mb-2" />
-                <p className="text-sm text-gray-600">
-                  You missed {metrics.missedDosesLastWeek} dose{metrics.missedDosesLastWeek !== 1 ? 's' : ''} last week. 
-                  {metrics.missedDosesLastWeek === 0 && ' Perfect adherence! 🎉'}
-                </p>
+                {metrics.totalMedicationCheckIns >= 3 ? (
+                  metrics.medicationAdherenceRate > 0 ? (
+                    <>
+                      <Progress value={metrics.medicationAdherenceRate} className="h-3 mb-2" />
+                      <p className="text-sm text-gray-600">
+                        You missed {metrics.missedDosesLastWeek} dose{metrics.missedDosesLastWeek !== 1 ? 's' : ''} last week. 
+                        {metrics.missedDosesLastWeek === 0 && ' Perfect adherence! 🎉'}
+                      </p>
+                    </>
+                  ) : (
+                    <div className="text-center py-4">
+                      <p className="text-sm text-gray-600">
+                        Start tracking your medication status in daily check-ins to see adherence insights
+                      </p>
+                      <div className="flex items-center justify-center gap-2 mt-3">
+                        {Array.from({ length: 3 }, (_, i) => (
+                          <div
+                            key={i}
+                            className={`w-3 h-3 rounded-full ${
+                              i < metrics.totalMedicationCheckIns ? 'bg-purple-500' : 'bg-gray-200'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )
+                ) : (
+                  <div className="text-center py-4">
+                    <p className="text-sm text-gray-600 mb-2">
+                      Track medication in {3 - metrics.totalMedicationCheckIns} more check-in{3 - metrics.totalMedicationCheckIns !== 1 ? 's' : ''} to see your adherence insights
+                    </p>
+                    <div className="flex items-center justify-center gap-2">
+                      {Array.from({ length: 3 }, (_, i) => (
+                        <div
+                          key={i}
+                          className={`w-3 h-3 rounded-full ${
+                            i < metrics.totalMedicationCheckIns ? 'bg-purple-500' : 'bg-gray-200'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
               
               <div className="bg-blue-50 rounded-lg p-4">
@@ -484,26 +549,35 @@ export const OutcomeMetricsDashboard: React.FC<OutcomeMetricsDashboardProps> = (
                   Research Insight
                 </h4>
                 <p className="text-sm text-blue-700">
-                  Patients with ≥90% medication adherence have 23% higher pregnancy rates and 
-                  41% lower cycle cancellation rates compared to those with &lt;80% adherence 
-                  (Nachtigall et al., 2012).
+                  Research suggests that patients with higher medication adherence tend to have 
+                  better treatment completion rates. Studies indicate that consistent medication 
+                  use correlates with reduced cycle cancellations and improved outcomes.
                 </p>
-                {metrics.medicationAdherenceRate < 90 && (
+                {metrics.totalMedicationCheckIns >= 3 && metrics.medicationAdherenceRate > 0 && metrics.medicationAdherenceRate < 90 && (
                   <p className="text-sm text-blue-800 font-medium mt-2">
-                    Improving your adherence by {90 - metrics.medicationAdherenceRate}% could 
-                    significantly improve your outcomes.
+                    Improving medication consistency may be associated with better treatment outcomes.
+                  </p>
+                )}
+                {metrics.totalMedicationCheckIns >= 3 && metrics.medicationAdherenceRate === 0 && (
+                  <p className="text-sm text-blue-800 font-medium mt-2">
+                    Once you start tracking medication in your check-ins, we'll show how your adherence compares to research benchmarks.
+                  </p>
+                )}
+                {metrics.totalMedicationCheckIns < 3 && (
+                  <p className="text-sm text-blue-800 font-medium mt-2">
+                    Once you have a week of data, we'll show how your adherence compares to research benchmarks.
                   </p>
                 )}
               </div>
               
-              {metrics.medicationAdherenceTrend !== 'stable' && (
+              {metrics.medicationAdherenceTrend !== 'stable' && metrics.totalMedicationCheckIns >= 14 && (
                 <div className={`rounded-lg p-4 ${
                   metrics.medicationAdherenceTrend === 'improving' ? 'bg-green-50' : 'bg-red-50'
                 }`}>
                   <p className={`text-sm font-medium ${
                     metrics.medicationAdherenceTrend === 'improving' ? 'text-green-800' : 'text-red-800'
                   }`}>
-                    Your adherence is {metrics.medicationAdherenceTrend} compared to last month
+                    Your adherence is {metrics.medicationAdherenceTrend} compared to the previous week
                   </p>
                 </div>
               )}
@@ -557,9 +631,9 @@ export const OutcomeMetricsDashboard: React.FC<OutcomeMetricsDashboardProps> = (
                   Impact on Treatment
                 </h4>
                 <p className="text-sm text-blue-700">
-                  Patients with PHQ-4 scores &lt;6 have 82% cycle completion rates vs. 54% for 
-                  scores ≥9. Mind-body interventions can reduce anxiety by up to 60% 
-                  (Boivin & Lancastle, 2010).
+                  Research indicates that lower anxiety and stress levels tend to correlate with 
+                  higher treatment completion rates. Psychological support and stress management 
+                  techniques may help patients stay engaged with their treatment plan.
                 </p>
               </div>
             </CardContent>
@@ -576,12 +650,14 @@ export const OutcomeMetricsDashboard: React.FC<OutcomeMetricsDashboardProps> = (
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-lg p-6 text-center">
-                <h3 className="text-4xl font-bold text-gray-800 mb-2">
-                  {metrics.cycleCompletionProbability}%
-                </h3>
-                <p className="text-lg text-gray-700">Cycle Completion Probability</p>
+                <div className="text-3xl font-bold text-gray-800 mb-2">
+                  <div className="text-lg text-gray-600 font-normal">Engagement Level</div>
+                  {metrics.cycleCompletionProbability > 75 ? '🌟 Strong' : 
+                   metrics.cycleCompletionProbability > 50 ? '📈 Building Momentum' : 
+                   '🌱 Early Journey'}
+                </div>
                 <p className="text-sm text-gray-600 mt-2">
-                  Based on your adherence, mental health, and engagement patterns
+                  Based on correlations with adherence, well-being, and engagement patterns
                 </p>
               </div>
               
@@ -611,9 +687,9 @@ export const OutcomeMetricsDashboard: React.FC<OutcomeMetricsDashboardProps> = (
               
               <div className="bg-purple-50 rounded-lg p-4">
                 <p className="text-sm text-purple-800">
-                  <strong>Remember:</strong> These predictions are based on population data. 
+                  <strong>Remember:</strong> These predictions focus on treatment cycle completion, not pregnancy outcomes. 
                   Your individual journey is unique, but these metrics help identify what 
-                  support might be most helpful for you.
+                  support might be most helpful for completing your treatment plan.
                 </p>
               </div>
             </CardContent>
