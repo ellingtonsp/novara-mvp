@@ -2174,7 +2174,101 @@ app.get('/api/checkins/last-values', authenticateToken, async (req, res) => {
 // Submit Daily Check-in (Protected Route)
 app.post('/api/checkins', authenticateToken, async (req, res) => {
   try {
+    
     console.log('📝 Daily check-in submission received:', req.body);
+    
+    // Handle PostgreSQL database
+    if (databaseAdapter.isPostgres) {
+      console.log('🐘 Using PostgreSQL for check-in creation');
+      try {
+        const user = await databaseAdapter.localDb.findUserByEmail(req.user.email);
+        if (!user) {
+          return res.status(404).json({ 
+            success: false, 
+            error: 'User not found. Please sign up first.' 
+          });
+        }
+        
+        // Extract check-in data
+        const { 
+          mood_today, 
+          primary_concern_today, 
+          confidence_today, 
+          user_note,
+          date_submitted,
+          sentiment_analysis,
+          medication_taken,
+          ...additionalFormFields
+        } = req.body;
+        
+        // Validation
+        if (!mood_today || !confidence_today) {
+          return res.status(400).json({ 
+            success: false, 
+            error: 'Missing required fields: mood_today and confidence_today are required' 
+          });
+        }
+        
+        if (confidence_today < 1 || confidence_today > 10) {
+          return res.status(400).json({ 
+            success: false, 
+            error: 'confidence_today must be between 1 and 10' 
+          });
+        }
+        
+        // Prepare check-in data
+        const checkinData = {
+          user_id: user.id,
+          mood_today,
+          confidence_today: parseInt(confidence_today),
+          date_submitted: date_submitted || new Date().toISOString().split('T')[0],
+          primary_concern_today,
+          user_note,
+          medication_taken,
+          ...additionalFormFields
+        };
+        
+        // Create check-in using PostgreSQL adapter
+        const result = await databaseAdapter.localDb.createCheckin(checkinData);
+        
+        console.log('✅ Check-in created successfully:', result.id);
+        
+        // Return response
+        const responseData = {
+          success: true,
+          checkin: {
+            id: result.id,
+            mood_today: result.fields?.mood_today || checkinData.mood_today,
+            confidence_today: result.fields?.confidence_today || checkinData.confidence_today,
+            date_submitted: result.fields?.date_submitted || checkinData.date_submitted,
+            medication_taken: result.fields?.medication_taken || checkinData.medication_taken,
+            created_at: result.fields?.created_at || new Date().toISOString()
+          },
+            ? 'Daily check-in completed successfully! We love your positive energy today! 🎉' 
+            : 'Daily check-in completed successfully! 🌟'
+        };
+        
+        if (sentiment_analysis) {
+          responseData.sentiment_analysis = {
+            sentiment: sentiment_analysis.sentiment,
+            confidence: sentiment_analysis.confidence,
+            celebration_triggered: sentiment_analysis.sentiment === 'positive'
+          };
+        }
+        
+        return res.status(201).json(responseData);
+        
+      } catch (error) {
+        console.error('❌ PostgreSQL check-in error:', error);
+        return res.status(500).json({ 
+          success: false, 
+          error: 'Internal server error',
+          details: error.message
+        });
+      }
+    }
+    
+    // Continue with Airtable logic
 
     const { 
       mood_today, 
@@ -2333,10 +2427,8 @@ app.post('/api/checkins', authenticateToken, async (req, res) => {
         medication_taken: result.fields?.medication_taken || filteredCheckinData.medication_taken,
         created_at: result.fields?.created_at || new Date().toISOString()
       },
-      message: sentiment_analysis?.sentiment === 'positive' 
         ? 'Daily check-in completed successfully! We love your positive energy today! 🎉' 
         : 'Daily check-in completed successfully! 🌟'
-      message: sentiment_analysis?.sentiment === 'positive' 
         ? 'Daily check-in completed successfully! We love your positive energy today! 🎉' 
         : 'Daily check-in completed successfully! 🌟'
     };

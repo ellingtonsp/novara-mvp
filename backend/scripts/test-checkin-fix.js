@@ -7,7 +7,7 @@
 const axios = require('axios');
 
 const API_URL = process.env.API_URL || 'https://novara-staging-staging.up.railway.app';
-const TEST_USER_EMAIL = 'alice@example.com';
+const TEST_USER_EMAIL = 'uat-user-1@staging.com';
 
 async function testCheckinSubmission() {
   console.log('🧪 Testing check-in submission on staging...\n');
