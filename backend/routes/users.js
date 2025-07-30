@@ -4,10 +4,99 @@
 
 const express = require('express');
 const router = express.Router();
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, generateToken } = require('../middleware/auth');
 const { asyncHandler, AppError } = require('../middleware/error-handler');
 const userService = require('../services/user-service');
 const checkinService = require('../services/checkin-service');
+
+/**
+ * POST /api/users
+ * Create new user (signup + auto-login)
+ */
+router.post('/', asyncHandler(async (req, res) => {
+  // Validate and sanitize email
+  const rawEmail = req.body.email;
+  if (!rawEmail) {
+    throw new AppError('Email is required', 400);
+  }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const sanitizedEmail = rawEmail.toString().trim().toLowerCase();
+  
+  if (!emailRegex.test(sanitizedEmail)) {
+    throw new AppError('Invalid email format', 400);
+  }
+
+  if (sanitizedEmail.length > 254) { // RFC 5321 limit
+    throw new AppError('Email address too long', 400);
+  }
+
+  // Validate and sanitize nickname
+  const nickname = req.body.nickname ? req.body.nickname.toString().trim() : '';
+  if (nickname.length > 50) {
+    throw new AppError('Nickname too long (max 50 characters)', 400);
+  }
+
+  const userData = {
+    email: sanitizedEmail,
+    nickname: nickname,
+    confidence_meds: req.body.confidence_meds || 5,
+    confidence_costs: req.body.confidence_costs || 5,
+    confidence_overall: req.body.confidence_overall || 5,
+    timezone: req.body.timezone,
+    email_opt_in: req.body.email_opt_in !== false, // Default true
+    status: 'active'
+  };
+
+  // ON-01: Add A/B test tracking fields
+  if (req.body.onboarding_path && (req.body.onboarding_path === 'control' || req.body.onboarding_path === 'test')) {
+    userData.onboarding_path = req.body.onboarding_path;
+  }
+  if (req.body.baseline_completed !== undefined) {
+    userData.baseline_completed = req.body.baseline_completed === true;
+  }
+
+  // Only add optional fields if they have values
+  if (req.body.primary_need && req.body.primary_need !== '') {
+    userData.primary_need = req.body.primary_need;
+  }
+  if (req.body.cycle_stage && req.body.cycle_stage !== '') {
+    userData.cycle_stage = req.body.cycle_stage;
+  }
+  if (req.body.top_concern && req.body.top_concern !== '') {
+    userData.top_concern = req.body.top_concern;
+  }
+  if (req.body.medication_status && req.body.medication_status !== '') {
+    userData.medication_status = req.body.medication_status;
+  }
+
+  // Create user
+  const newUser = await userService.create(userData);
+
+  // Generate JWT token for immediate login
+  const token = generateToken(newUser);
+
+  res.status(201).json({ 
+    success: true, 
+    token,
+    user: {
+      id: newUser.id,
+      email: newUser.email,
+      nickname: newUser.nickname,
+      confidence_meds: newUser.confidence_meds,
+      confidence_costs: newUser.confidence_costs,
+      confidence_overall: newUser.confidence_overall,
+      primary_need: newUser.primary_need,
+      cycle_stage: newUser.cycle_stage,
+      top_concern: newUser.top_concern,
+      timezone: newUser.timezone,
+      email_opt_in: newUser.email_opt_in,
+      baseline_completed: newUser.baseline_completed || false,
+      onboarding_path: newUser.onboarding_path,
+      created_at: newUser.created_at
+    }
+  });
+}));
 
 /**
  * GET /api/users/me
