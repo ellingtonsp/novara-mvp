@@ -89,10 +89,22 @@ const getEnvironment = (): string => {
   return 'production';
 };
 
+// Railway URL detection with smart handling
+const getRailwayUrl = (environment: string): string => {
+  // Known Railway service URLs (as of deployment)
+  const RAILWAY_URLS = {
+    staging: 'https://novara-staging-staging.up.railway.app',
+    production: 'https://novara-mvp-production.up.railway.app'
+  };
+  
+  return RAILWAY_URLS[environment as keyof typeof RAILWAY_URLS] || RAILWAY_URLS.production;
+};
+
 // API URL configuration with automatic preview handling
 const getApiUrl = (): string => {
   // Use explicit API URL if provided
   if (import.meta.env.VITE_API_URL) {
+    console.log('🔧 Using explicit VITE_API_URL:', import.meta.env.VITE_API_URL);
     return import.meta.env.VITE_API_URL;
   }
   
@@ -102,14 +114,16 @@ const getApiUrl = (): string => {
     case 'development':
       return 'http://localhost:9002'; // Stable local backend port
     case 'staging':
-      return 'https://novara-staging-staging.up.railway.app';
+      // NOTE: Railway staging service has double 'staging' in the URL
+      // This is the actual deployed service name, not a typo
+      return getRailwayUrl('staging');
     case 'preview':
       // For Vercel preview deployments, use staging backend
       // This prevents API breakages on every deployment
-      return 'https://novara-staging-staging.up.railway.app';
+      return getRailwayUrl('staging');
     case 'production':
     default:
-      return 'https://novara-mvp-production.up.railway.app';
+      return getRailwayUrl('production');
   }
 };
 
