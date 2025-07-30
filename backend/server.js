@@ -2910,8 +2910,8 @@ app.get('/api/users/metrics', authenticateToken, async (req, res) => {
       finalStrengths = strengthCandidates.filter(s => s.category !== 'default');
     }
     
-    // Take only top 3
-    const protectiveFactors = finalStrengths.slice(0, 3).map(s => s.text);
+    // Take only top 3 and populate protectiveFactors array
+    finalStrengths.slice(0, 3).forEach(s => protectiveFactors.push(s.text));
     
     // Ensure we always have at least one strength
     if (protectiveFactors.length === 0) {
