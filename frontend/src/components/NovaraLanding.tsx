@@ -182,11 +182,19 @@ const NovaraLanding = () => {
       console.log('🧪 ON-01: Setting initial view based on user status:', {
         email: user.email,
         baseline_completed: user.baseline_completed,
-        onboarding_path: user.onboarding_path
+        onboarding_path: user.onboarding_path,
+        nickname: user.nickname,
+        confidence_meds: user.confidence_meds,
+        confidence_costs: user.confidence_costs,
+        confidence_overall: user.confidence_overall
       });
       
-      // Check if user is an existing user (has confidence scores and other profile data)
-      const isExistingUser = user.confidence_meds && user.confidence_costs && user.confidence_overall && user.primary_need && user.cycle_stage;
+      // Check if user is an existing user (has meaningful profile data, not just defaults)
+      // A user is existing if they have a nickname OR non-default confidence scores
+      // This is consistent with the baseline panel check logic
+      const hasNickname = user.nickname && user.nickname.trim() !== '';
+      const hasNonDefaultScores = user.confidence_meds !== 5 || user.confidence_costs !== 5 || user.confidence_overall !== 5;
+      const isExistingUser = hasNickname || hasNonDefaultScores;
       
       if (user.baseline_completed || isExistingUser) {
         // User has completed onboarding OR is an existing user, go directly to dashboard
