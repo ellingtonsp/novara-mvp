@@ -9,6 +9,7 @@ import { API_BASE_URL } from '../lib/environment';
 import { analyzeCheckinSentiment } from '../lib/sentiment';
 import { generateSentimentBasedInsight } from '../lib/copy-variants';
 import { InsightFeedback } from './InsightFeedback';
+import { getLocalDateString } from '../lib/dateUtils';
 
 interface DailyCheckinFormProps {
   onComplete?: () => void;
@@ -317,6 +318,7 @@ const DailyCheckinForm: React.FC<DailyCheckinFormProps> = ({ onComplete }) => {
       ...formResponses,
       mood_today: selectedMoods.join(', '), // Put this AFTER formResponses so it doesn't get overwritten
       confidence_today: formResponses.confidence_today || 5, // Ensure confidence_today is always present
+      date_submitted: getLocalDateString(), // Add user's local date to prevent UTC date issues
     };
     
     console.log('🐛 DEBUG - enhancedCheckinData.mood_today:', enhancedCheckinData.mood_today);

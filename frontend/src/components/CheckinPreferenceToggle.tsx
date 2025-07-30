@@ -38,6 +38,8 @@ export const CheckinPreferenceToggle: React.FC<CheckinPreferenceToggleProps> = (
       const pref: CheckinPreference = JSON.parse(savedPref);
       setLocalPreference(pref.type);
       setHasSeenOptions(true);
+      // Don't show the full options card if preference is already saved
+      setShowOptions(false);
     } else {
       // Default to quick for new users
       setLocalPreference('quick_daily');
@@ -47,7 +49,10 @@ export const CheckinPreferenceToggle: React.FC<CheckinPreferenceToggleProps> = (
   useEffect(() => {
     // Check if user should see preference option (after 3 check-ins)
     const checkinsCount = parseInt(localStorage.getItem(`checkin_count_${user?.email}`) || '0');
-    if (checkinsCount >= 3 && !hasSeenOptions && !showOptions) {
+    const savedPref = localStorage.getItem(`checkin_preference_${user?.email}`);
+    
+    // Only show options if user has 3+ check-ins AND hasn't saved a preference yet
+    if (checkinsCount >= 3 && !savedPref && !hasSeenOptions && !showOptions) {
       setShowOptions(true);
     }
   }, [user, hasSeenOptions, showOptions]);

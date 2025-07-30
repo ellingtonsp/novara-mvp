@@ -323,7 +323,7 @@ class SQLiteAdapter {
     const stmt = this.db.prepare(`
       SELECT * FROM daily_checkins 
       WHERE user_id = ? 
-      ORDER BY date_submitted DESC 
+      ORDER BY created_at DESC 
       LIMIT ?
     `);
     

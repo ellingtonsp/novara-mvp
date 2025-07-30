@@ -2181,6 +2181,7 @@ app.post('/api/checkins', authenticateToken, async (req, res) => {
       primary_concern_today, 
       confidence_today, 
       user_note,
+      date_submitted, // Accept date from frontend to handle user's local timezone
       sentiment_analysis, // CM-01: Sentiment data from frontend
       ...additionalFormFields // Capture all additional dynamic form fields
     } = req.body;
@@ -2217,7 +2218,13 @@ app.post('/api/checkins', authenticateToken, async (req, res) => {
     console.log('✅ Found user record:', userRecordId.id);
 
     // Check for existing check-in today to prevent duplicates
-    const today = new Date().toISOString().split('T')[0];
+    // Use date from frontend (user's local timezone) or fall back to server UTC
+    const today = date_submitted || new Date().toISOString().split('T')[0];
+    console.log('📅 Date handling:', {
+      frontendDate: date_submitted,
+      serverUTCDate: new Date().toISOString().split('T')[0],
+      usingDate: today
+    });
     const existingCheckinUrl = `${config.airtable.baseUrl}/DailyCheckins?filterByFormula=AND(user_id='${userRecordId.id}',date_submitted='${today}')`;
     
     try {
@@ -2295,9 +2302,11 @@ app.post('/api/checkins', authenticateToken, async (req, res) => {
     }
 
     console.log('📊 Sending to Airtable DailyCheckins:', checkinData);
+    console.log('📅 Check-in date_submitted field:', checkinData.date_submitted);
 
     // Filter data to only include fields that exist in production schema
     const filteredCheckinData = filterForProductionSchema('DailyCheckins', checkinData);
+    console.log('📅 Filtered date_submitted field:', filteredCheckinData.date_submitted);
 
     // Create record in Airtable DailyCheckins table
     const result = await airtableRequest('DailyCheckins', 'POST', {
@@ -2672,9 +2681,12 @@ app.get('/api/users/metrics', authenticateToken, async (req, res) => {
       ? (prevMedicationTaken / prevMedicationData.length) * 100 
       : 0;
 
+    // Only calculate trend if we have data from both periods
     let medicationAdherenceTrend = 'stable';
-    if (medicationAdherenceRate > prevAdherenceRate + 5) medicationAdherenceTrend = 'improving';
-    else if (medicationAdherenceRate < prevAdherenceRate - 5) medicationAdherenceTrend = 'declining';
+    if (medicationData.length > 0 && prevMedicationData.length > 0) {
+      if (medicationAdherenceRate > prevAdherenceRate + 5) medicationAdherenceTrend = 'improving';
+      else if (medicationAdherenceRate < prevAdherenceRate - 5) medicationAdherenceTrend = 'declining';
+    }
 
     // Mental health metrics (PHQ-4 approximation from mood data)
     const moodScores = {
@@ -2706,16 +2718,47 @@ app.get('/api/users/metrics', authenticateToken, async (req, res) => {
       : 3;
     const prevPHQ4Score = Math.round((prevAvgMoodScore - 1) * 3);
 
+    // Only calculate trend if we have data from both periods
     let phq4Trend = 'stable';
-    if (currentPHQ4Score < prevPHQ4Score - 1) phq4Trend = 'improving';
-    else if (currentPHQ4Score > prevPHQ4Score + 1) phq4Trend = 'worsening';
+    if (lastWeekCheckins.length > 0 && prevMoodScores.length > 0) {
+      if (currentPHQ4Score < prevPHQ4Score - 1) phq4Trend = 'improving';
+      else if (currentPHQ4Score > prevPHQ4Score + 1) phq4Trend = 'worsening';
+    }
 
     // Engagement metrics
     const checkInStreak = calculateCheckInStreak(checkins);
     const totalCheckIns = checkins.length;
 
-    // Calculate insight engagement rate (placeholder - would need insight interaction data)
-    const insightEngagementRate = 76; // Would calculate from actual engagement data
+    // Calculate scheduled check-in completion rate for last 7 days
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    
+    // Get user registration date to avoid counting days before they joined
+    const userCreatedAt = new Date(user.created_at);
+    const startDate = userCreatedAt > sevenDaysAgo ? userCreatedAt : sevenDaysAgo;
+    
+    // Calculate number of days user has been registered (up to 7)
+    const daysRegistered = Math.min(7, Math.ceil((now - startDate) / (1000 * 60 * 60 * 24)));
+    
+    // Get unique dates with check-ins in the last 7 days
+    const checkInDates = new Set();
+    checkins.forEach(checkin => {
+      const checkinDate = new Date(checkin.date_submitted);
+      if (checkinDate >= startDate) {
+        checkInDates.add(checkin.date_submitted);
+      }
+    });
+    
+    // Calculate completion rate
+    const scheduledCheckInsCompleted = checkInDates.size;
+    const insightEngagementRate = daysRegistered > 0 
+      ? Math.round((scheduledCheckInsCompleted / daysRegistered) * 100)
+      : 0;
+    
+    console.log(`📊 Check-in completion: ${scheduledCheckInsCompleted} of ${daysRegistered} days (${insightEngagementRate}%)`)
+    
+    // Debug data availability
+    console.log(`📊 Trend data: medicationData=${medicationData.length}, prevMedicationData=${prevMedicationData.length}, ` +
+                `lastWeekCheckins=${lastWeekCheckins.length}, previousWeekCheckins=${previousWeekCheckins.length}`)
 
     // Calculate checklist completion rate (placeholder - would need checklist data)
     const checklistCompletionRate = 82; // Would calculate from actual checklist data
@@ -2778,12 +2821,34 @@ app.get('/api/users/metrics', authenticateToken, async (req, res) => {
     if (checkInStreak >= 7) protectiveFactors.push('Consistent daily check-ins');
     if (copingStrategiesUsed.length > 0) protectiveFactors.push('Active coping strategies');
     if (currentPHQ4Score < 6) protectiveFactors.push('Good mental health');
+    
+    // Always include some encouraging baseline strengths if none are identified
+    if (protectiveFactors.length === 0) {
+      protectiveFactors.push('Taking proactive steps in your fertility journey');
+      protectiveFactors.push('Building health awareness through tracking');
+      if (totalCheckIns > 0) protectiveFactors.push('Committed to understanding your patterns');
+    }
+    
+    // Add engagement-based strengths for lower thresholds
+    if (checkInStreak >= 3 && checkInStreak < 7) protectiveFactors.push('Building a consistent tracking habit');
+    if (medicationAdherenceRate >= 70 && medicationAdherenceRate < 85) protectiveFactors.push('Good medication adherence foundation');
+    if (currentPHQ4Score >= 6 && anxietyAverage <= 5) protectiveFactors.push('Managing stress despite challenges');
+    
+    // Add self-efficacy and hope factors
+    const latestConfidence = checkins.length > 0 ? (checkins[0].confidence_today || 5) : 5;
+    if (latestConfidence >= 7) protectiveFactors.push('Strong treatment confidence and self-efficacy');
+    if (checkInStreak >= 5) protectiveFactors.push('Maintaining hope through consistent engagement');
+    if (partnerInvolvementRate >= 30 && partnerInvolvementRate < 50) protectiveFactors.push('Building partner support network');
+
+    // Count total check-ins with medication tracking
+    const totalMedicationCheckIns = checkins.filter(c => c.medication_taken !== 'not tracked').length;
 
     const metrics = {
       // Adherence metrics
       medicationAdherenceRate,
       medicationAdherenceTrend,
       missedDosesLastWeek,
+      totalMedicationCheckIns,
       
       // Mental health metrics
       currentPHQ4Score,

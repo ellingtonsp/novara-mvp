@@ -1,0 +1,198 @@
+/* Mobile UI Fixes for Novara */
+
+/* Fix button text overflow on mobile */
+@media (max-width: 640px) {
+  button {
+    min-width: auto !important;
+    white-space: normal !important;
+    text-align: center;
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+  }
+  
+  /* Prevent button text from running over edges */
+  button span,
+  button > * {
+    display: inline-block;
+    max-width: 100%;
+    word-wrap: break-word;
+  }
+}
+
+/* Optimize spacing for mobile screens */
+@media (max-width: 640px) {
+  /* Reduce excessive vertical spacing */
+  .space-y-12 {
+    gap: 2rem !important; /* 32px instead of 48px */
+  }
+  
+  .space-y-8 {
+    gap: 1.5rem !important; /* 24px instead of 32px */
+  }
+  
+  .space-y-6 {
+    gap: 1rem !important; /* 16px instead of 24px */
+  }
+  
+  /* Reduce padding on mobile */
+  .p-12 {
+    padding: 2rem !important; /* 32px instead of 48px */
+  }
+  
+  .p-8 {
+    padding: 1.5rem !important; /* 24px instead of 32px */
+  }
+  
+  .p-6 {
+    padding: 1rem !important; /* 16px instead of 24px */
+  }
+  
+  .py-12 {
+    padding-top: 2rem !important;
+    padding-bottom: 2rem !important;
+  }
+  
+  .py-8 {
+    padding-top: 1.5rem !important;
+    padding-bottom: 1.5rem !important;
+  }
+  
+  .px-8 {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+}
+
+/* Font size adjustments for mobile */
+@media (max-width: 640px) {
+  /* Scale down large text */
+  .text-5xl {
+    font-size: 2rem !important; /* 32px instead of 48px */
+    line-height: 2.5rem !important;
+  }
+  
+  .text-4xl {
+    font-size: 1.75rem !important; /* 28px instead of 36px */
+    line-height: 2.25rem !important;
+  }
+  
+  .text-3xl {
+    font-size: 1.5rem !important; /* 24px instead of 30px */
+    line-height: 2rem !important;
+  }
+  
+  .text-2xl {
+    font-size: 1.25rem !important; /* 20px instead of 24px */
+    line-height: 1.75rem !important;
+  }
+}
+
+/* Fix card and container spacing on mobile */
+@media (max-width: 640px) {
+  /* Cards should have less internal padding */
+  .card,
+  [class*="Card"] {
+    padding: 1rem !important;
+  }
+  
+  /* Container max-widths for better mobile fit */
+  .max-w-6xl {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+  
+  .max-w-4xl,
+  .max-w-3xl,
+  .max-w-2xl {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+}
+
+/* Prevent horizontal overflow */
+@media (max-width: 640px) {
+  body {
+    overflow-x: hidden !important;
+  }
+  
+  /* Ensure all containers respect viewport width */
+  * {
+    max-width: 100vw !important;
+  }
+  
+  /* Fix grid layouts that might overflow - but exclude specific functional grids */
+  .grid:not(.mobile-nav-grid):not(.mood-grid):not(.medication-grid):not([class*="grid-cols-2"]):not([class*="grid-cols-3"]) {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+  }
+  
+  /* Preserve padding for info boxes */
+  .info-box {
+    padding-top: 0.75rem !important;
+    padding-bottom: 0.75rem !important;
+  }
+}
+
+/* Form element adjustments for mobile */
+@media (max-width: 640px) {
+  /* Input fields should be full width */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  textarea,
+  select {
+    width: 100% !important;
+    font-size: 16px !important; /* Prevents zoom on iOS */
+  }
+  
+  /* Labels should have proper spacing */
+  label {
+    display: block;
+    margin-bottom: 0.5rem;
+  }
+}
+
+/* Slider component mobile fixes */
+@media (max-width: 640px) {
+  /* Make slider thumb larger for easier touch */
+  input[type="range"]::-webkit-slider-thumb {
+    width: 28px !important;
+    height: 28px !important;
+  }
+  
+  input[type="range"]::-moz-range-thumb {
+    width: 28px !important;
+    height: 28px !important;
+  }
+  
+  /* Add more padding around sliders */
+  input[type="range"] {
+    margin-top: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+}
+
+/* Modal and dialog adjustments */
+@media (max-width: 640px) {
+  /* Full screen modals on mobile */
+  [role="dialog"] {
+    max-width: 100vw !important;
+    max-height: 100vh !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+  }
+}
+
+/* Navigation and header fixes */
+@media (max-width: 640px) {
+  /* Ensure header content doesn't overflow */
+  header {
+    padding: 0.75rem 1rem !important;
+  }
+  
+  /* Stack navigation items vertically if needed */
+  nav {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+}

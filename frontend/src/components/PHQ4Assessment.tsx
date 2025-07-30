@@ -175,7 +175,7 @@ export const PHQ4Assessment: React.FC<PHQ4Props> = ({
               
               <p className="text-sm text-gray-700">{outcomeData.message}</p>
               
-              <div className="grid grid-cols-2 gap-3 mt-3">
+              <div className="grid grid-cols-2 gap-3 mt-3 phq4-stats-grid">
                 <div className="bg-purple-50 rounded p-3">
                   <p className="text-xs text-purple-600 font-medium">Medication Adherence Rate</p>
                   <p className="text-xl font-bold text-purple-800">{outcomeData.medicationAdherence}%</p>

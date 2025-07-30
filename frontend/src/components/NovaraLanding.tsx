@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Heart, Users, Calendar, MessageCircle, CheckCircle, LogOut, User, Menu, X, RefreshCw } from 'lucide-react';
+import { Heart, Users, Calendar, MessageCircle, CheckCircle, LogOut, User, Menu, X, RefreshCw, Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { apiClient } from '../lib/api';
 import { API_BASE_URL } from '../lib/environment';
@@ -20,9 +20,12 @@ import WelcomeInsight from './WelcomeInsight';
 import { BaselinePanel } from './BaselinePanel';
 import ChecklistCard from './ChecklistCard';
 import { OutcomeMetricsDashboard } from './OutcomeMetricsDashboard';
+import { TodaysCheckinStatus } from './TodaysCheckinStatus';
 // ON-01: A/B Test Integration
 import { getOnboardingPath, OnboardingPath, trackOnboardingPathSelected, generateSessionId } from '../utils/abTestUtils';
 import { OnboardingFast } from './OnboardingFast';
+import { getLocalDateString, logTimezoneDebug } from '../lib/dateUtils';
+import { isCheckinToday, debugCheckinDates } from '../lib/checkinMigration';
 
 const sliderThumbStyle = `
   input[type="range"]::-webkit-slider-thumb {
@@ -52,6 +55,9 @@ const NovaraLanding = () => {
   const [isClearingCache, setIsClearingCache] = useState(false);
   const [checkinPreference, setCheckinPreference] = useState<'quick_daily' | 'comprehensive_daily'>('quick_daily');
   const [showWeeklyReminder, setShowWeeklyReminder] = useState(false);
+  const [todaysCheckin, setTodaysCheckin] = useState<any>(null);
+  const [showCheckinForm, setShowCheckinForm] = useState(false);
+  const [isCheckingTodaysCheckin, setIsCheckingTodaysCheckin] = useState(true);
   
   // Load DM Sans font
   useEffect(() => {
@@ -226,14 +232,106 @@ const NovaraLanding = () => {
     }
   }, [isAuthenticated, user, onboardingPath, currentView, baselineDismissed]);
   
-  // Load check-in preference
+  // Load check-in preference and today's check-in
   useEffect(() => {
     const savedPref = localStorage.getItem(`checkin_preference_${user?.email}`);
     if (savedPref) {
       const pref = JSON.parse(savedPref);
       setCheckinPreference(pref.type);
     }
+    
+    // Check for today's check-in
+    checkForTodaysCheckin();
   }, [user]);
+  
+  // Check for today's check-in when switching to check-in tab
+  useEffect(() => {
+    if (currentView === 'checkin' && user) {
+      checkForTodaysCheckin();
+    }
+  }, [currentView, user]);
+  
+  const checkForTodaysCheckin = async () => {
+    if (!user) {
+      setIsCheckingTodaysCheckin(false);
+      return;
+    }
+    
+    setIsCheckingTodaysCheckin(true);
+    
+    try {
+      // Get today's date in user's local timezone
+      const todayString = getLocalDateString();
+      
+      // Debug date information
+      logTimezoneDebug('checkForTodaysCheckin');
+      console.log('Looking for check-in with date:', todayString);
+      
+      const url = `${API_BASE_URL}/api/checkins?limit=3`; // Get last 3 to find today's
+      console.log('Fetching recent check-ins from:', url, 'Looking for date:', todayString);
+      
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Check-in API response:', data);
+        console.log('Response structure:', {
+          success: data.success,
+          checkinsCount: data.checkins?.length,
+          firstCheckin: data.checkins?.[0] ? Object.keys(data.checkins[0]) : 'No checkins'
+        });
+        
+        if (data.success && data.checkins && data.checkins.length > 0) {
+          // Debug check-in dates
+          debugCheckinDates(data.checkins);
+          
+          // Look for today's check-in among the recent ones
+          let todaysCheckin = null;
+          
+          for (const checkin of data.checkins) {
+            const checkinData = checkin.fields || checkin;
+            if (isCheckinToday(checkinData.date_submitted)) {
+              todaysCheckin = checkinData;
+              break;
+            }
+          }
+          
+          if (todaysCheckin) {
+            console.log('Found today\'s check-in:', todaysCheckin);
+            console.log('Check-in fields:', {
+              date_submitted: todaysCheckin.date_submitted,
+              mood_today: todaysCheckin.mood_today,
+              confidence_today: todaysCheckin.confidence_today
+            });
+            setTodaysCheckin(todaysCheckin);
+            setShowCheckinForm(false);
+          } else {
+            console.log('No check-in found for today:', todayString);
+            console.log('Available check-ins dates:', data.checkins.map((c: any) => (c.fields || c).date_submitted));
+            setTodaysCheckin(null);
+            setShowCheckinForm(true);
+          }
+        } else {
+          console.log('No check-ins found');
+          setTodaysCheckin(null);
+          setShowCheckinForm(true);
+        }
+      } else {
+        console.error('Failed to fetch check-ins:', response.status, response.statusText);
+        setShowCheckinForm(true);
+      }
+    } catch (error) {
+      console.error('Error checking for today\'s checkin:', error);
+      setTodaysCheckin(null);
+      setShowCheckinForm(true);
+    } finally {
+      setIsCheckingTodaysCheckin(false);
+    }
+  };
   
   // Remove old modal state - now using dedicated page
 
@@ -324,9 +422,16 @@ const NovaraLanding = () => {
   };
 
   const handleCheckinComplete = () => {
+    console.log('Check-in completed, updating state...');
+    
     // Track check-in count for preference prompt
     const count = parseInt(localStorage.getItem(`checkin_count_${user?.email}`) || '0') + 1;
     localStorage.setItem(`checkin_count_${user?.email}`, count.toString());
+    
+    // Refresh today's check-in status after a short delay to ensure the API is updated
+    setTimeout(() => {
+      checkForTodaysCheckin();
+    }, 1000);
     
     // Check if it's time for weekly comprehensive check-in
     const lastComprehensive = localStorage.getItem(`last_comprehensive_${user?.email}`);
@@ -350,6 +455,11 @@ const NovaraLanding = () => {
     setShowWeeklyReminder(false);
     // Temporarily show comprehensive form
     setCheckinPreference('comprehensive_daily');
+  };
+  
+  const handleReplaceCheckin = () => {
+    setShowCheckinForm(true);
+    setTodaysCheckin(null);
   };
 
   // ON-01: Handle fast onboarding completion
@@ -484,7 +594,7 @@ const NovaraLanding = () => {
   // Mobile Navigation Component
   const MobileNavigation = () => (
     <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 safe-area-pb z-40">
-      <div className="grid grid-cols-3 gap-1 p-2">
+      <div className="grid mobile-nav-grid grid-cols-3 gap-1 p-2">
         <button
           onClick={() => setCurrentView('dashboard')}
           className={`flex flex-col items-center p-3 rounded-xl transition-colors ${
@@ -1237,13 +1347,32 @@ const NovaraLanding = () => {
                           </Card>
                         )}
                         
-                        {checkinPreference === 'quick_daily' ? (
-                          <QuickDailyCheckinForm 
-                            onComplete={handleCheckinComplete}
-                            onSwitchToFull={handleSwitchToComprehensive}
+                        {isCheckingTodaysCheckin ? (
+                          <Card className="border-gray-200">
+                            <CardContent className="p-6 text-center">
+                              <Loader2 className="h-8 w-8 animate-spin text-purple-600 mx-auto mb-2" />
+                              <p className="text-gray-600">Checking today's status...</p>
+                            </CardContent>
+                          </Card>
+                        ) : todaysCheckin && !showCheckinForm ? (
+                          <TodaysCheckinStatus
+                            lastCheckinTime={todaysCheckin.date_submitted}
+                            lastMood={todaysCheckin.mood_today}
+                            lastConfidence={todaysCheckin.confidence_today}
+                            onReplaceCheckin={handleReplaceCheckin}
+                            onViewInsights={() => setCurrentView('insights')}
                           />
                         ) : (
-                          <EnhancedDailyCheckinForm onComplete={handleCheckinComplete} />
+                          <>
+                            {checkinPreference === 'quick_daily' ? (
+                              <QuickDailyCheckinForm 
+                                onComplete={handleCheckinComplete}
+                                onSwitchToFull={handleSwitchToComprehensive}
+                              />
+                            ) : (
+                              <EnhancedDailyCheckinForm onComplete={handleCheckinComplete} />
+                            )}
+                          </>
                         )}
                       </div>
                     )}
@@ -1295,18 +1424,18 @@ const NovaraLanding = () => {
                 />
               </div>
             )}
-            <div className="p-4 space-y-6">
+            <div className="p-3 pb-24 space-y-4">
               <div>
-                <h2 className="text-2xl font-bold mb-2">Your Dashboard</h2>
-                <p className="text-gray-600">Track how your actions impact outcomes</p>
+                <h2 className="text-xl font-bold mb-1">Your Dashboard</h2>
+                <p className="text-sm text-gray-600">Track how your actions impact outcomes</p>
               </div>
               
               {/* Outcome Metrics Dashboard for Mobile */}
-              <OutcomeMetricsDashboard />
+              <OutcomeMetricsDashboard onNavigate={(view) => setCurrentView(view as any)} />
               
               {/* Smart Checklist */}
               <div>
-                <h3 className="text-lg font-semibold mb-3">Today's Smart Prep</h3>
+                <h3 className="text-base font-semibold mb-2">Today's Smart Prep</h3>
                 <ChecklistCard
                   onComplete={() => {
                     console.log('Checklist completed');
@@ -1376,13 +1505,32 @@ const NovaraLanding = () => {
               </Card>
             )}
             
-            {checkinPreference === 'quick_daily' ? (
-              <QuickDailyCheckinForm 
-                onComplete={handleCheckinComplete}
-                onSwitchToFull={handleSwitchToComprehensive}
+            {isCheckingTodaysCheckin ? (
+              <Card className="border-gray-200">
+                <CardContent className="p-6 text-center">
+                  <Loader2 className="h-8 w-8 animate-spin text-purple-600 mx-auto mb-2" />
+                  <p className="text-gray-600">Checking today's status...</p>
+                </CardContent>
+              </Card>
+            ) : todaysCheckin && !showCheckinForm ? (
+              <TodaysCheckinStatus
+                lastCheckinTime={todaysCheckin.date_submitted}
+                lastMood={todaysCheckin.mood_today}
+                lastConfidence={todaysCheckin.confidence_today}
+                onReplaceCheckin={handleReplaceCheckin}
+                onViewInsights={() => setCurrentView('insights')}
               />
             ) : (
-              <EnhancedDailyCheckinForm onComplete={handleCheckinComplete} />
+              <>
+                {checkinPreference === 'quick_daily' ? (
+                  <QuickDailyCheckinForm 
+                    onComplete={handleCheckinComplete}
+                    onSwitchToFull={handleSwitchToComprehensive}
+                  />
+                ) : (
+                  <EnhancedDailyCheckinForm onComplete={handleCheckinComplete} />
+                )}
+              </>
             )}
           </div>
         )}
