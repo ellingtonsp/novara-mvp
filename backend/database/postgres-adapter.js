@@ -217,7 +217,13 @@ class PostgresAdapter {
       console.log('🚀 Using Schema V2 for check-in creation');
       
       // Handle Airtable array format for user_id
-      const userId = Array.isArray(checkinData.user_id) ? checkinData.user_id[0] : checkinData.user_id;
+      let userId = Array.isArray(checkinData.user_id) ? checkinData.user_id[0] : checkinData.user_id;
+      
+      // Fix for JSON-encoded user_id
+      if (typeof userId === 'string' && userId.startsWith('{') && userId.endsWith('}')) {
+        // Remove the JSON encoding
+        userId = userId.replace(/[{}"]/g, '');
+      }
       
       // Temporary direct implementation to bypass module loading issues
       try {
@@ -419,19 +425,41 @@ class PostgresAdapter {
 
   // Insights operations
   async createInsight(insightData) {
-    const fields = Object.keys(insightData);
-    const values = Object.values(insightData);
+    // Map legacy field names to Schema V2
+    const mappedData = { ...insightData };
+    if (mappedData.insight_title) {
+      mappedData.title = mappedData.insight_title;
+      delete mappedData.insight_title;
+    }
+    if (mappedData.insight_message) {
+      mappedData.message = mappedData.insight_message;
+      delete mappedData.insight_message;
+    }
+    if (mappedData.insight_id) {
+      delete mappedData.insight_id; // Let the database generate the ID
+    }
+    if (mappedData.date && !mappedData.created_at) {
+      mappedData.created_at = mappedData.date;
+      delete mappedData.date;
+    }
+    
+    const fields = Object.keys(mappedData);
+    const values = Object.values(mappedData);
     const placeholders = fields.map((_, i) => `$${i + 1}`).join(', ');
 
     const query = `
       INSERT INTO insights (${fields.join(', ')})
       VALUES (${placeholders})
-      ON CONFLICT (user_id, insight_id) DO NOTHING
       RETURNING *
     `;
 
-    const result = await this.pool.query(query, values);
-    return result.rows[0];
+    try {
+      const result = await this.pool.query(query, values);
+      return result.rows[0];
+    } catch (error) {
+      console.error('Insight creation error:', error);
+      throw error;
+    }
   }
 
   async getUserInsights(userId, limit = 30) {
