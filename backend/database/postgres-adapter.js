@@ -61,7 +61,6 @@ class PostgresAdapter {
         confidence_overall: profileData.confidence_overall || 5,
         primary_need: profileData.primary_need,
         cycle_stage: profileData.cycle_stage,
-        top_concern: profileData.top_concern,
         timezone: profileData.timezone || 'America/Los_Angeles',
         email_opt_in: profileData.email_opt_in !== false,
         status: profileData.status || 'active',
@@ -107,7 +106,7 @@ class PostgresAdapter {
         u.id, u.email, u.created_at, u.updated_at,
         p.nickname, p.confidence_meds, p.confidence_costs, 
         p.confidence_overall, p.primary_need, p.cycle_stage, 
-        p.top_concern, p.timezone, p.email_opt_in, p.status, 
+        p.timezone, p.email_opt_in, p.status, 
         p.medication_status, p.baseline_completed, p.onboarding_path
       FROM users u
       LEFT JOIN user_profiles p ON u.id = p.user_id
@@ -183,7 +182,7 @@ class PostgresAdapter {
         u.id, u.email, u.created_at, u.updated_at,
         p.nickname, p.confidence_meds, p.confidence_costs, 
         p.confidence_overall, p.primary_need, p.cycle_stage, 
-        p.top_concern, p.timezone, p.email_opt_in, p.status, 
+        p.timezone, p.email_opt_in, p.status, 
         p.medication_status, p.baseline_completed, p.onboarding_path
       FROM users u
       LEFT JOIN user_profiles p ON u.id = p.user_id
