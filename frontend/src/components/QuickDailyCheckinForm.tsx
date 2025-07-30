@@ -76,6 +76,7 @@ export const QuickDailyCheckinForm: React.FC<QuickDailyCheckinFormProps> = ({
       const checkinData = {
         mood_today: selectedMood,
         confidence_today: confidence,
+        medication_taken: tookMedications ? 'yes' : 'no',
         user_note: `Quick check-in: ${tookMedications ? 'Took all medications' : 'Missed medications'}`,
         primary_concern_today: !tookMedications ? 'medication_adherence' : undefined,
         date_submitted: todayString

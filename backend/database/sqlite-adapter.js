@@ -131,6 +131,9 @@ class SQLiteAdapter {
     addColumnIfNotExists('daily_checkins', 'sentiment_confidence', 'REAL');
     addColumnIfNotExists('daily_checkins', 'sentiment_scores', 'TEXT');
     addColumnIfNotExists('daily_checkins', 'sentiment_processing_time', 'REAL');
+    
+    // Medication tracking field (matches Airtable Single Select)
+    addColumnIfNotExists('daily_checkins', 'medication_taken', 'TEXT');
 
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS insights (
