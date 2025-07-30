@@ -11,7 +11,7 @@ const axios = require('axios');
 const jwt = require('jsonwebtoken');
 
 const STAGING_URL = process.env.STAGING_URL || 'https://novara-staging-staging.up.railway.app';
-const JWT_SECRET = process.env.JWT_SECRET || 'test-secret';
+const JWT_SECRET = process.env.JWT_SECRET || 'staging_super_secret_jwt_key_different_from_prod';
 
 // Test user credentials
 const TEST_EMAIL = 'schema-v2-staging-test@example.com';

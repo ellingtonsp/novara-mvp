@@ -64,7 +64,6 @@ class PostgresAdapter {
         timezone: profileData.timezone || 'America/Los_Angeles',
         email_opt_in: profileData.email_opt_in !== false,
         status: profileData.status || 'active',
-        medication_status: profileData.medication_status,
         baseline_completed: profileData.baseline_completed || false,
         onboarding_path: profileData.onboarding_path
       };
@@ -107,14 +106,23 @@ class PostgresAdapter {
         p.nickname, p.confidence_meds, p.confidence_costs, 
         p.confidence_overall, p.primary_need, p.cycle_stage, 
         p.timezone, p.email_opt_in, p.status, 
-        p.medication_status, p.baseline_completed, p.onboarding_path
+        p.baseline_completed, p.onboarding_path
       FROM users u
       LEFT JOIN user_profiles p ON u.id = p.user_id
       WHERE u.email = $1
     `;
     
     const result = await this.pool.query(query, [email]);
-    return result.rows[0];
+    if (result.rows[0]) {
+      // Add default values for fields expected by legacy code
+      return {
+        ...result.rows[0],
+        medication_status: result.rows[0].medication_status || 'not_tracked',
+        medication_status_updated: result.rows[0].medication_status_updated || null,
+        top_concern: result.rows[0].top_concern || null
+      };
+    }
+    return null;
   }
 
   async updateUser(userId, updates) {
@@ -183,14 +191,23 @@ class PostgresAdapter {
         p.nickname, p.confidence_meds, p.confidence_costs, 
         p.confidence_overall, p.primary_need, p.cycle_stage, 
         p.timezone, p.email_opt_in, p.status, 
-        p.medication_status, p.baseline_completed, p.onboarding_path
+        p.baseline_completed, p.onboarding_path
       FROM users u
       LEFT JOIN user_profiles p ON u.id = p.user_id
       WHERE u.id = $1
     `;
     
     const result = await this.pool.query(query, [userId]);
-    return result.rows[0];
+    if (result.rows[0]) {
+      // Add default values for fields expected by legacy code
+      return {
+        ...result.rows[0],
+        medication_status: result.rows[0].medication_status || 'not_tracked',
+        medication_status_updated: result.rows[0].medication_status_updated || null,
+        top_concern: result.rows[0].top_concern || null
+      };
+    }
+    return null;
   }
 
   // Check-in operations
