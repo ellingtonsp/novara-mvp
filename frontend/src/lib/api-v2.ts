@@ -1,6 +1,27 @@
 // lib/api-v2.ts - V2 API client with V1 fallback support
 import { API_BASE_URL } from './environment';
-import { User, ApiResponse, CheckinData, CheckinResponse } from './api';
+import { CheckinData, CheckinResponse } from './api';
+
+export interface Insight {
+  type: string;
+  title: string;
+  message: string;
+  icon: string;
+  insight_id?: string;
+}
+
+export interface InsightResponse {
+  success: boolean;
+  insight: Insight;
+}
+
+export interface V2StatusResponse {
+  success: boolean;
+  status: {
+    schema_v2_enabled: boolean;
+    endpoints_available: string[];
+  };
+}
 
 export interface DailySummary {
   date: string;
@@ -10,7 +31,7 @@ export interface DailySummary {
   confidence_score: number | null;
   medication_taken: string | null;
   events: HealthEvent[];
-  insights: any[];
+  insights: Insight[];
 }
 
 export interface HealthEvent {
@@ -50,13 +71,17 @@ export class ApiV2Client {
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
-    const headers: HeadersInit = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...options.headers,
     };
 
     if (this.token) {
       headers['Authorization'] = `Bearer ${this.token}`;
+    }
+
+    // Merge with any headers from options
+    if (options.headers) {
+      Object.assign(headers, options.headers);
     }
 
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -101,7 +126,7 @@ export class ApiV2Client {
   // Check-ins with V2 enhancement
   async submitCheckin(data: CheckinData): Promise<CheckinResponse> {
     // Always use V1 for now since V2 check-in isn't ready
-    const response = await this.makeRequest<any>('/api/checkins', {
+    const response = await this.makeRequest<{ success: boolean; checkin: CheckinResponse }>('/api/checkins', {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -126,7 +151,7 @@ export class ApiV2Client {
   }
 
   // Get insights with V2 daily summary integration
-  async getDailyInsights(): Promise<any> {
+  async getDailyInsights(): Promise<InsightResponse> {
     if (this.useV2) {
       try {
         // Try V2 first
@@ -149,7 +174,7 @@ export class ApiV2Client {
   // Check V2 availability
   async checkV2Status(): Promise<boolean> {
     try {
-      const response = await this.makeRequest<any>('/api/v2/status', { 
+      const response = await this.makeRequest<V2StatusResponse>('/api/v2/status', { 
         method: 'GET' 
       });
       return response.status?.schema_v2_enabled === true;

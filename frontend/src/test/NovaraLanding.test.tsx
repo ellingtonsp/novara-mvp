@@ -2,6 +2,27 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import NovaraLanding from '../components/NovaraLanding';
 
+// Mock the environment module
+vi.mock('../lib/environment', () => ({
+  environmentConfig: {
+    environment: 'test',
+    apiUrl: 'http://localhost:9002',
+    isDevelopment: false,
+    isStaging: false,
+    isPreview: false,
+    isProduction: false,
+    isPWA: false,
+    debugMode: false
+  },
+  API_BASE_URL: 'http://localhost:9002',
+  IS_DEVELOPMENT: false,
+  IS_STAGING: false,
+  IS_PREVIEW: false,
+  IS_PRODUCTION: false,
+  getEnvironment: () => 'test',
+  getApiUrl: () => 'http://localhost:9002'
+}));
+
 // Mock the AuthContext
 vi.mock('../contexts/AuthContext', () => ({
   useAuth: () => ({
