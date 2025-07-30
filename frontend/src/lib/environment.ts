@@ -102,11 +102,11 @@ const getApiUrl = (): string => {
     case 'development':
       return 'http://localhost:9002'; // Stable local backend port
     case 'staging':
-      return 'https://novara-staging.up.railway.app';
+      return 'https://novara-staging-staging.up.railway.app';
     case 'preview':
       // For Vercel preview deployments, use staging backend
       // This prevents API breakages on every deployment
-      return 'https://novara-staging.up.railway.app';
+      return 'https://novara-staging-staging.up.railway.app';
     case 'production':
     default:
       return 'https://novara-mvp-production.up.railway.app';
