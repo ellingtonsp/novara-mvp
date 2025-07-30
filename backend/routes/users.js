@@ -391,9 +391,9 @@ router.patch('/baseline', authenticateToken, asyncHandler(async (req, res) => {
   const updates = {
     baseline_completed: true,
     baseline_submission_date: new Date().toISOString(),
-    baseline_confidence_meds: confidence_meds,
-    baseline_confidence_costs: confidence_costs,
-    baseline_confidence_overall: confidence_overall
+    confidence_meds: confidence_meds,
+    confidence_costs: confidence_costs,
+    confidence_overall: confidence_overall
   };
 
   // Add optional fields if provided
