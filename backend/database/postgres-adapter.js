@@ -1,5 +1,7 @@
 const { Pool } = require('pg');
 const crypto = require('crypto');
+const HealthEventsService = require('../services/health-events-service');
+const CompatibilityService = require('../services/compatibility-service');
 
 class PostgresAdapter {
   constructor(connectionString) {
@@ -11,12 +13,21 @@ class PostgresAdapter {
       connectionTimeoutMillis: 2000,
     });
     
+    // Initialize Schema V2 services
+    this.healthEvents = new HealthEventsService(this.pool);
+    this.compatibility = new CompatibilityService(this.pool);
+    
+    // Feature flag for Schema V2 usage
+    this.useSchemaV2 = process.env.USE_SCHEMA_V2 === 'true';
+    this.compatibility.useV2 = this.useSchemaV2;
+    
     // Test connection
     this.pool.query('SELECT NOW()', (err) => {
       if (err) {
         console.error('❌ PostgreSQL connection failed:', err.message);
       } else {
         console.log('✅ PostgreSQL connected successfully');
+        console.log(`🔧 Schema V2: ${this.useSchemaV2 ? 'ENABLED' : 'DISABLED'}`);
       }
     });
   }
@@ -85,6 +96,15 @@ class PostgresAdapter {
 
   // Check-in operations
   async createCheckin(checkinData) {
+    if (this.useSchemaV2) {
+      // Use Schema V2 compatibility layer
+      console.log('🚀 Using Schema V2 for check-in creation');
+      return await this.compatibility.createDailyCheckin(checkinData.user_id, checkinData);
+    }
+
+    // Fallback to V1 approach
+    console.log('📝 Using Schema V1 for check-in creation');
+    
     // Extract all fields - NO WHITELIST FILTERING!
     const fields = Object.keys(checkinData);
     const values = Object.values(checkinData);
@@ -110,6 +130,20 @@ class PostgresAdapter {
   }
 
   async getUserCheckins(userId, limit = 30) {
+    if (this.useSchemaV2) {
+      // Use Schema V2 compatibility layer
+      console.log('🚀 Using Schema V2 for check-ins retrieval');
+      const checkins = await this.compatibility.getDailyCheckins(userId, { limit });
+      return {
+        records: checkins.map(row => ({
+          id: row.id,
+          fields: row
+        }))
+      };
+    }
+
+    // Fallback to V1 approach
+    console.log('📝 Using Schema V1 for check-ins retrieval');
     const query = `
       SELECT * FROM daily_checkins 
       WHERE user_id = $1 
@@ -174,6 +208,62 @@ class PostgresAdapter {
     
     const result = await this.pool.query(query, [userId, limit]);
     return result.rows;
+  }
+
+  // === SCHEMA V2 METHODS ===
+  
+  // Health Events API
+  async createHealthEvent(userId, eventType, eventSubtype, eventData, options = {}) {
+    if (!this.useSchemaV2) {
+      throw new Error('Schema V2 not enabled. Set USE_SCHEMA_V2=true to use health events.');
+    }
+    return await this.healthEvents.createEvent(userId, eventType, eventSubtype, eventData, options);
+  }
+
+  async getHealthTimeline(userId, options = {}) {
+    if (!this.useSchemaV2) {
+      throw new Error('Schema V2 not enabled. Set USE_SCHEMA_V2=true to use health timeline.');
+    }
+    return await this.healthEvents.getHealthTimeline(userId, options);
+  }
+
+  async getDailySummary(userId, date = null) {
+    if (!this.useSchemaV2) {
+      throw new Error('Schema V2 not enabled. Set USE_SCHEMA_V2=true to use daily summary.');
+    }
+    return await this.healthEvents.getDailySummary(userId, date);
+  }
+
+  async getAnalytics(userId, timeframe = 'week') {
+    if (this.useSchemaV2) {
+      return await this.compatibility.getAnalytics(userId, timeframe);
+    } else {
+      // Fallback to basic analytics for V1
+      return await this.getBasicAnalytics(userId, timeframe);
+    }
+  }
+
+  async getBasicAnalytics(userId, timeframe) {
+    const days = timeframe === 'week' ? 7 : timeframe === 'month' ? 30 : 90;
+    
+    const result = await this.pool.query(`
+      SELECT 
+        date_submitted as date,
+        mood_today,
+        confidence_today,
+        medication_taken,
+        anxiety_level
+      FROM daily_checkins 
+      WHERE user_id = $1 
+      AND date_submitted >= CURRENT_DATE - INTERVAL '${days} days'
+      ORDER BY date_submitted
+    `, [userId]);
+
+    return {
+      checkins: result.rows,
+      total_checkins: result.rows.length,
+      timeframe: timeframe
+    };
   }
 
   // Utility methods

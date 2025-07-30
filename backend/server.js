@@ -2433,6 +2433,173 @@ app.get('/api/checkins', authenticateToken, async (req, res) => {
 });
 
 // ============================================================================
+// SCHEMA V2 ENHANCED API ROUTES
+// ============================================================================
+
+// Get Health Timeline (Schema V2)
+app.get('/api/v2/health/timeline', authenticateToken, async (req, res) => {
+  try {
+    const user = await findUserByEmail(req.user.email);
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+
+    if (!databaseAdapter.isPostgres || !process.env.USE_SCHEMA_V2) {
+      return res.status(503).json({ 
+        success: false, 
+        error: 'Schema V2 not available. Enable with USE_SCHEMA_V2=true' 
+      });
+    }
+
+    const options = {
+      startDate: req.query.start_date ? new Date(req.query.start_date) : undefined,
+      endDate: req.query.end_date ? new Date(req.query.end_date) : undefined,
+      eventTypes: req.query.event_types ? req.query.event_types.split(',') : null,
+      limit: parseInt(req.query.limit) || 100
+    };
+
+    const timeline = await databaseAdapter.localDb.getHealthTimeline(user.id, options);
+
+    res.json({
+      success: true,
+      timeline,
+      count: timeline.length,
+      schema_version: 'v2'
+    });
+
+  } catch (error) {
+    console.error('❌ Error in GET /api/v2/health/timeline:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+// Get Daily Summary (Schema V2)
+app.get('/api/v2/health/daily-summary', authenticateToken, async (req, res) => {
+  try {
+    const user = await findUserByEmail(req.user.email);
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+
+    if (!databaseAdapter.isPostgres || !process.env.USE_SCHEMA_V2) {
+      return res.status(503).json({ 
+        success: false, 
+        error: 'Schema V2 not available. Enable with USE_SCHEMA_V2=true' 
+      });
+    }
+
+    const date = req.query.date || null; // Today if not specified
+    const summary = await databaseAdapter.localDb.getDailySummary(user.id, date);
+
+    res.json({
+      success: true,
+      summary,
+      schema_version: 'v2'
+    });
+
+  } catch (error) {
+    console.error('❌ Error in GET /api/v2/health/daily-summary:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+// Create Health Event (Schema V2)
+app.post('/api/v2/health/events', authenticateToken, async (req, res) => {
+  try {
+    const user = await findUserByEmail(req.user.email);
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+
+    if (!databaseAdapter.isPostgres || !process.env.USE_SCHEMA_V2) {
+      return res.status(503).json({ 
+        success: false, 
+        error: 'Schema V2 not available. Enable with USE_SCHEMA_V2=true' 
+      });
+    }
+
+    const { event_type, event_subtype, event_data, occurred_at, correlation_id } = req.body;
+
+    if (!event_type || !event_data) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'event_type and event_data are required' 
+      });
+    }
+
+    const options = {
+      occurred_at: occurred_at ? new Date(occurred_at) : undefined,
+      correlation_id,
+      source: 'web_app'
+    };
+
+    const event = await databaseAdapter.localDb.createHealthEvent(
+      user.id, 
+      event_type, 
+      event_subtype, 
+      event_data, 
+      options
+    );
+
+    res.json({
+      success: true,
+      event,
+      schema_version: 'v2'
+    });
+
+  } catch (error) {
+    console.error('❌ Error in POST /api/v2/health/events:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+// Get Enhanced Analytics (Schema V2)
+app.get('/api/v2/analytics', authenticateToken, async (req, res) => {
+  try {
+    const user = await findUserByEmail(req.user.email);
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+
+    const timeframe = req.query.timeframe || 'week';
+    const analytics = await databaseAdapter.localDb.getAnalytics(user.id, timeframe);
+
+    res.json({
+      success: true,
+      analytics,
+      schema_version: process.env.USE_SCHEMA_V2 ? 'v2' : 'v1'
+    });
+
+  } catch (error) {
+    console.error('❌ Error in GET /api/v2/analytics:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+// Schema Status Endpoint
+app.get('/api/v2/status', authenticateToken, async (req, res) => {
+  try {
+    const status = {
+      schema_v2_enabled: process.env.USE_SCHEMA_V2 === 'true',
+      database_type: databaseAdapter.isPostgres ? 'postgresql' : 
+                    databaseAdapter.isUsingLocalDatabase() ? 'sqlite' : 'airtable',
+      features: {
+        health_events: process.env.USE_SCHEMA_V2 === 'true',
+        event_sourcing: process.env.USE_SCHEMA_V2 === 'true',
+        enhanced_analytics: process.env.USE_SCHEMA_V2 === 'true',
+        backward_compatibility: true
+      }
+    };
+
+    res.json({ success: true, status });
+
+  } catch (error) {
+    console.error('❌ Error in GET /api/v2/status:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+// ============================================================================
 // DAILY INSIGHT ENGINE ROUTES (NEW!)
 // ============================================================================
 
