@@ -2327,12 +2327,15 @@ app.post('/api/checkins', authenticateToken, async (req, res) => {
       success: true,
       checkin: {
         id: result.id,
-        mood_today: result.fields.mood_today,
-        confidence_today: result.fields.confidence_today,
-        date_submitted: result.fields.date_submitted,
-        medication_taken: result.fields.medication_taken,
-        created_at: result.fields.created_at
+        mood_today: result.fields?.mood_today || filteredCheckinData.mood_today,
+        confidence_today: result.fields?.confidence_today || filteredCheckinData.confidence_today,
+        date_submitted: result.fields?.date_submitted || filteredCheckinData.date_submitted,
+        medication_taken: result.fields?.medication_taken || filteredCheckinData.medication_taken,
+        created_at: result.fields?.created_at || new Date().toISOString()
       },
+      message: sentiment_analysis?.sentiment === 'positive' 
+        ? 'Daily check-in completed successfully! We love your positive energy today! 🎉' 
+        : 'Daily check-in completed successfully! 🌟'
       message: sentiment_analysis?.sentiment === 'positive' 
         ? 'Daily check-in completed successfully! We love your positive energy today! 🎉' 
         : 'Daily check-in completed successfully! 🌟'

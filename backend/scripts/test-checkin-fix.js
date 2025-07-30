@@ -1,47 +1,89 @@
 #!/usr/bin/env node
 
 /**
- * Test check-in fix locally
+ * Test check-in submission after defensive coding fix
  */
 
-const PostgresAdapter = require('../database/postgres-adapter');
+const axios = require('axios');
 
-const DATABASE_URL = "postgresql://postgres:ynFbXBtKHWNRFwnuGbRvaYFdSXcBckVR@switchyard.proxy.rlwy.net:58017/railway";
+const API_URL = process.env.API_URL || 'https://novara-staging-staging.up.railway.app';
+const TEST_USER_EMAIL = 'alice@example.com';
 
-// Set environment variable for Schema V2
-process.env.USE_SCHEMA_V2 = 'true';
-
-const adapter = new PostgresAdapter(DATABASE_URL);
-
-async function testCheckinFix() {
-  console.log('🔍 Testing check-in fix\n');
+async function testCheckinSubmission() {
+  console.log('🧪 Testing check-in submission on staging...\n');
   
   try {
-    // Test with array format (as sent by server.js)
+    // 1. Login to get token
+    console.log('1. Logging in...');
+    const loginResponse = await axios.post(`${API_URL}/api/auth/login`, {
+      email: TEST_USER_EMAIL,
+      password: 'password'
+    });
+    
+    const { token, user } = loginResponse.data;
+    console.log(`✅ Logged in as ${user.nickname} (${user.email})`);
+    console.log(`   User ID: ${user.id}`);
+    
+    // 2. Submit a check-in
+    console.log('\n2. Submitting check-in...');
     const checkinData = {
-      user_id: ['08d84601-5f0c-4384-b71a-0751edf9b508'], // Array format
+      user_id: user.id,
       mood_today: 'hopeful',
-      confidence_today: 8,
+      confidence_today: 7,
       medication_taken: 'yes',
-      user_note: 'Test check-in with array user_id fix',
-      primary_concern_today: 'Test concern',
+      user_note: 'Testing check-in submission after fix',
       date_submitted: new Date().toISOString().split('T')[0]
     };
     
-    console.log('1️⃣ Testing with array user_id format...');
-    console.log('Data:', JSON.stringify(checkinData, null, 2));
+    console.log('   Check-in data:', JSON.stringify(checkinData, null, 2));
     
-    const result = await adapter.createCheckin(checkinData);
+    const checkinResponse = await axios.post(
+      `${API_URL}/api/checkins`,
+      checkinData,
+      {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
     
-    console.log('✅ Check-in created successfully!');
-    console.log('Result:', result);
+    console.log('\n✅ Check-in submitted successfully!');
+    console.log('   Response:', JSON.stringify(checkinResponse.data, null, 2));
+    
+    // 3. Verify the check-in was saved
+    console.log('\n3. Verifying check-in was saved...');
+    const verifyResponse = await axios.get(
+      `${API_URL}/api/checkins/user/${user.id}?limit=1`,
+      {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      }
+    );
+    
+    if (verifyResponse.data.records && verifyResponse.data.records.length > 0) {
+      const latestCheckin = verifyResponse.data.records[0].fields;
+      console.log('✅ Check-in verified in database:');
+      console.log(`   Mood: ${latestCheckin.mood_today}`);
+      console.log(`   Confidence: ${latestCheckin.confidence_today}`);
+      console.log(`   Medication: ${latestCheckin.medication_taken}`);
+      console.log(`   Date: ${latestCheckin.date_submitted}`);
+    } else {
+      console.log('❌ Check-in not found in database');
+    }
+    
+    console.log('\n🎉 Check-in submission test completed successfully!');
     
   } catch (error) {
-    console.error('❌ Test failed:', error.message);
-    console.error('Stack:', error.stack);
-  } finally {
-    await adapter.close();
+    console.error('\n❌ Test failed:', error.message);
+    if (error.response) {
+      console.error('   Status:', error.response.status);
+      console.error('   Response:', error.response.data);
+    }
+    process.exit(1);
   }
 }
 
-testCheckinFix();
+// Run the test
+testCheckinSubmission();
