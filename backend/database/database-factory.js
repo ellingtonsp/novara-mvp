@@ -1,18 +1,28 @@
 const SQLiteAdapter = require('./sqlite-adapter');
+const PostgresAdapter = require('./postgres-adapter');
 const axios = require('axios');
 
-// Database abstraction layer that mimics Airtable API structure
+// Database abstraction layer that automatically selects the best adapter
 class DatabaseAdapter {
   constructor() {
-    this.useLocalDatabase = process.env.NODE_ENV === 'development' || 
-                           process.env.USE_LOCAL_DATABASE === 'true';
+    // Check for PostgreSQL first (preferred)
+    const postgresUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL;
     
-    if (this.useLocalDatabase) {
+    if (postgresUrl) {
+      console.log('🐘 Using PostgreSQL database');
+      this.localDb = new PostgresAdapter(postgresUrl);
+      this.useLocalDatabase = true; // Use local adapter methods
+      this.isPostgres = true;
+    } else if (process.env.NODE_ENV === 'development' || process.env.USE_LOCAL_DATABASE === 'true') {
       console.log('🗄️ Using SQLite database for local development');
       this.localDb = new SQLiteAdapter();
+      this.useLocalDatabase = true;
+      this.isPostgres = false;
     } else {
-      console.log('🌩️ Using Airtable for production');
+      console.log('🌩️ Using Airtable for production (legacy)');
       this.localDb = null;
+      this.useLocalDatabase = false;
+      this.isPostgres = false;
     }
   }
 

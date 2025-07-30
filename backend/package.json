@@ -10,7 +10,12 @@
     "test:coverage": "jest --coverage",
     "dev": "nodemon server.js",
     "local": "NODE_ENV=development USE_LOCAL_DATABASE=true nodemon server.js",
-    "test:regression": "node production-regression-test.js"
+    "test:regression": "node production-regression-test.js",
+    "db:setup": "psql $DATABASE_URL < ../database/schema.sql",
+    "db:migrate": "node scripts/migrate-to-postgres.js",
+    "db:validate": "node scripts/validate-postgres-migration.js",
+    "audit:fields": "node scripts/audit-field-mappings.js",
+    "check:deploy": "node scripts/pre-deployment-check.js"
   },
   "dependencies": {
     "@sentry/node": "^9.41.0",
@@ -26,6 +31,7 @@
     "joi": "^17.13.3",
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.1",
+    "pg": "^8.16.3",
     "redis": "^5.6.1",
     "winston": "^3.17.0"
   },

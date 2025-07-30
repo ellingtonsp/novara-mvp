@@ -238,17 +238,33 @@ export const EnhancedDailyCheckinForm: React.FC<EnhancedDailyCheckinFormProps> =
       // Store enhanced data for the checklist to use
       localStorage.setItem(`enhanced_checkin_${user?.email}_${todayString}`, JSON.stringify(enhancedData));
       
-      // Send only basic fields to backend
+      // Send ALL fields to backend (PostgreSQL handles everything now!)
       const checkinData = {
+        // Basic fields
         mood_today: selectedMood,
         confidence_today: confidence,
+        medication_taken: tookMedications === true ? 'yes' : tookMedications === false ? 'no' : 'not tracked',
         user_note: userNote,
         date_submitted: todayString,
-        medication_taken: tookMedications === true ? 'yes' : tookMedications === false ? 'no' : 'not tracked',
-        // Add enhanced data summary to the note
         primary_concern_today: sideEffects.length > 0 ? 'medication_side_effects' : 
                               anxietyLevel > 7 ? 'anxiety_management' :
-                              confidence < 4 ? 'confidence_building' : undefined
+                              confidence < 4 ? 'confidence_building' : undefined,
+        
+        // Enhanced fields - no more localStorage only!
+        anxiety_level: anxietyLevel,
+        side_effects: sideEffects.length > 0 ? sideEffects : null,
+        missed_doses: typeof missedDoses === 'number' ? missedDoses : null,
+        injection_confidence: user?.cycle_stage === 'stimulation' ? injectionConfidence : null,
+        appointment_within_3_days: hasAppointment,
+        appointment_anxiety: hasAppointment ? appointmentAnxiety : null,
+        coping_strategies_used: copingStrategies.length > 0 ? copingStrategies : null,
+        partner_involved_today: partnerInvolved,
+        wish_knew_more_about: infoNeeds.length > 0 ? infoNeeds : null,
+        
+        // PHQ-4 Assessment data
+        phq4_score: phq4Result?.totalScore || null,
+        phq4_anxiety: phq4Result?.anxietyScore || null,
+        phq4_depression: phq4Result?.depressionScore || null
       };
       
       const response = await fetch(`${API_BASE_URL}/api/checkins`, {

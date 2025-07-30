@@ -27,13 +27,10 @@ class PostgresAdapter {
       email, nickname, password, ...otherFields
     } = userData;
 
-    // Hash password if provided
-    const hashedPassword = password ? 
-      crypto.createHash('sha256').update(password).digest('hex') : 
-      crypto.createHash('sha256').update('password').digest('hex'); // default
-
-    const fields = ['email', 'nickname', 'password_hash', ...Object.keys(otherFields)];
-    const values = [email, nickname, hashedPassword, ...Object.values(otherFields)];
+    // Note: For now, we're not storing passwords in PostgreSQL
+    // The app uses passwordless auth flow
+    const fields = ['email', 'nickname', ...Object.keys(otherFields)];
+    const values = [email, nickname, ...Object.values(otherFields)];
     const placeholders = fields.map((_, i) => `$${i + 1}`).join(', ');
 
     const query = `
@@ -58,7 +55,7 @@ class PostgresAdapter {
 
   async findUserByEmail(email) {
     const query = `
-      SELECT id, email, nickname, password_hash, confidence_meds, confidence_costs, 
+      SELECT id, email, nickname, confidence_meds, confidence_costs, 
              confidence_overall, primary_need, cycle_stage, top_concern,
              timezone, email_opt_in, status, medication_status,
              baseline_completed, onboarding_path, created_at
