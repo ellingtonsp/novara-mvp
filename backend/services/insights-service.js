@@ -57,7 +57,8 @@ class InsightsService {
         type: 'no_data',
         title: 'Start Your Journey',
         message: 'Complete your first daily check-in to receive personalized insights!',
-        icon: '🌟'
+        icon: '🌟',
+        confidence: 0.5
       };
     }
 
@@ -101,34 +102,49 @@ class InsightsService {
       ? medicationData.filter(c => c.medication_taken === 'yes').length / medicationData.length 
       : null;
 
+    // Calculate confidence score based on available data
+    const calculateConfidence = () => {
+      if (checkinsData.length === 0) return 0.5;
+      if (checkinsData.length === 1) return 0.6;
+      if (checkinsData.length < 3) return 0.7;
+      if (checkinsData.length < 7) return 0.8;
+      return 0.9;
+    };
+
+    const confidence = calculateConfidence();
+
     // Generate appropriate insight
     if (moodTrend > 1) {
       return {
         type: 'mood_improvement',
         title: 'Your mood is improving! 📈',
         message: 'Keep up the great work. Your recent check-ins show positive momentum.',
-        icon: '🌈'
+        icon: '🌈',
+        confidence
       };
     } else if (adherenceRate !== null && adherenceRate === 1) {
       return {
         type: 'perfect_adherence',
         title: 'Perfect medication adherence! 💯',
         message: 'You\'ve been consistent with your medications. This dedication is key to your success.',
-        icon: '⭐'
+        icon: '⭐',
+        confidence
       };
     } else if (checkinsData.length >= 5) {
       return {
         type: 'consistency',
         title: 'You\'re building healthy habits! 🎯',
         message: `${checkinsData.length} check-ins this week shows your commitment to tracking your journey.`,
-        icon: '✨'
+        icon: '✨',
+        confidence
       };
     } else {
       return {
         type: 'encouragement',
         title: 'Every step counts! 👣',
         message: 'Remember, small consistent actions lead to big changes over time.',
-        icon: '💪'
+        icon: '💪',
+        confidence
       };
     }
   }

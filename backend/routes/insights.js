@@ -131,6 +131,34 @@ router.get('/micro', authenticateToken, asyncHandler(async (req, res) => {
 }));
 
 /**
+ * POST /api/insights/micro
+ * Generate micro insights for welcome screen (supports frontend POST request)
+ */
+router.post('/micro', authenticateToken, asyncHandler(async (req, res) => {
+  console.log(`🔍 Generating micro insights for user: ${req.user.email}`);
+
+  // Find user
+  const user = await userService.findByEmail(req.user.email);
+  if (!user) {
+    throw new AppError('User not found', 404);
+  }
+
+  // Generate personalized micro insight
+  const microInsight = {
+    title: user.nickname ? `Welcome back, ${user.nickname}!` : 'Welcome to Novara!',
+    message: 'Your journey matters, and we\'re here to support you every step of the way.',
+    action: null,
+    type: 'welcome',
+    icon: '🌟'
+  };
+
+  res.json({
+    success: true,
+    micro_insight: microInsight // Match frontend expectation
+  });
+}));
+
+/**
  * POST /api/insights/engagement
  * Track user engagement with insights
  */
