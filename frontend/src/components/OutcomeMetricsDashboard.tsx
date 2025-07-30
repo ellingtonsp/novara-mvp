@@ -441,7 +441,7 @@ export const OutcomeMetricsDashboard: React.FC<OutcomeMetricsDashboardProps> = (
                 <ul className="space-y-2">
                   {(() => {
                     // Always show encouraging strengths, even when data-driven ones aren't available
-                    const strengths = metrics.protectiveFactors.length > 0 
+                    const strengths = metrics?.protectiveFactors?.length > 0 
                       ? metrics.protectiveFactors
                       : [
                           'Taking proactive steps in your fertility journey',
@@ -466,7 +466,7 @@ export const OutcomeMetricsDashboard: React.FC<OutcomeMetricsDashboardProps> = (
               </CardHeader>
               <CardContent>
                 <ul className="space-y-2">
-                  {metrics.riskFactors.map((factor, idx) => (
+                  {(metrics?.riskFactors || ['Loading risk factors...']).map((factor, idx) => (
                     <li key={idx} className="flex items-start gap-2 text-sm text-orange-700">
                       <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
                       {factor}
