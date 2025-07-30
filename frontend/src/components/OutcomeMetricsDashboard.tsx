@@ -22,9 +22,9 @@ interface UserMetrics {
   totalMedicationCheckIns: number;
   
   // Mental health metrics
-  currentPHQ4Score: number;
-  phq4Trend: 'improving' | 'stable' | 'worsening';
-  anxietyAverage: number;
+  currentPHQ4Score: number | null;
+  phq4Trend: 'improving' | 'stable' | 'worsening' | null;
+  anxietyAverage: number | null;
   
   // Engagement metrics
   checkInStreak: number;
@@ -143,9 +143,9 @@ export const OutcomeMetricsDashboard: React.FC<OutcomeMetricsDashboardProps> = (
           medicationAdherenceTrend: 'stable',
           missedDosesLastWeek: 0,
           totalMedicationCheckIns: 0,
-          currentPHQ4Score: 0,
-          phq4Trend: 'stable',
-          anxietyAverage: 0,
+          currentPHQ4Score: null,
+          phq4Trend: null,
+          anxietyAverage: null,
           checkInStreak: 0,
           totalCheckIns: 0,
           insightEngagementRate: 0,
@@ -167,9 +167,9 @@ export const OutcomeMetricsDashboard: React.FC<OutcomeMetricsDashboardProps> = (
         medicationAdherenceTrend: 'stable',
         missedDosesLastWeek: 0,
         totalMedicationCheckIns: 0,
-        currentPHQ4Score: 0,
-        phq4Trend: 'stable',
-        anxietyAverage: 0,
+        currentPHQ4Score: null,
+        phq4Trend: null,
+        anxietyAverage: null,
         checkInStreak: 0,
         totalCheckIns: 0,
         insightEngagementRate: 0,
@@ -202,7 +202,7 @@ export const OutcomeMetricsDashboard: React.FC<OutcomeMetricsDashboardProps> = (
           ? 'Consider setting medication reminders' 
           : undefined
       },
-      {
+      ...(metrics.currentPHQ4Score !== null ? [{
         metric: 'Mental Health (PHQ-4)',
         yourValue: metrics.currentPHQ4Score,
         benchmark: 6,
@@ -212,7 +212,7 @@ export const OutcomeMetricsDashboard: React.FC<OutcomeMetricsDashboardProps> = (
         recommendation: metrics.currentPHQ4Score >= 6 
           ? 'Consider our guided coping exercises' 
           : undefined
-      },
+      }] : []),
       {
         metric: 'Daily Check-in Rate',
         yourValue: metrics.insightEngagementRate,
@@ -233,7 +233,8 @@ export const OutcomeMetricsDashboard: React.FC<OutcomeMetricsDashboardProps> = (
     return 'text-red-600';
   };
   
-  const getPHQ4Color = (score: number) => {
+  const getPHQ4Color = (score: number | null) => {
+    if (score === null) return 'text-gray-400';
     if (score < 3) return 'text-green-600';
     if (score < 6) return 'text-yellow-600';
     if (score < 9) return 'text-orange-600';
@@ -411,11 +412,15 @@ export const OutcomeMetricsDashboard: React.FC<OutcomeMetricsDashboardProps> = (
                     <MetricTooltip metric="mood">
                       <span>Mental Health Score</span>
                     </MetricTooltip>
-                    <span className={getPHQ4Color(metrics.currentPHQ4Score)}>
-                      {12 - metrics.currentPHQ4Score}/12
-                    </span>
+                    {metrics.currentPHQ4Score !== null ? (
+                      <span className={getPHQ4Color(metrics.currentPHQ4Score)}>
+                        {12 - metrics.currentPHQ4Score}/12
+                      </span>
+                    ) : (
+                      <span className="text-gray-400">No data</span>
+                    )}
                   </div>
-                  <Progress value={(12 - metrics.currentPHQ4Score) / 12 * 100} className="h-2" />
+                  <Progress value={metrics.currentPHQ4Score !== null ? (12 - metrics.currentPHQ4Score) / 12 * 100 : 0} className="h-2" />
                 </div>
                 
                 <div>
@@ -597,15 +602,20 @@ export const OutcomeMetricsDashboard: React.FC<OutcomeMetricsDashboardProps> = (
               <div className="bg-white rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
                   <h4 className="font-semibold text-gray-800">PHQ-4 Score</h4>
-                  <span className={`text-2xl font-bold ${getPHQ4Color(metrics.currentPHQ4Score)}`}>
-                    {metrics.currentPHQ4Score}/12
-                  </span>
+                  {metrics.currentPHQ4Score !== null ? (
+                    <span className={`text-2xl font-bold ${getPHQ4Color(metrics.currentPHQ4Score)}`}>
+                      {metrics.currentPHQ4Score}/12
+                    </span>
+                  ) : (
+                    <span className="text-lg text-gray-400">Not assessed yet</span>
+                  )}
                 </div>
                 <p className="text-sm text-gray-600">
-                  {metrics.currentPHQ4Score < 3 && 'Minimal symptoms - you\'re doing great!'}
-                  {metrics.currentPHQ4Score >= 3 && metrics.currentPHQ4Score < 6 && 'Mild symptoms - proactive support can help'}
-                  {metrics.currentPHQ4Score >= 6 && metrics.currentPHQ4Score < 9 && 'Moderate symptoms - additional support recommended'}
-                  {metrics.currentPHQ4Score >= 9 && 'Higher symptoms - please reach out for support'}
+                  {metrics.currentPHQ4Score === null && 'Complete a PHQ-4 assessment to track your mental health'}
+                  {metrics.currentPHQ4Score !== null && metrics.currentPHQ4Score < 3 && 'Minimal symptoms - you\'re doing great!'}
+                  {metrics.currentPHQ4Score !== null && metrics.currentPHQ4Score >= 3 && metrics.currentPHQ4Score < 6 && 'Mild symptoms - proactive support can help'}
+                  {metrics.currentPHQ4Score !== null && metrics.currentPHQ4Score >= 6 && metrics.currentPHQ4Score < 9 && 'Moderate symptoms - additional support recommended'}
+                  {metrics.currentPHQ4Score !== null && metrics.currentPHQ4Score >= 9 && 'Higher symptoms - please reach out for support'}
                 </p>
               </div>
               

@@ -235,13 +235,16 @@ router.get('/metrics', authenticateToken, asyncHandler(async (req, res) => {
     ? moodScores.reduce((a, b) => a + b, 0) / moodScores.length
     : 5;
 
-  // Calculate PHQ-4 score (inverted from mood score for mental health assessment)
-  // PHQ-4 ranges from 0-12, where lower is better
-  const currentPHQ4Score = Math.round((10 - averageMoodScore) * 1.2);
-
+  // PHQ-4 score - only available if user has completed PHQ-4 assessments
+  // PHQ-4 is a specific questionnaire, not derived from mood scores
+  let currentPHQ4Score = null;
+  let phq4Trend = null;
+  
+  // TODO: Check for actual PHQ-4 assessment data
+  // For now, we don't have PHQ-4 assessments implemented
+  
   // Determine trends
   const medicationAdherenceTrend = 'stable'; // Would need historical data to calculate
-  const phq4Trend = 'stable'; // Would need historical data to calculate
 
   // Calculate engagement metrics
   const totalDays = Math.max(1, Math.floor((now - new Date(user.created_at)) / (1000 * 60 * 60 * 24)));
@@ -253,9 +256,12 @@ router.get('/metrics', authenticateToken, asyncHandler(async (req, res) => {
   else if (medicationAdherenceRate >= 80) cycleCompletionProbability += 10;
   else if (medicationAdherenceRate >= 70) cycleCompletionProbability += 5;
   
-  if (currentPHQ4Score < 3) cycleCompletionProbability += 15;
-  else if (currentPHQ4Score < 6) cycleCompletionProbability += 10;
-  else if (currentPHQ4Score < 9) cycleCompletionProbability += 5;
+  // Only factor in PHQ-4 if available
+  if (currentPHQ4Score !== null) {
+    if (currentPHQ4Score < 3) cycleCompletionProbability += 15;
+    else if (currentPHQ4Score < 6) cycleCompletionProbability += 10;
+    else if (currentPHQ4Score < 9) cycleCompletionProbability += 5;
+  }
   
   if (insightEngagementRate >= 70) cycleCompletionProbability += 10;
   else if (insightEngagementRate >= 50) cycleCompletionProbability += 5;
@@ -269,7 +275,7 @@ router.get('/metrics', authenticateToken, asyncHandler(async (req, res) => {
   if (medicationAdherenceRate < 80 && totalMedicationCheckIns >= 3) {
     riskFactors.push('Medication adherence below target');
   }
-  if (currentPHQ4Score >= 6) {
+  if (currentPHQ4Score !== null && currentPHQ4Score >= 6) {
     riskFactors.push('Elevated stress/anxiety levels');
   }
   if (insightEngagementRate < 50) {
@@ -282,7 +288,7 @@ router.get('/metrics', authenticateToken, asyncHandler(async (req, res) => {
   if (medicationAdherenceRate >= 90 && totalMedicationCheckIns >= 3) {
     protectiveFactors.push('Excellent medication adherence');
   }
-  if (currentPHQ4Score < 3) {
+  if (currentPHQ4Score !== null && currentPHQ4Score < 3) {
     protectiveFactors.push('Strong mental well-being');
   }
   if (insightEngagementRate >= 70) {
@@ -313,7 +319,7 @@ router.get('/metrics', authenticateToken, asyncHandler(async (req, res) => {
       // Mental health metrics
       currentPHQ4Score,
       phq4Trend,
-      anxietyAverage: Math.round(currentPHQ4Score / 2), // Simplified anxiety score
+      anxietyAverage: currentPHQ4Score !== null ? Math.round(currentPHQ4Score / 2) : null, // Only available with PHQ-4 data
       
       // Engagement metrics
       checkInStreak: calculateStreak(checkins),
