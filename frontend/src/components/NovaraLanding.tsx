@@ -1396,6 +1396,13 @@ const NovaraLanding = () => {
                             onReplaceCheckin={handleReplaceCheckin}
                             onViewInsights={() => setCurrentView('insights')}
                           />
+                        ) : !user?.baseline_completed ? (
+                          <CompleteOnboardingPrompt 
+                            onShowBaseline={() => {
+                              setShowBaselinePanel(true);
+                              setBaselineStartTime(Date.now());
+                            }}
+                          />
                         ) : (
                           <>
                             {checkinPreference === 'quick_daily' ? (
@@ -1553,6 +1560,13 @@ const NovaraLanding = () => {
                 lastConfidence={todaysCheckin.confidence_today}
                 onReplaceCheckin={handleReplaceCheckin}
                 onViewInsights={() => setCurrentView('insights')}
+              />
+            ) : !user?.baseline_completed ? (
+              <CompleteOnboardingPrompt 
+                onShowBaseline={() => {
+                  setShowBaselinePanel(true);
+                  setBaselineStartTime(Date.now());
+                }}
               />
             ) : (
               <>
