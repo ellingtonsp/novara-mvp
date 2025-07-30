@@ -2428,8 +2428,7 @@ app.post('/api/checkins', authenticateToken, async (req, res) => {
         medication_taken: result.fields?.medication_taken || filteredCheckinData.medication_taken,
         created_at: result.fields?.created_at || new Date().toISOString()
       },
-        ? 'Daily check-in completed successfully! We love your positive energy today! 🎉' 
-        : 'Daily check-in completed successfully! 🌟'
+      message: sentiment_analysis?.sentiment === 'positive'
         ? 'Daily check-in completed successfully! We love your positive energy today! 🎉' 
         : 'Daily check-in completed successfully! 🌟'
     };
