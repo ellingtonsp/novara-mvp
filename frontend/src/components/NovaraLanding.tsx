@@ -169,8 +169,12 @@ const NovaraLanding = () => {
         sessionId: generateSessionId(),
         startTime: Date.now()
       });
+    } else if (isAuthenticated && user && user.onboarding_path) {
+      // Set onboarding path from user profile for existing users
+      setOnboardingPath(user.onboarding_path as OnboardingPath);
+      console.log('🧪 ON-01: Set onboarding path from user profile =', user.onboarding_path);
     }
-  }, [isAuthenticated, onboardingPath]);
+  }, [isAuthenticated, onboardingPath, user]);
 
   // Set initial view based on user's onboarding status
   useEffect(() => {
@@ -479,7 +483,9 @@ const NovaraLanding = () => {
       confidence_overall: 5,
       email_opt_in: true,
       // Explicitly mark baseline as not completed for fast onboarding users
-      baseline_completed: false
+      baseline_completed: false,
+      // ON-01: Save the onboarding path so we can show baseline panel later
+      onboarding_path: 'test'
     };
     
     setFormData(fastFormData);
