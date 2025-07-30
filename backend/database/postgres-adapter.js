@@ -215,9 +215,20 @@ class PostgresAdapter {
     if (this.useSchemaV2) {
       // Use Schema V2 compatibility layer
       console.log('🚀 Using Schema V2 for check-in creation');
+      console.log('Compatibility service available:', !!this.compatibility);
+      console.log('Compatibility method available:', !!this.compatibility?.createDailyCheckin);
+      
       // Handle Airtable array format for user_id
       const userId = Array.isArray(checkinData.user_id) ? checkinData.user_id[0] : checkinData.user_id;
-      return await this.compatibility.createDailyCheckin(userId, checkinData);
+      console.log('Calling compatibility service with:', { userId, hasData: !!checkinData });
+      
+      try {
+        const result = await this.compatibility.createDailyCheckin(userId, checkinData);
+        return result;
+      } catch (error) {
+        console.error('Compatibility service error:', error.message);
+        throw error;
+      }
     }
 
     // Fallback to V1 approach

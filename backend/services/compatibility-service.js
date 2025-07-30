@@ -17,6 +17,16 @@ class CompatibilityService {
    * Create daily check-in - compatible with both schemas
    */
   async createDailyCheckin(userId, checkinData) {
+    console.log('CompatibilityService.createDailyCheckin called with:', {
+      userId,
+      hasCheckinData: !!checkinData,
+      useV2: this.useV2
+    });
+    
+    if (!checkinData) {
+      throw new Error('checkinData is required');
+    }
+    
     if (this.useV2) {
       return await this.createDailyCheckinV2(userId, checkinData);
     } else {
