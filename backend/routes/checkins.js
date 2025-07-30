@@ -145,6 +145,30 @@ router.get('/', authenticateToken, asyncHandler(async (req, res) => {
 }));
 
 /**
+ * GET /api/checkins
+ * Get current user's check-ins
+ */
+router.get('/', authenticateToken, asyncHandler(async (req, res) => {
+  const { limit = 30 } = req.query;
+
+  // Get current user
+  const user = await userService.findByEmail(req.user.email);
+  if (!user) {
+    throw new AppError('User not found', 404);
+  }
+
+  // Get check-ins
+  const result = await checkinService.getUserCheckins(user.id, parseInt(limit));
+  const checkins = result.records || [];
+
+  res.json({
+    success: true,
+    records: checkins,
+    count: checkins.length
+  });
+}));
+
+/**
  * GET /api/checkins/user/:userId
  * Get check-ins for specific user (admin or self only)
  */
