@@ -293,8 +293,17 @@ class PostgresAdapter {
         he.event_data->>'mood' as mood_today,
         (he.event_data->>'confidence')::int as confidence_today,
         he.event_data->>'note' as user_note,
-        he.event_data->>'primary_concern' as primary_concern_today
+        he.event_data->>'primary_concern' as primary_concern_today,
+        CASE 
+          WHEN med.event_data->>'status' = 'taken' THEN 'yes'
+          WHEN med.event_data->>'status' = 'missed' THEN 'no'
+          ELSE NULL
+        END as medication_taken
       FROM health_events he
+      LEFT JOIN health_events med ON 
+        med.user_id = he.user_id 
+        AND med.event_type = 'medication'
+        AND med.occurred_at::date = he.occurred_at::date
       WHERE he.user_id = $1 
       AND he.event_type = 'mood'
       ORDER BY he.occurred_at DESC 
