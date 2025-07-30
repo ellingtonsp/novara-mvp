@@ -212,9 +212,12 @@ const NovaraLanding = () => {
       
       // Check if user is an existing user (has meaningful profile data, not just defaults)
       // A user is existing if they have a nickname OR non-default confidence scores
+      // NOTE: Don't include baseline_completed in this check as it creates circular logic
       const hasNickname = user.nickname && user.nickname.trim() !== '';
       const hasNonDefaultScores = user.confidence_meds !== 5 || user.confidence_costs !== 5 || user.confidence_overall !== 5;
-      const isExistingUser = hasNickname || hasNonDefaultScores || user.baseline_completed;
+      const isExistingUser = hasNickname || hasNonDefaultScores;
+      
+      // Fast signup users need baseline if they haven't completed it and aren't existing users
       const needsBaseline = !user.baseline_completed && userOnboardingPath === 'test' && !isExistingUser;
       
       console.log('🧪 ON-01: Baseline completion check on dashboard transition:', {
