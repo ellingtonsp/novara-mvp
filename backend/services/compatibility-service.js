@@ -101,6 +101,12 @@ class CompatibilityService {
       if (checkinData.wish_knew_more_about && checkinData.wish_knew_more_about.length > 0) {
         moodData.info_needs = checkinData.wish_knew_more_about;
       }
+      if (checkinData.physical_symptoms && checkinData.physical_symptoms.length > 0) {
+        moodData.physical_symptoms = checkinData.physical_symptoms;
+        if (checkinData.symptom_severity) {
+          moodData.symptom_severity = checkinData.symptom_severity;
+        }
+      }
 
       const moodResult = await this.pool.query(`
         INSERT INTO health_events (
@@ -489,6 +495,8 @@ class CompatibilityService {
           checkin.appointment_anxiety = data.appointment_anxiety;
           checkin.coping_strategies_used = data.coping_strategies;
           checkin.wish_knew_more_about = data.info_needs;
+          checkin.physical_symptoms = data.physical_symptoms;
+          checkin.symptom_severity = data.symptom_severity;
         }
       } catch (parseError) {
         console.error('Error parsing mood event data:', parseError);

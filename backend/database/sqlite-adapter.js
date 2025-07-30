@@ -134,6 +134,24 @@ class SQLiteAdapter {
     
     // Medication tracking field (matches Airtable Single Select)
     addColumnIfNotExists('daily_checkins', 'medication_taken', 'TEXT');
+    
+    // Enhanced check-in fields
+    addColumnIfNotExists('daily_checkins', 'anxiety_level', 'INTEGER');
+    addColumnIfNotExists('daily_checkins', 'appointment_within_3_days', 'TEXT');
+    addColumnIfNotExists('daily_checkins', 'appointment_anxiety', 'INTEGER');
+    addColumnIfNotExists('daily_checkins', 'coping_strategies_used', 'TEXT'); // JSON array
+    addColumnIfNotExists('daily_checkins', 'wish_knew_more_about', 'TEXT'); // JSON array
+    addColumnIfNotExists('daily_checkins', 'physical_symptoms', 'TEXT'); // JSON array
+    addColumnIfNotExists('daily_checkins', 'symptom_severity', 'TEXT'); // JSON object
+    
+    // PHQ-4 fields
+    addColumnIfNotExists('daily_checkins', 'phq4_feeling_nervous', 'INTEGER');
+    addColumnIfNotExists('daily_checkins', 'phq4_stop_worrying', 'INTEGER');
+    addColumnIfNotExists('daily_checkins', 'phq4_little_interest', 'INTEGER');
+    addColumnIfNotExists('daily_checkins', 'phq4_feeling_down', 'INTEGER');
+    addColumnIfNotExists('daily_checkins', 'phq4_total_score', 'INTEGER');
+    addColumnIfNotExists('daily_checkins', 'phq4_anxiety_score', 'INTEGER');
+    addColumnIfNotExists('daily_checkins', 'phq4_depression_score', 'INTEGER');
 
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS insights (
@@ -289,28 +307,61 @@ class SQLiteAdapter {
     const id = this.generateRecordId();
     const userId = this.formatLinkedRecord(checkinData.user_id);
     
-    const stmt = this.db.prepare(`
-      INSERT INTO daily_checkins (id, user_id, mood_today, confidence_today, primary_concern_today,
-                                 medication_confidence_today, medication_concern_today, financial_stress_today,
-                                 financial_concern_today, journey_readiness_today, top_concern_today,
-                                 journey_reflection_today, medication_momentum, financial_momentum, journey_momentum,
-                                 user_note, date_submitted, sentiment, sentiment_confidence, sentiment_scores, sentiment_processing_time)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
+    // Prepare all fields including enhanced fields
+    const fields = {
+      id,
+      user_id: userId,
+      mood_today: checkinData.mood_today,
+      confidence_today: checkinData.confidence_today,
+      primary_concern_today: checkinData.primary_concern_today,
+      medication_confidence_today: checkinData.medication_confidence_today,
+      medication_concern_today: checkinData.medication_concern_today,
+      financial_stress_today: checkinData.financial_stress_today,
+      financial_concern_today: checkinData.financial_concern_today,
+      journey_readiness_today: checkinData.journey_readiness_today,
+      top_concern_today: checkinData.top_concern_today,
+      journey_reflection_today: checkinData.journey_reflection_today,
+      medication_momentum: checkinData.medication_momentum,
+      financial_momentum: checkinData.financial_momentum,
+      journey_momentum: checkinData.journey_momentum,
+      user_note: checkinData.user_note,
+      date_submitted: checkinData.date_submitted || new Date().toISOString().split('T')[0],
+      sentiment: checkinData.sentiment,
+      sentiment_confidence: checkinData.sentiment_confidence,
+      sentiment_scores: checkinData.sentiment_scores,
+      sentiment_processing_time: checkinData.sentiment_processing_time,
+      medication_taken: checkinData.medication_taken,
+      // Enhanced fields
+      anxiety_level: checkinData.anxiety_level,
+      appointment_within_3_days: checkinData.appointment_within_3_days,
+      appointment_anxiety: checkinData.appointment_anxiety,
+      coping_strategies_used: Array.isArray(checkinData.coping_strategies_used) ? JSON.stringify(checkinData.coping_strategies_used) : checkinData.coping_strategies_used,
+      wish_knew_more_about: Array.isArray(checkinData.wish_knew_more_about) ? JSON.stringify(checkinData.wish_knew_more_about) : checkinData.wish_knew_more_about,
+      physical_symptoms: Array.isArray(checkinData.physical_symptoms) ? JSON.stringify(checkinData.physical_symptoms) : checkinData.physical_symptoms,
+      symptom_severity: typeof checkinData.symptom_severity === 'object' ? JSON.stringify(checkinData.symptom_severity) : checkinData.symptom_severity,
+      // PHQ-4 fields
+      phq4_feeling_nervous: checkinData.phq4_feeling_nervous,
+      phq4_stop_worrying: checkinData.phq4_stop_worrying,
+      phq4_little_interest: checkinData.phq4_little_interest,
+      phq4_feeling_down: checkinData.phq4_feeling_down,
+      phq4_total_score: checkinData.phq4_total_score,
+      phq4_anxiety_score: checkinData.phq4_anxiety_score,
+      phq4_depression_score: checkinData.phq4_depression_score
+    };
+    
+    // Build dynamic SQL based on provided fields
+    const fieldNames = Object.keys(fields).filter(key => fields[key] !== undefined);
+    const placeholders = fieldNames.map(() => '?').join(', ');
+    const values = fieldNames.map(key => fields[key]);
+    
+    const sql = `
+      INSERT INTO daily_checkins (${fieldNames.join(', ')})
+      VALUES (${placeholders})
+    `;
     
     try {
-      stmt.run(
-        id, userId, checkinData.mood_today, checkinData.confidence_today,
-        checkinData.primary_concern_today, checkinData.medication_confidence_today,
-        checkinData.medication_concern_today, checkinData.financial_stress_today,
-        checkinData.financial_concern_today, checkinData.journey_readiness_today,
-        checkinData.top_concern_today, checkinData.journey_reflection_today,
-        checkinData.medication_momentum, checkinData.financial_momentum, checkinData.journey_momentum,
-        checkinData.user_note, 
-        checkinData.date_submitted || new Date().toISOString().split('T')[0],
-        checkinData.sentiment, checkinData.sentiment_confidence, 
-        checkinData.sentiment_scores, checkinData.sentiment_processing_time
-      );
+      const stmt = this.db.prepare(sql);
+      stmt.run(...values);
       
       // Return in Airtable format
       return {
