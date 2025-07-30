@@ -2330,6 +2330,7 @@ app.post('/api/checkins', authenticateToken, async (req, res) => {
         mood_today: result.fields.mood_today,
         confidence_today: result.fields.confidence_today,
         date_submitted: result.fields.date_submitted,
+        medication_taken: result.fields.medication_taken,
         created_at: result.fields.created_at
       },
       message: sentiment_analysis?.sentiment === 'positive' 
@@ -3791,6 +3792,7 @@ const PRODUCTION_AIRTABLE_SCHEMA = {
     'primary_concern_today',
     'user_note',
     'date_submitted',
+    'medication_taken', // Added for medication tracking feature
     'medication_confidence_today',
     'medication_concern_today',
     'financial_stress_today',
