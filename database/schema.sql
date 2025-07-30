@@ -119,10 +119,7 @@ CREATE TABLE auth_tokens (
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     token_hash VARCHAR(255) NOT NULL UNIQUE,
     expires_at TIMESTAMP NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
-    -- Index for token lookups
-    INDEX idx_token_hash (token_hash)
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Performance indexes
@@ -134,6 +131,7 @@ CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_status ON users(status);
 CREATE INDEX idx_insights_user_date ON insights(user_id, date DESC);
 CREATE INDEX idx_insights_type ON insights(insight_type);
+CREATE INDEX idx_token_hash ON auth_tokens(token_hash);
 
 -- Updated at trigger function
 CREATE OR REPLACE FUNCTION update_updated_at_column()
