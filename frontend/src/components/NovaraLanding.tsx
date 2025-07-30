@@ -281,18 +281,18 @@ const NovaraLanding = () => {
         console.log('Check-in API response:', data);
         console.log('Response structure:', {
           success: data.success,
-          checkinsCount: data.checkins?.length,
-          firstCheckin: data.checkins?.[0] ? Object.keys(data.checkins[0]) : 'No checkins'
+          checkinsCount: data.records?.length,
+          firstCheckin: data.records?.[0] ? Object.keys(data.records[0]) : 'No checkins'
         });
         
-        if (data.success && data.checkins && data.checkins.length > 0) {
+        if (data.success && data.records && data.records.length > 0) {
           // Debug check-in dates
-          debugCheckinDates(data.checkins);
+          debugCheckinDates(data.records);
           
           // Look for today's check-in among the recent ones
           let todaysCheckin = null;
           
-          for (const checkin of data.checkins) {
+          for (const checkin of data.records) {
             const checkinData = checkin.fields || checkin;
             if (isCheckinToday(checkinData.date_submitted)) {
               todaysCheckin = checkinData;
@@ -311,7 +311,7 @@ const NovaraLanding = () => {
             setShowCheckinForm(false);
           } else {
             console.log('No check-in found for today:', todayString);
-            console.log('Available check-ins dates:', data.checkins.map((c: any) => (c.fields || c).date_submitted));
+            console.log('Available check-ins dates:', data.records.map((c: any) => (c.fields || c).date_submitted));
             setTodaysCheckin(null);
             setShowCheckinForm(true);
           }
