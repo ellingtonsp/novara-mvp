@@ -35,6 +35,10 @@ class CompatibilityService {
   }
 
   async createDailyCheckinV1(userId, data) {
+    console.log('createDailyCheckinV1 called with:', { userId, hasData: !!data });
+    if (!data) {
+      throw new Error('Data parameter is undefined in createDailyCheckinV1');
+    }
     // Original V1 approach - single table
     const result = await this.pool.query(`
       INSERT INTO daily_checkins (
@@ -64,6 +68,10 @@ class CompatibilityService {
   }
 
   async createDailyCheckinV2(userId, data) {
+    console.log('createDailyCheckinV2 called with:', { userId, hasData: !!data });
+    if (!data) {
+      throw new Error('Data parameter is undefined in createDailyCheckinV2');
+    }
     // V2 approach - event sourced
     const { v4: uuidv4 } = require('uuid');
     const correlationId = uuidv4();
