@@ -2183,6 +2183,7 @@ app.post('/api/checkins', authenticateToken, async (req, res) => {
       user_note,
       date_submitted, // Accept date from frontend to handle user's local timezone
       sentiment_analysis, // CM-01: Sentiment data from frontend
+      medication_taken, // Explicitly extract medication tracking
       ...additionalFormFields // Capture all additional dynamic form fields
     } = req.body;
 
@@ -2269,6 +2270,12 @@ app.post('/api/checkins', authenticateToken, async (req, res) => {
     
     if (user_note && user_note.trim() !== '') {
       checkinData.user_note = user_note.trim();
+    }
+
+    // Handle medication tracking field explicitly
+    if (medication_taken) {
+      checkinData.medication_taken = medication_taken;
+      console.log('💊 Medication tracking:', medication_taken);
     }
 
     // Handle all additional form fields from personalized questions
