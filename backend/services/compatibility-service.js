@@ -34,10 +34,10 @@ class CompatibilityService {
     }
   }
 
-  async createDailyCheckinV1(userId, data) {
-    console.log('createDailyCheckinV1 called with:', { userId, hasData: !!data });
-    if (!data) {
-      throw new Error('Data parameter is undefined in createDailyCheckinV1');
+  async createDailyCheckinV1(userId, checkinData) {
+    console.log('createDailyCheckinV1 called with:', { userId, hasData: !!checkinData });
+    if (!checkinData) {
+      throw new Error('CheckinData parameter is undefined in createDailyCheckinV1');
     }
     // Original V1 approach - single table
     const result = await this.pool.query(`
@@ -51,44 +51,44 @@ class CompatibilityService {
       ) RETURNING *
     `, [
       userId,
-      data.mood_today,
-      data.confidence_today,
-      data.anxiety_level,
-      data.medication_taken,
-      data.user_note,
-      data.primary_concern_today,
-      data.date_submitted || new Date().toISOString().split('T')[0],
-      data.missed_doses,
-      data.side_effects,
-      data.injection_confidence,
-      data.partner_involved_today
+      checkinData.mood_today,
+      checkinData.confidence_today,
+      checkinData.anxiety_level,
+      checkinData.medication_taken,
+      checkinData.user_note,
+      checkinData.primary_concern_today,
+      checkinData.date_submitted || new Date().toISOString().split('T')[0],
+      checkinData.missed_doses,
+      checkinData.side_effects,
+      checkinData.injection_confidence,
+      checkinData.partner_involved_today
     ]);
 
     return result.rows[0];
   }
 
-  async createDailyCheckinV2(userId, data) {
-    console.log('createDailyCheckinV2 called with:', { userId, hasData: !!data });
-    if (!data) {
-      throw new Error('Data parameter is undefined in createDailyCheckinV2');
+  async createDailyCheckinV2(userId, checkinData) {
+    console.log('createDailyCheckinV2 called with:', { userId, hasData: !!checkinData, keys: checkinData ? Object.keys(checkinData) : [] });
+    if (!checkinData) {
+      throw new Error('CheckinData parameter is undefined in createDailyCheckinV2');
     }
     // V2 approach - event sourced
     const { v4: uuidv4 } = require('uuid');
     const correlationId = uuidv4();
-    const occurredAt = data.date_submitted || new Date().toISOString().split('T')[0];
+    const occurredAt = checkinData.date_submitted || new Date().toISOString().split('T')[0];
     
     const events = [];
 
     // 1. Create mood event
-    if (data.mood_today || data.confidence_today || data.user_note) {
+    if (checkinData.mood_today || checkinData.confidence_today || checkinData.user_note) {
       const moodData = {};
-      if (data.mood_today) moodData.mood = data.mood_today;
-      if (data.confidence_today) moodData.confidence = data.confidence_today;
-      if (data.anxiety_level) moodData.anxiety_level = data.anxiety_level;
-      if (data.user_note) moodData.note = data.user_note;
-      if (data.primary_concern_today) moodData.primary_concern = data.primary_concern_today;
-      if (data.injection_confidence) moodData.injection_confidence = data.injection_confidence;
-      if (data.partner_involved_today) moodData.partner_involved = data.partner_involved_today;
+      if (checkinData.mood_today) moodData.mood = checkinData.mood_today;
+      if (checkinData.confidence_today) moodData.confidence = checkinData.confidence_today;
+      if (checkinData.anxiety_level) moodData.anxiety_level = checkinData.anxiety_level;
+      if (checkinData.user_note) moodData.note = checkinData.user_note;
+      if (checkinData.primary_concern_today) moodData.primary_concern = checkinData.primary_concern_today;
+      if (checkinData.injection_confidence) moodData.injection_confidence = checkinData.injection_confidence;
+      if (checkinData.partner_involved_today) moodData.partner_involved = checkinData.partner_involved_today;
 
       const moodResult = await this.pool.query(`
         INSERT INTO health_events (
@@ -109,11 +109,11 @@ class CompatibilityService {
     }
 
     // 2. Create medication event if tracked
-    if (data.medication_taken && data.medication_taken !== 'not tracked') {
+    if (checkinData.medication_taken && checkinData.medication_taken !== 'not tracked') {
       const medData = {
-        status: data.medication_taken === 'yes' ? 'taken' : 'missed'
+        status: checkinData.medication_taken === 'yes' ? 'taken' : 'missed'
       };
-      if (data.missed_doses) medData.missed_doses = data.missed_doses;
+      if (checkinData.missed_doses) medData.missed_doses = checkinData.missed_doses;
 
       const medResult = await this.pool.query(`
         INSERT INTO health_events (
@@ -134,7 +134,7 @@ class CompatibilityService {
     }
 
     // 3. Create symptom event for side effects
-    if (data.side_effects && data.side_effects.length > 0) {
+    if (checkinData.side_effects && checkinData.side_effects.length > 0) {
       const symptomResult = await this.pool.query(`
         INSERT INTO health_events (
           user_id, event_type, event_subtype,
@@ -146,7 +146,7 @@ class CompatibilityService {
       `, [
         userId,
         JSON.stringify({
-          symptoms: data.side_effects,
+          symptoms: checkinData.side_effects,
           related_to: 'medication'
         }),
         occurredAt,
