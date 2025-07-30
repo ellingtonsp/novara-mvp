@@ -175,6 +175,25 @@ try {
   warnings++;
 }
 
+// 7. Run field mapping audit
+console.log('\n7️⃣ Running field mapping audit...');
+try {
+  const { execSync } = require('child_process');
+  execSync('node ' + path.join(__dirname, 'audit-field-mappings.js'), { 
+    stdio: 'pipe' 
+  });
+  console.log('✅ All fields properly mapped');
+} catch (error) {
+  // The audit script exits with code 1 if issues found
+  if (error.status === 1) {
+    console.error('❌ Field mapping issues detected! Run: node backend/scripts/audit-field-mappings.js');
+    errors++;
+  } else {
+    console.error('❌ Error running field audit:', error.message);
+    errors++;
+  }
+}
+
 // Summary
 console.log('\n' + '='.repeat(50));
 console.log('📊 PRE-DEPLOYMENT CHECK SUMMARY');
