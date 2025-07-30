@@ -35,43 +35,83 @@ class PostgresAdapter {
   // User operations
   async createUser(userData) {
     const {
-      email, nickname, password, ...otherFields
+      email, nickname, password, ...profileData
     } = userData;
 
-    // Note: For now, we're not storing passwords in PostgreSQL
-    // The app uses passwordless auth flow
-    const fields = ['email', 'nickname', ...Object.keys(otherFields)];
-    const values = [email, nickname, ...Object.values(otherFields)];
-    const placeholders = fields.map((_, i) => `$${i + 1}`).join(', ');
-
-    const query = `
-      INSERT INTO users (${fields.join(', ')})
-      VALUES (${placeholders})
-      RETURNING id, email, nickname, confidence_meds, confidence_costs, 
-                confidence_overall, primary_need, cycle_stage, top_concern,
-                timezone, email_opt_in, status, medication_status,
-                baseline_completed, onboarding_path, created_at
-    `;
-
+    const client = await this.pool.connect();
+    
     try {
-      const result = await this.pool.query(query, values);
-      return result.rows[0];
+      await client.query('BEGIN');
+      
+      // 1. Create user in users table (Schema V2)
+      const userResult = await client.query(`
+        INSERT INTO users (email)
+        VALUES ($1)
+        RETURNING id, email, created_at
+      `, [email]);
+      
+      const user = userResult.rows[0];
+      
+      // 2. Create user profile with extended data
+      const profileFields = {
+        user_id: user.id,
+        nickname: nickname || 'User',
+        confidence_meds: profileData.confidence_meds || 5,
+        confidence_costs: profileData.confidence_costs || 5,
+        confidence_overall: profileData.confidence_overall || 5,
+        primary_need: profileData.primary_need,
+        cycle_stage: profileData.cycle_stage,
+        top_concern: profileData.top_concern,
+        timezone: profileData.timezone || 'America/Los_Angeles',
+        email_opt_in: profileData.email_opt_in !== false,
+        status: profileData.status || 'active',
+        medication_status: profileData.medication_status,
+        baseline_completed: profileData.baseline_completed || false,
+        onboarding_path: profileData.onboarding_path
+      };
+      
+      const profileKeys = Object.keys(profileFields).filter(k => profileFields[k] !== undefined);
+      const profileValues = profileKeys.map(k => profileFields[k]);
+      const profilePlaceholders = profileKeys.map((_, i) => `$${i + 1}`).join(', ');
+      
+      await client.query(`
+        INSERT INTO user_profiles (${profileKeys.join(', ')})
+        VALUES (${profilePlaceholders})
+      `, profileValues);
+      
+      await client.query('COMMIT');
+      
+      // Return combined user data
+      return {
+        id: user.id,
+        email: user.email,
+        created_at: user.created_at,
+        ...profileFields
+      };
+      
     } catch (error) {
+      await client.query('ROLLBACK');
       if (error.code === '23505') { // Unique violation
         throw new Error('User with this email already exists');
       }
       throw error;
+    } finally {
+      client.release();
     }
   }
 
   async findUserByEmail(email) {
+    // Schema V2 - join with user_profiles table
     const query = `
-      SELECT id, email, nickname, confidence_meds, confidence_costs, 
-             confidence_overall, primary_need, cycle_stage, top_concern,
-             timezone, email_opt_in, status, medication_status,
-             baseline_completed, onboarding_path, created_at
-      FROM users 
-      WHERE email = $1
+      SELECT 
+        u.id, u.email, u.created_at, u.updated_at,
+        p.nickname, p.confidence_meds, p.confidence_costs, 
+        p.confidence_overall, p.primary_need, p.cycle_stage, 
+        p.top_concern, p.timezone, p.email_opt_in, p.status, 
+        p.medication_status, p.baseline_completed, p.onboarding_path
+      FROM users u
+      LEFT JOIN user_profiles p ON u.id = p.user_id
+      WHERE u.email = $1
     `;
     
     const result = await this.pool.query(query, [email]);
@@ -79,18 +119,78 @@ class PostgresAdapter {
   }
 
   async updateUser(userId, updates) {
-    const fields = Object.keys(updates);
-    const values = Object.values(updates);
-    const setClause = fields.map((field, i) => `${field} = $${i + 2}`).join(', ');
-
+    // Schema V2 - separate user and profile updates
+    const userFields = ['email'];
+    const userUpdates = {};
+    const profileUpdates = {};
+    
+    // Separate updates between user and profile tables
+    Object.entries(updates).forEach(([key, value]) => {
+      if (userFields.includes(key)) {
+        userUpdates[key] = value;
+      } else {
+        profileUpdates[key] = value;
+      }
+    });
+    
+    const client = await this.pool.connect();
+    
+    try {
+      await client.query('BEGIN');
+      
+      // Update user table if needed
+      if (Object.keys(userUpdates).length > 0) {
+        const userKeys = Object.keys(userUpdates);
+        const userValues = Object.values(userUpdates);
+        const userSetClause = userKeys.map((field, i) => `${field} = $${i + 2}`).join(', ');
+        
+        await client.query(`
+          UPDATE users 
+          SET ${userSetClause}, updated_at = CURRENT_TIMESTAMP
+          WHERE id = $1
+        `, [userId, ...userValues]);
+      }
+      
+      // Update profile table if needed
+      if (Object.keys(profileUpdates).length > 0) {
+        const profileKeys = Object.keys(profileUpdates);
+        const profileValues = Object.values(profileUpdates);
+        const profileSetClause = profileKeys.map((field, i) => `${field} = $${i + 2}`).join(', ');
+        
+        await client.query(`
+          UPDATE user_profiles 
+          SET ${profileSetClause}, updated_at = CURRENT_TIMESTAMP
+          WHERE user_id = $1
+        `, [userId, ...profileValues]);
+      }
+      
+      await client.query('COMMIT');
+      
+      // Return updated user data
+      return await this.findUserById(userId);
+      
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+  
+  async findUserById(userId) {
     const query = `
-      UPDATE users 
-      SET ${setClause}, updated_at = CURRENT_TIMESTAMP
-      WHERE id = $1
-      RETURNING *
+      SELECT 
+        u.id, u.email, u.created_at, u.updated_at,
+        p.nickname, p.confidence_meds, p.confidence_costs, 
+        p.confidence_overall, p.primary_need, p.cycle_stage, 
+        p.top_concern, p.timezone, p.email_opt_in, p.status, 
+        p.medication_status, p.baseline_completed, p.onboarding_path
+      FROM users u
+      LEFT JOIN user_profiles p ON u.id = p.user_id
+      WHERE u.id = $1
     `;
-
-    const result = await this.pool.query(query, [userId, ...values]);
+    
+    const result = await this.pool.query(query, [userId]);
     return result.rows[0];
   }
 
@@ -161,10 +261,51 @@ class PostgresAdapter {
   }
 
   async getRecentCheckins(limit = 100) {
+    if (this.useSchemaV2) {
+      // Schema V2 - join with both users and user_profiles
+      const query = `
+        SELECT 
+          he.*,
+          u.email as user_email,
+          p.nickname,
+          json_build_object(
+            'mood_today', he.event_data->>'mood',
+            'confidence_today', (he.event_data->>'confidence')::int,
+            'user_note', he.event_data->>'note',
+            'date_submitted', DATE(he.occurred_at),
+            'user_id', u.email
+          ) as checkin_data
+        FROM health_events he
+        JOIN users u ON he.user_id = u.id
+        JOIN user_profiles p ON u.id = p.user_id
+        WHERE he.event_type = 'mood' 
+        AND he.event_subtype = 'daily_checkin'
+        ORDER BY he.occurred_at DESC
+        LIMIT $1
+      `;
+      
+      const result = await this.pool.query(query, [limit]);
+      return {
+        records: result.rows.map(row => ({
+          id: row.id,
+          fields: {
+            ...row.checkin_data,
+            user_email: row.user_email,
+            nickname: row.nickname
+          }
+        }))
+      };
+    }
+    
+    // V1 fallback - join with user_profiles for nickname
     const query = `
-      SELECT c.*, u.email as user_email, u.nickname 
+      SELECT 
+        c.*, 
+        u.email as user_email, 
+        p.nickname 
       FROM daily_checkins c
       JOIN users u ON c.user_id = u.id
+      LEFT JOIN user_profiles p ON u.id = p.user_id
       ORDER BY c.date_submitted DESC, c.created_at DESC
       LIMIT $1
     `;
