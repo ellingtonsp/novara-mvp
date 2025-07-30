@@ -2302,9 +2302,11 @@ app.post('/api/checkins', authenticateToken, async (req, res) => {
     }
 
     console.log('📊 Sending to Airtable DailyCheckins:', checkinData);
+    console.log('📅 Check-in date_submitted field:', checkinData.date_submitted);
 
     // Filter data to only include fields that exist in production schema
     const filteredCheckinData = filterForProductionSchema('DailyCheckins', checkinData);
+    console.log('📅 Filtered date_submitted field:', filteredCheckinData.date_submitted);
 
     // Create record in Airtable DailyCheckins table
     const result = await airtableRequest('DailyCheckins', 'POST', {
