@@ -44,9 +44,9 @@ export const CenteredSlider: React.FC<CenteredSliderProps> = ({
   const isGrayedOut = !hasInteracted;
 
   return (
-    <div className={`relative ${className} h-2`}>
+    <div className={`relative ${className} h-8 flex items-center`}>
       {/* Custom styled slider using absolute positioning */}
-      <div className="absolute inset-0">
+      <div className="absolute inset-x-0 h-2">
         {/* Background track */}
         <div className={`absolute inset-0 h-2 rounded ${isGrayedOut ? 'bg-gray-200' : 'bg-purple-200'}`} />
         
@@ -66,9 +66,9 @@ export const CenteredSlider: React.FC<CenteredSliderProps> = ({
           style={{ left: '50%' }}
         />
         
-        {/* Thumb */}
+        {/* Thumb with larger touch target */}
         <div 
-          className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-5 h-5 rounded-full border-2 border-white shadow-md transition-all duration-200 ${
+          className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-6 h-6 sm:w-5 sm:h-5 rounded-full border-2 border-white shadow-md transition-all duration-200 ${
             isGrayedOut ? 'bg-gray-400' : 'bg-[#ff6f61] hover:scale-110'
           }`}
           style={{ left: `${trackFillPercentage}%` }}

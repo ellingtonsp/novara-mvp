@@ -244,6 +244,7 @@ export const EnhancedDailyCheckinForm: React.FC<EnhancedDailyCheckinFormProps> =
         confidence_today: confidence,
         user_note: userNote,
         date_submitted: todayString,
+        medication_taken: tookMedications === true ? 'yes' : tookMedications === false ? 'no' : 'not tracked',
         // Add enhanced data summary to the note
         primary_concern_today: sideEffects.length > 0 ? 'medication_side_effects' : 
                               anxietyLevel > 7 ? 'anxiety_management' :
@@ -321,24 +322,34 @@ export const EnhancedDailyCheckinForm: React.FC<EnhancedDailyCheckinFormProps> =
             
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-green-50 rounded p-3 text-center">
-                <p className="text-xs text-green-600 font-medium h-8 flex items-center justify-center">Cycle Completion<br />Probability</p>
-                <p className="text-2xl font-bold text-green-800 mt-2">{outcomePredictions?.completionProbability}%</p>
+                <p className="text-xs text-green-600 font-medium h-8 flex items-center justify-center">Treatment<br />Engagement</p>
+                <p className="text-2xl font-bold text-green-800 mt-2">
+                  {outcomePredictions?.completionProbability > 85 ? 'High' : 
+                   outcomePredictions?.completionProbability > 70 ? 'Good' : 'Building'}
+                </p>
               </div>
               <div className={`rounded p-3 text-center ${
-                outcomePredictions?.adherenceRisk > 50 ? 'bg-red-50' : 'bg-yellow-50'
+                outcomePredictions?.adherenceRisk > 50 ? 'bg-orange-50' : 'bg-blue-50'
               }`}>
-                <p className="text-xs text-gray-600 font-medium h-8 flex items-center justify-center">Adherence Risk</p>
+                <p className="text-xs text-gray-600 font-medium h-8 flex items-center justify-center">Support<br />Opportunities</p>
                 <p className={`text-2xl font-bold mt-2 ${
-                  outcomePredictions?.adherenceRisk > 50 ? 'text-red-800' : 'text-yellow-800'
-                }`}>{outcomePredictions?.adherenceRisk}%</p>
+                  outcomePredictions?.adherenceRisk > 50 ? 'text-orange-800' : 'text-blue-800'
+                }`}>
+                  {outcomePredictions?.adherenceRisk > 50 ? 'Available' : 'On Track'}
+                </p>
               </div>
             </div>
             
             {outcomePredictions?.supportNeeds.length > 0 && (
               <div className="mt-3 p-3 bg-purple-50 rounded">
                 <p className="text-sm text-purple-800">
-                  <strong>Recommended support:</strong> Based on today's check-in, we'll provide extra help with{' '}
-                  {outcomePredictions.supportNeeds.join(', ')}.
+                  <strong>Personalized support:</strong> Based on your check-in, you may find these resources helpful:{' '}
+                  {outcomePredictions.supportNeeds.map((need: string) => 
+                    need.replace('_', ' ').replace('anxiety management', 'stress reduction techniques')
+                                         .replace('confidence building', 'confidence boosters')
+                                         .replace('side effect management', 'comfort strategies')
+                                         .replace('information session', 'educational resources')
+                  ).join(', ')}.
                 </p>
               </div>
             )}
@@ -404,8 +415,8 @@ export const EnhancedDailyCheckinForm: React.FC<EnhancedDailyCheckinFormProps> =
                     onClick={() => setSelectedMood(option.mood)}
                     className={`p-3 rounded-lg border-2 transition-all text-left ${
                       selectedMood === option.mood
-                        ? 'border-purple-500 bg-purple-50'
-                        : 'border-gray-200 hover:border-purple-300'
+                        ? 'border-purple-500 bg-purple-100 shadow-md'
+                        : 'border-gray-200 hover:border-purple-300 bg-white'
                     }`}
                   >
                     <div className="flex items-center gap-2 mb-1">
