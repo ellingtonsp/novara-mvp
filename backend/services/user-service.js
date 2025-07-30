@@ -54,8 +54,8 @@ class UserService {
     if (this.db.isPostgres || this.db.isUsingLocalDatabase()) {
       return await this.db.localDb.findUserById(userId);
     } else {
-      // Airtable logic
-      const url = `${config.airtable.baseUrl}/Users/${userId}`;
+      // Airtable logic - need to search by ID in the records
+      const url = `${config.airtable.baseUrl}/Users?filterByFormula=RECORD_ID()='${userId}'`;
       const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${config.airtable.apiKey}`,
@@ -63,12 +63,18 @@ class UserService {
       });
       
       if (!response.ok) {
-        if (response.status === 404) return null;
         throw new AppError('Failed to fetch user from Airtable', response.status);
       }
       
       const result = await response.json();
-      return result;
+      if (result.records && result.records.length > 0) {
+        const record = result.records[0];
+        return {
+          id: record.id,
+          ...record.fields
+        };
+      }
+      return null;
     }
   }
 
