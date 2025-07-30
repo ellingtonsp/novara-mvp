@@ -64,7 +64,16 @@
     "test:pwa-cache": "node scripts/test-pwa-cache-functionality.js",
     "test:pwa-cache:production-only": "SKIP_LOCAL_TESTS=true node scripts/test-pwa-cache-functionality.js",
     "test:existing-user-onboarding": "node scripts/test-existing-user-onboarding.js",
-    "test:ui-comprehensive": "npm run test:pwa-cache:production-only && npm run test:existing-user-onboarding"
+    "test:ui-comprehensive": "npm run test:pwa-cache:production-only && npm run test:existing-user-onboarding",
+    "test:regression": "node scripts/regression-test.js",
+    "test:regression:staging": "node scripts/regression-test.js --env=staging",
+    "test:regression:production": "node scripts/regression-test.js --env=production",
+    "test:smoke": "node scripts/smoke-test.js",
+    "test:smoke:staging": "node scripts/smoke-test.js --env=staging",
+    "test:smoke:production": "node scripts/smoke-test.js --env=production",
+    "validate:pre-deploy": "node scripts/pre-deployment-validation.js",
+    "deploy:safe": "npm run validate:pre-deploy && npm run test:smoke && echo 'Ready to deploy!'",
+    "post-deploy:verify": "npm run test:smoke && npm run test:regression"
   },
   "dependencies": {
     "axios": "^1.11.0",
