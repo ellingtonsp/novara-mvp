@@ -21,6 +21,7 @@ import { BaselinePanel } from './BaselinePanel';
 import ChecklistCard from './ChecklistCard';
 import { OutcomeMetricsDashboard } from './OutcomeMetricsDashboard';
 import { TodaysCheckinStatus } from './TodaysCheckinStatus';
+import { CompleteOnboardingPrompt } from './CompleteOnboardingPrompt';
 // ON-01: A/B Test Integration
 import { getOnboardingPath, OnboardingPath, trackOnboardingPathSelected, generateSessionId } from '../utils/abTestUtils';
 import { OnboardingFast } from './OnboardingFast';
@@ -1261,10 +1262,16 @@ const NovaraLanding = () => {
                 <div className="space-y-8">
                   <div className="text-center">
                     <h2 className="text-3xl font-bold mb-4">
-                      Welcome back, {user?.nickname || user?.email?.split('@')[0]}! 👋
+                      {user?.baseline_completed 
+                        ? `Welcome back, ${user?.nickname || user?.email?.split('@')[0]}! 👋`
+                        : `Welcome, ${user?.email?.split('@')[0]}! Let's get started 🌟`
+                      }
                     </h2>
                     <p className="text-lg text-gray-600">
-                      Your personalized dashboard shows how your actions impact outcomes
+                      {user?.baseline_completed
+                        ? 'Your personalized dashboard shows how your actions impact outcomes'
+                        : 'Complete your profile to unlock personalized insights and daily check-ins'
+                      }
                     </p>
                   </div>
                   
