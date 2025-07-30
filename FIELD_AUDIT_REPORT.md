@@ -1,15 +1,17 @@
 # Field Mapping Audit Report
 
 ## Executive Summary
-Our audit discovered **66 fields** that are collected in the frontend but NOT properly handled by the backend. This means users are filling out forms but much of their data is being silently dropped.
+Our audit discovered that the Enhanced Daily Check-in form collects **18 actual data points** but only saves **6 to the database** (33% retention rate). Critical health and safety data is being stored only in localStorage and never persisted.
 
 ## Critical Findings
 
 ### 1. Enhanced Check-in Form Issues
-The Enhanced Daily Check-in form collects extensive data but only sends basic fields to the backend:
-- **Collected**: 41 fields including anxiety levels, side effects, coping strategies, partner involvement, etc.
-- **Actually Saved**: Only 5 fields (mood, confidence, user_note, medication_taken, date_submitted)
-- **Lost Data**: 36 fields stored only in localStorage, never persisted to database
+The Enhanced Daily Check-in form has a significant data retention problem:
+- **Collected**: 18 unique data points including anxiety levels, side effects, coping strategies, PHQ-4 scores
+- **Actually Saved**: Only 6 fields (mood, confidence, user_note, medication_taken, date_submitted, primary_concern)
+- **Lost Data**: 12 fields stored only in localStorage, never persisted to database
+
+Note: Initial audit showed "66 fields" but this included UI state variables and duplicates. The actual data loss is 12 unique fields.
 
 ### 2. Missing Critical Health Data
 These important fields are NOT being saved:
