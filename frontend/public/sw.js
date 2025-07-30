@@ -1,7 +1,7 @@
 // Service Worker for Novara PWA with Enhanced Cache Management
 // Version updates automatically trigger cache refresh
 
-const CACHE_VERSION = 'v2.0.23-insights-overflow-fix'; // Increment this for cache busting
+const CACHE_VERSION = 'v2.0.44-fix-timezone-handling'; // Increment this for cache busting
 const CACHE_PREFIX = 'novara-';
 const STATIC_CACHE = `${CACHE_PREFIX}static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `${CACHE_PREFIX}dynamic-${CACHE_VERSION}`;

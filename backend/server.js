@@ -2181,6 +2181,7 @@ app.post('/api/checkins', authenticateToken, async (req, res) => {
       primary_concern_today, 
       confidence_today, 
       user_note,
+      date_submitted, // Accept date from frontend to handle user's local timezone
       sentiment_analysis, // CM-01: Sentiment data from frontend
       ...additionalFormFields // Capture all additional dynamic form fields
     } = req.body;
@@ -2217,7 +2218,13 @@ app.post('/api/checkins', authenticateToken, async (req, res) => {
     console.log('✅ Found user record:', userRecordId.id);
 
     // Check for existing check-in today to prevent duplicates
-    const today = new Date().toISOString().split('T')[0];
+    // Use date from frontend (user's local timezone) or fall back to server UTC
+    const today = date_submitted || new Date().toISOString().split('T')[0];
+    console.log('📅 Date handling:', {
+      frontendDate: date_submitted,
+      serverUTCDate: new Date().toISOString().split('T')[0],
+      usingDate: today
+    });
     const existingCheckinUrl = `${config.airtable.baseUrl}/DailyCheckins?filterByFormula=AND(user_id='${userRecordId.id}',date_submitted='${today}')`;
     
     try {
