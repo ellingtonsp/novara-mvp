@@ -152,7 +152,22 @@ class InsightsService {
     };
 
     if (this.db.isPostgres || this.db.isUsingLocalDatabase()) {
-      const savedInsight = await this.db.localDb.createInsight(insightData);
+      // For PostgreSQL, use different field names
+      const dbData = this.db.isPostgres ? {
+        user_id: userId,
+        insight_type: 'daily_insight',
+        title: insight.title,
+        message: insight.message,
+        priority: 5,
+        insight_data: {
+          insight_id: insightData.insight_id,
+          insight_type: insight.type,
+          icon: insight.icon,
+          date: insightData.date
+        }
+      } : insightData;
+      
+      const savedInsight = await this.db.localDb.createInsight(dbData);
       return {
         ...insight,
         id: savedInsight.id,
