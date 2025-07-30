@@ -206,21 +206,27 @@ const NovaraLanding = () => {
   useEffect(() => {
     // Only check for baseline completion when user is explicitly on dashboard view
     // AND not during the welcome view transition
-    if (isAuthenticated && user && onboardingPath && currentView === 'dashboard') {
+    if (isAuthenticated && user && currentView === 'dashboard') {
+      // For users who went through fast signup, check their stored onboarding path
+      const userOnboardingPath = onboardingPath || user.onboarding_path;
+      
       // Check if user is an existing user (has meaningful profile data, not just defaults)
       // A user is existing if they have a nickname OR non-default confidence scores
       const hasNickname = user.nickname && user.nickname.trim() !== '';
       const hasNonDefaultScores = user.confidence_meds !== 5 || user.confidence_costs !== 5 || user.confidence_overall !== 5;
       const isExistingUser = hasNickname || hasNonDefaultScores || user.baseline_completed;
-      const needsBaseline = !user.baseline_completed && onboardingPath === 'test' && !isExistingUser;
+      const needsBaseline = !user.baseline_completed && userOnboardingPath === 'test' && !isExistingUser;
       
       console.log('🧪 ON-01: Baseline completion check on dashboard transition:', {
         user: user.email,
         onboardingPath,
+        userOnboardingPath,
         baseline_completed: user.baseline_completed,
         isExistingUser,
         needsBaseline,
-        currentView
+        currentView,
+        hasNickname,
+        hasNonDefaultScores
       });
       
       if (needsBaseline && !baselineDismissed) {
