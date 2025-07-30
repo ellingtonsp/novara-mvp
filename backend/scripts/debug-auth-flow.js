@@ -1,3 +1,4 @@
+require('dotenv').config();
 #!/usr/bin/env node
 
 /**
@@ -6,7 +7,7 @@
 
 const PostgresAdapter = require('../database/postgres-adapter');
 
-const DATABASE_URL = "postgresql://postgres:ynFbXBtKHWNRFwnuGbRvaYFdSXcBckVR@switchyard.proxy.rlwy.net:58017/railway";
+const DATABASE_URL = "process.env.DATABASE_URL";
 
 // Set environment variable for Schema V2
 process.env.USE_SCHEMA_V2 = 'true';

@@ -1,3 +1,4 @@
+require('dotenv').config();
 #!/usr/bin/env node
 
 /**
@@ -11,7 +12,7 @@ const path = require('path');
 
 // Get DATABASE_URL from environment or command line
 const DATABASE_URL = process.env.DATABASE_URL || process.argv[2] || 
-  "postgresql://postgres:ynFbXBtKHWNRFwnuGbRvaYFdSXcBckVR@switchyard.proxy.rlwy.net:58017/railway";
+  "process.env.DATABASE_URL";
 
 console.log('🚀 Schema V2 Setup\n');
 console.log('Database URL:', DATABASE_URL.replace(/:[^:@]+@/, ':****@'));

@@ -1,3 +1,4 @@
+require('dotenv').config();
 #!/usr/bin/env node
 
 /**
@@ -11,7 +12,7 @@ const { Pool } = require('pg');
 const axios = require('axios');
 
 const DATABASE_URL = process.env.DATABASE_URL || process.argv[2] || 
-  "postgresql://postgres:ynFbXBtKHWNRFwnuGbRvaYFdSXcBckVR@switchyard.proxy.rlwy.net:58017/railway";
+  "process.env.DATABASE_URL";
 
 const STAGING_URL = process.env.STAGING_URL || 'https://novara-staging-staging.up.railway.app';
 

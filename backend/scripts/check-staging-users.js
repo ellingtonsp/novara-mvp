@@ -1,9 +1,10 @@
+require('dotenv').config();
 #!/usr/bin/env node
 
 const { Pool } = require('pg');
 
 const pool = new Pool({
-  connectionString: "postgresql://postgres:ynFbXBtKHWNRFwnuGbRvaYFdSXcBckVR@switchyard.proxy.rlwy.net:58017/railway"
+  connectionString: "process.env.DATABASE_URL"
 });
 
 async function checkUsers() {

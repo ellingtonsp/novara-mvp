@@ -70,6 +70,14 @@ web_modules/
 .env.*
 !.env.example
 
+# Test scripts that might contain credentials
+backend/scripts/test-*.js
+test-*.js
+
+# Database connection files
+*connection*.js
+*credentials*.js
+
 # parcel-bundler cache (https://parceljs.org/)
 .cache
 .parcel-cache
