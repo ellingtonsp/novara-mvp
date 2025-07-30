@@ -215,15 +215,23 @@ class PostgresAdapter {
     if (this.useSchemaV2) {
       // Use Schema V2 compatibility layer
       console.log('🚀 Using Schema V2 for check-in creation');
-      return await this.compatibility.createDailyCheckin(checkinData.user_id, checkinData);
+      // Handle Airtable array format for user_id
+      const userId = Array.isArray(checkinData.user_id) ? checkinData.user_id[0] : checkinData.user_id;
+      return await this.compatibility.createDailyCheckin(userId, checkinData);
     }
 
     // Fallback to V1 approach
     console.log('📝 Using Schema V1 for check-in creation');
     
+    // Handle Airtable array format for user_id
+    const processedData = { ...checkinData };
+    if (Array.isArray(processedData.user_id)) {
+      processedData.user_id = processedData.user_id[0];
+    }
+    
     // Extract all fields - NO WHITELIST FILTERING!
-    const fields = Object.keys(checkinData);
-    const values = Object.values(checkinData);
+    const fields = Object.keys(processedData);
+    const values = Object.values(processedData);
     const placeholders = fields.map((_, i) => `$${i + 1}`).join(', ');
 
     const query = `
