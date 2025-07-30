@@ -186,13 +186,16 @@ const NovaraLanding = () => {
         nickname: user.nickname,
         confidence_meds: user.confidence_meds,
         confidence_costs: user.confidence_costs,
-        confidence_overall: user.confidence_overall
+        confidence_overall: user.confidence_overall,
+        emailPrefix: user.email.split('@')[0],
+        nicknameIsEmailPrefix: user.nickname === user.email.split('@')[0]
       });
       
       // Check if user is an existing user (has meaningful profile data, not just defaults)
       // A user is existing if they have a nickname OR non-default confidence scores
       // This is consistent with the baseline panel check logic
-      const hasNickname = user.nickname && user.nickname.trim() !== '';
+      const emailPrefix = user.email.split('@')[0];
+      const hasNickname = user.nickname && user.nickname.trim() !== '' && user.nickname.trim() !== 'User' && user.nickname !== emailPrefix;
       const hasNonDefaultScores = user.confidence_meds !== 5 || user.confidence_costs !== 5 || user.confidence_overall !== 5;
       const isExistingUser = hasNickname || hasNonDefaultScores;
       
@@ -221,7 +224,8 @@ const NovaraLanding = () => {
       // Check if user is an existing user (has meaningful profile data, not just defaults)
       // A user is existing if they have a nickname OR non-default confidence scores
       // NOTE: Don't include baseline_completed in this check as it creates circular logic
-      const hasNickname = user.nickname && user.nickname.trim() !== '';
+      const emailPrefix = user.email.split('@')[0];
+      const hasNickname = user.nickname && user.nickname.trim() !== '' && user.nickname.trim() !== 'User' && user.nickname !== emailPrefix;
       const hasNonDefaultScores = user.confidence_meds !== 5 || user.confidence_costs !== 5 || user.confidence_overall !== 5;
       const isExistingUser = hasNickname || hasNonDefaultScores;
       
