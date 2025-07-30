@@ -152,7 +152,12 @@ class InsightsService {
     };
 
     if (this.db.isPostgres || this.db.isUsingLocalDatabase()) {
-      return await this.db.localDb.createInsight(insightData);
+      const savedInsight = await this.db.localDb.createInsight(insightData);
+      return {
+        ...insight,
+        id: savedInsight.id,
+        insight_id: insightData.insight_id
+      };
     }
 
     // Airtable
