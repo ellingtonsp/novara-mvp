@@ -46,3 +46,8 @@ cd frontend && npm run dev   # Frontend on port 4200
 
 ## Deployment Notes
 - Railway deployments are handled via GitHub
+
+## Backend and Data Handling Rules
+- All forms require true backend endpoints
+- Never default to localStorage and if localStorage might be best, confirm first
+- Critical app data for insights must only be stored in the database
