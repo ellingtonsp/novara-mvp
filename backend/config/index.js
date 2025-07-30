@@ -45,9 +45,47 @@ const config = {
   
   // CORS Configuration
   cors: {
-    origin: process.env.FRONTEND_URL || 
-            (process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : 'https://app.novara.team'),
-    credentials: true
+    origin: function(origin, callback) {
+      // Allow requests with no origin (like mobile apps or Postman)
+      if (!origin) return callback(null, true);
+      
+      const allowedOrigins = [
+        'http://localhost:3000',
+        'http://localhost:4200',
+        'http://localhost:5173',
+        'https://app.novara.team',
+        'https://novara.team',
+        'https://staging.novara.team'
+      ];
+      
+      // Allow any Vercel preview URL
+      if (origin.includes('.vercel.app')) {
+        return callback(null, true);
+      }
+      
+      // Allow Railway URLs
+      if (origin.includes('.railway.app')) {
+        return callback(null, true);
+      }
+      
+      // Check if origin is in allowed list
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      
+      // Use FRONTEND_URL env var if set
+      if (process.env.FRONTEND_URL && origin === process.env.FRONTEND_URL) {
+        return callback(null, true);
+      }
+      
+      // Log rejected origin for debugging
+      console.warn(`CORS: Rejected origin ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    exposedHeaders: ['X-Total-Count']
   },
   
   // Rate Limiting
