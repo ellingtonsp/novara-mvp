@@ -215,18 +215,78 @@ class PostgresAdapter {
     if (this.useSchemaV2) {
       // Use Schema V2 compatibility layer
       console.log('🚀 Using Schema V2 for check-in creation');
-      console.log('Compatibility service available:', !!this.compatibility);
-      console.log('Compatibility method available:', !!this.compatibility?.createDailyCheckin);
       
       // Handle Airtable array format for user_id
       const userId = Array.isArray(checkinData.user_id) ? checkinData.user_id[0] : checkinData.user_id;
-      console.log('Calling compatibility service with:', { userId, hasData: !!checkinData });
       
+      // Temporary direct implementation to bypass module loading issues
       try {
+        // Check if compatibility service is properly loaded
+        if (!this.compatibility || typeof this.compatibility.createDailyCheckin !== 'function') {
+          console.error('Compatibility service not properly loaded, using direct V2 implementation');
+          
+          // Direct V2 implementation
+          const { v4: uuidv4 } = require('uuid');
+          const correlationId = uuidv4();
+          const occurredAt = checkinData.date_submitted || new Date().toISOString().split('T')[0];
+          
+          // Create mood event
+          const moodResult = await this.pool.query(`
+            INSERT INTO health_events (
+              user_id, event_type, event_subtype,
+              event_data, occurred_at, correlation_id, source
+            ) VALUES (
+              $1, 'mood', 'daily_checkin',
+              $2, $3, $4, 'web_app'
+            ) RETURNING id
+          `, [
+            userId,
+            JSON.stringify({
+              mood: checkinData.mood_today,
+              confidence: checkinData.confidence_today,
+              anxiety_level: checkinData.anxiety_level,
+              note: checkinData.user_note,
+              primary_concern: checkinData.primary_concern_today
+            }),
+            occurredAt,
+            correlationId
+          ]);
+          
+          // Create medication event if tracked
+          if (checkinData.medication_taken && checkinData.medication_taken !== 'not tracked') {
+            await this.pool.query(`
+              INSERT INTO health_events (
+                user_id, event_type, event_subtype,
+                event_data, occurred_at, correlation_id, source
+              ) VALUES (
+                $1, 'medication', 'daily_status',
+                $2, $3, $4, 'web_app'
+              )
+            `, [
+              userId,
+              JSON.stringify({
+                status: checkinData.medication_taken === 'yes' ? 'taken' : 'missed'
+              }),
+              occurredAt,
+              correlationId
+            ]);
+          }
+          
+          // Return V1-compatible response
+          return {
+            id: correlationId,
+            date_submitted: occurredAt,
+            created_at: new Date().toISOString(),
+            ...checkinData
+          };
+        }
+        
+        // Normal path - use compatibility service
+        console.log('Using compatibility service');
         const result = await this.compatibility.createDailyCheckin(userId, checkinData);
         return result;
       } catch (error) {
-        console.error('Compatibility service error:', error.message);
+        console.error('Check-in creation error:', error.message);
         throw error;
       }
     }
