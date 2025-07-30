@@ -2815,30 +2815,108 @@ app.get('/api/users/metrics', authenticateToken, async (req, res) => {
     const sideEffectsCount = lastWeekCheckins.filter(c => c.side_effects && c.side_effects.length > 0).length;
     if (sideEffectsCount > 3) riskFactors.push('Frequent side effects');
 
-    // Protective factors
-    if (medicationAdherenceRate >= 85) protectiveFactors.push('Strong medication adherence');
-    if (partnerInvolvementRate >= 50) protectiveFactors.push('Active partner support');
-    if (checkInStreak >= 7) protectiveFactors.push('Consistent daily check-ins');
-    if (copingStrategiesUsed.length > 0) protectiveFactors.push('Active coping strategies');
-    if (currentPHQ4Score < 6) protectiveFactors.push('Good mental health');
+    // Protective factors with priority scoring
+    const strengthCandidates = [];
     
-    // Always include some encouraging baseline strengths if none are identified
-    if (protectiveFactors.length === 0) {
-      protectiveFactors.push('Taking proactive steps in your fertility journey');
-      protectiveFactors.push('Building health awareness through tracking');
-      if (totalCheckIns > 0) protectiveFactors.push('Committed to understanding your patterns');
+    // High priority - actual measured strengths
+    if (medicationAdherenceRate >= 85 && totalMedicationCheckIns >= 3) {
+      strengthCandidates.push({ 
+        text: 'Strong medication adherence', 
+        priority: 10,
+        category: 'measured'
+      });
     }
     
-    // Add engagement-based strengths for lower thresholds
-    if (checkInStreak >= 3 && checkInStreak < 7) protectiveFactors.push('Building a consistent tracking habit');
-    if (medicationAdherenceRate >= 70 && medicationAdherenceRate < 85) protectiveFactors.push('Good medication adherence foundation');
-    if (currentPHQ4Score >= 6 && anxietyAverage <= 5) protectiveFactors.push('Managing stress despite challenges');
+    if (checkInStreak >= 7) {
+      strengthCandidates.push({ 
+        text: 'Consistent daily check-ins', 
+        priority: 9,
+        category: 'measured'
+      });
+    }
     
-    // Add self-efficacy and hope factors
+    if (currentPHQ4Score < 6 && lastWeekCheckins.length >= 3) {
+      strengthCandidates.push({ 
+        text: 'Good mental health maintained', 
+        priority: 8,
+        category: 'measured'
+      });
+    }
+    
     const latestConfidence = checkins.length > 0 ? (checkins[0].confidence_today || 5) : 5;
-    if (latestConfidence >= 7) protectiveFactors.push('Strong treatment confidence and self-efficacy');
-    if (checkInStreak >= 5) protectiveFactors.push('Maintaining hope through consistent engagement');
-    if (partnerInvolvementRate >= 30 && partnerInvolvementRate < 50) protectiveFactors.push('Building partner support network');
+    if (latestConfidence >= 7) {
+      strengthCandidates.push({ 
+        text: 'Strong treatment confidence', 
+        priority: 7,
+        category: 'measured'
+      });
+    }
+    
+    if (partnerInvolvementRate >= 50) {
+      strengthCandidates.push({ 
+        text: 'Active partner support', 
+        priority: 6,
+        category: 'measured'
+      });
+    }
+    
+    // Medium priority - emerging patterns
+    if (checkInStreak >= 3 && checkInStreak < 7) {
+      strengthCandidates.push({ 
+        text: 'Building consistent tracking habit', 
+        priority: 5,
+        category: 'emerging'
+      });
+    }
+    
+    if (medicationAdherenceRate >= 70 && medicationAdherenceRate < 85 && totalMedicationCheckIns >= 3) {
+      strengthCandidates.push({ 
+        text: 'Good medication adherence foundation', 
+        priority: 4,
+        category: 'emerging'
+      });
+    }
+    
+    if (currentPHQ4Score >= 6 && anxietyAverage <= 5) {
+      strengthCandidates.push({ 
+        text: 'Managing stress despite challenges', 
+        priority: 6,
+        category: 'measured'
+      });
+    }
+    
+    // Low priority - default encouragements (only if no real strengths)
+    if (totalCheckIns > 0) {
+      strengthCandidates.push({ 
+        text: 'Taking proactive steps in your fertility journey', 
+        priority: 1,
+        category: 'default'
+      });
+      strengthCandidates.push({ 
+        text: 'Building health awareness through tracking', 
+        priority: 1,
+        category: 'default'
+      });
+    }
+    
+    // Sort by priority and take top 3
+    strengthCandidates.sort((a, b) => b.priority - a.priority);
+    
+    // If we have at least 2 measured strengths, exclude defaults
+    const measuredCount = strengthCandidates.filter(s => s.category === 'measured').length;
+    let finalStrengths = strengthCandidates;
+    
+    if (measuredCount >= 2) {
+      finalStrengths = strengthCandidates.filter(s => s.category !== 'default');
+    }
+    
+    // Take only top 3
+    const protectiveFactors = finalStrengths.slice(0, 3).map(s => s.text);
+    
+    // Ensure we always have at least one strength
+    if (protectiveFactors.length === 0) {
+      protectiveFactors.push('Taking proactive steps in your fertility journey');
+    }
 
     // Count total check-ins with medication tracking
     const totalMedicationCheckIns = checkins.filter(c => c.medication_taken !== 'not tracked').length;
