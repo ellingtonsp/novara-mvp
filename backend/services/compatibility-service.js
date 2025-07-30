@@ -157,7 +157,26 @@ class CompatibilityService {
     }
 
     // Return V1-compatible format
-    return this.formatV2AsV1(events, correlationId, occurredAt);
+    console.log('Events created:', events.length, 'events');
+    console.log('Event types:', events.map(e => e.event_type));
+    
+    try {
+      const result = this.formatV2AsV1(events, correlationId, occurredAt);
+      console.log('Formatted result:', result);
+      return result;
+    } catch (formatError) {
+      console.error('Error formatting V1 response:', formatError);
+      // Return minimal valid response
+      return {
+        id: correlationId,
+        date_submitted: occurredAt,
+        created_at: new Date().toISOString(),
+        mood_today: checkinData.mood_today || '',
+        confidence_today: checkinData.confidence_today || 5,
+        user_note: checkinData.user_note || '',
+        medication_taken: checkinData.medication_taken || 'not tracked'
+      };
+    }
   }
 
   /**
@@ -406,25 +425,55 @@ class CompatibilityService {
     };
 
     if (moodEvent) {
-      const data = moodEvent.event_data;
-      checkin.mood_today = data.mood;
-      checkin.confidence_today = data.confidence;
-      checkin.anxiety_level = data.anxiety_level;
-      checkin.user_note = data.note;
-      checkin.primary_concern_today = data.primary_concern;
-      checkin.injection_confidence = data.injection_confidence;
-      checkin.partner_involved_today = data.partner_involved;
+      try {
+        const data = typeof moodEvent.event_data === 'string' 
+          ? JSON.parse(moodEvent.event_data) 
+          : moodEvent.event_data;
+        
+        if (data) {
+          checkin.mood_today = data.mood;
+          checkin.confidence_today = data.confidence;
+          checkin.anxiety_level = data.anxiety_level;
+          checkin.user_note = data.note;
+          checkin.primary_concern_today = data.primary_concern;
+          checkin.injection_confidence = data.injection_confidence;
+          checkin.partner_involved_today = data.partner_involved;
+        }
+      } catch (parseError) {
+        console.error('Error parsing mood event data:', parseError);
+        // Use empty object to prevent undefined errors
+        checkin.mood_today = '';
+        checkin.confidence_today = 5;
+      }
     }
 
     if (medEvent) {
-      const data = medEvent.event_data;
-      checkin.medication_taken = data.status === 'taken' ? 'yes' : 'no';
-      checkin.missed_doses = data.missed_doses;
+      try {
+        const data = typeof medEvent.event_data === 'string' 
+          ? JSON.parse(medEvent.event_data) 
+          : medEvent.event_data;
+        
+        if (data) {
+          checkin.medication_taken = data.status === 'taken' ? 'yes' : 'no';
+          checkin.missed_doses = data.missed_doses;
+        }
+      } catch (parseError) {
+        console.error('Error parsing medication event data:', parseError);
+      }
     }
 
     if (symptomEvent) {
-      const data = symptomEvent.event_data;
-      checkin.side_effects = data.symptoms;
+      try {
+        const data = typeof symptomEvent.event_data === 'string' 
+          ? JSON.parse(symptomEvent.event_data) 
+          : symptomEvent.event_data;
+        
+        if (data) {
+          checkin.side_effects = data.symptoms;
+        }
+      } catch (parseError) {
+        console.error('Error parsing symptom event data:', parseError);
+      }
     }
 
     return checkin;

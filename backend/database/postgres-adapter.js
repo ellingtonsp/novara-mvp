@@ -289,8 +289,14 @@ class PostgresAdapter {
         
         // Normal path - use compatibility service
         console.log('Using compatibility service');
-        const result = await this.compatibility.createDailyCheckin(userId, checkinData);
-        return result;
+        try {
+          const result = await this.compatibility.createDailyCheckin(userId, checkinData);
+          return result;
+        } catch (compatError) {
+          console.error('Compatibility service failed:', compatError.message);
+          // Fall through to direct implementation
+          throw compatError;
+        }
       } catch (error) {
         console.error('Check-in creation error:', error.message);
         throw error;
