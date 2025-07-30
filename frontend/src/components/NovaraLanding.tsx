@@ -16,11 +16,11 @@ import { EnhancedDailyCheckinForm } from './EnhancedDailyCheckinForm';
 import { QuickDailyCheckinForm } from './QuickDailyCheckinForm';
 import { CheckinPreferenceToggle } from './CheckinPreferenceToggle';
 import DailyInsightsDisplay from './DailyInsightsDisplay';
-import WelcomeInsight from './WelcomeInsight';
 import { BaselinePanel } from './BaselinePanel';
 import ChecklistCard from './ChecklistCard';
 import { OutcomeMetricsDashboard } from './OutcomeMetricsDashboard';
 import { TodaysCheckinStatus } from './TodaysCheckinStatus';
+import { CompleteOnboardingPrompt } from './CompleteOnboardingPrompt';
 // ON-01: A/B Test Integration
 import { getOnboardingPath, OnboardingPath, trackOnboardingPathSelected, generateSessionId } from '../utils/abTestUtils';
 import { OnboardingFast } from './OnboardingFast';
@@ -126,7 +126,7 @@ const NovaraLanding = () => {
 
   // Mobile-specific state
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const [currentView, setCurrentView] = useState<'dashboard' | 'checkin' | 'insights' | 'welcome'>('dashboard');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'checkin' | 'insights'>('dashboard');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
@@ -191,25 +191,9 @@ const NovaraLanding = () => {
         nicknameIsEmailPrefix: user.nickname === user.email.split('@')[0]
       });
       
-      // Check if user is an existing user (has meaningful profile data, not just defaults)
-      // A user is existing if they have a nickname OR non-default confidence scores
-      // This is consistent with the baseline panel check logic
-      const emailPrefix = user.email.split('@')[0];
-      const hasNickname = user.nickname && user.nickname.trim() !== '' && user.nickname.trim() !== 'User' && user.nickname !== emailPrefix;
-      const hasNonDefaultScores = user.confidence_meds !== 5 || user.confidence_costs !== 5 || user.confidence_overall !== 5;
-      const isExistingUser = hasNickname || hasNonDefaultScores;
-      
-      if (user.baseline_completed || isExistingUser) {
-        // User has completed onboarding OR is an existing user, go directly to dashboard
-        console.log('🧪 ON-01: User completed onboarding or is existing user, going to dashboard');
-        setCurrentView('dashboard');
-      } else {
-        // User needs to complete onboarding, stay on welcome
-        console.log('🧪 ON-01: User needs onboarding, staying on welcome');
-        setCurrentView('welcome');
-        // Explicitly hide baseline panel during welcome view
-        setShowBaselinePanel(false);
-      }
+      // Always go to dashboard - baseline panel will show if needed
+      console.log('🧪 ON-01: Setting view to dashboard, baseline_completed:', user.baseline_completed);
+      setCurrentView('dashboard');
     }
   }, [isAuthenticated, user]);
 
@@ -249,11 +233,6 @@ const NovaraLanding = () => {
         setShowBaselinePanel(true);
         setBaselineStartTime(Date.now());
       }
-    }
-    
-    // Reset baseline panel when user is on welcome view
-    if (currentView === 'welcome') {
-      setShowBaselinePanel(false);
     }
   }, [isAuthenticated, user, onboardingPath, currentView, baselineDismissed]);
   
@@ -402,11 +381,11 @@ const NovaraLanding = () => {
         // trackEvent('Onboarding', 'completed', 'user_registration');
         // trackAuthEvent('register', true);
         
-        // Redirect to welcome insight page immediately
-        console.log('🎯 Redirecting to welcome insight page');
+        // Go directly to dashboard after signup
+        console.log('🎯 Redirecting to dashboard');
         setJustSignedUp(true);
         setShowForm(false);
-        setCurrentView('welcome');
+        setCurrentView('dashboard');
       } else {
         alert(`Signup failed: ${response.error || 'Unknown error'}`);
       }
@@ -520,7 +499,7 @@ const NovaraLanding = () => {
         
         setJustSignedUp(true);
         setShowForm(false);
-        setCurrentView('welcome');
+        setCurrentView('dashboard');
       } else {
         alert(`Fast onboarding failed: ${response.error || 'Unknown error'}`);
       }
@@ -1236,9 +1215,7 @@ const NovaraLanding = () => {
 
       {/* Desktop Content */}
       <div className="hidden md:block">
-        {currentView === 'welcome' && <WelcomeInsight onContinue={() => setCurrentView('dashboard')} />}
-        {currentView !== 'welcome' && (
-          <>
+        <>
             {/* ON-01: Baseline Panel Modal for Desktop */}
             {showBaselinePanel && (
               <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
@@ -1261,10 +1238,16 @@ const NovaraLanding = () => {
                 <div className="space-y-8">
                   <div className="text-center">
                     <h2 className="text-3xl font-bold mb-4">
-                      Welcome back, {user?.nickname || user?.email?.split('@')[0]}! 👋
+                      {user?.baseline_completed 
+                        ? `Welcome back, ${user?.nickname || user?.email?.split('@')[0]}! 👋`
+                        : `Welcome, ${user?.email?.split('@')[0]}! Let's get started 🌟`
+                      }
                     </h2>
                     <p className="text-lg text-gray-600">
-                      Your personalized dashboard shows how your actions impact outcomes
+                      {user?.baseline_completed
+                        ? 'Your personalized dashboard shows how your actions impact outcomes'
+                        : 'Complete your profile to unlock personalized insights and daily check-ins'
+                      }
                     </p>
                   </div>
                   
@@ -1389,6 +1372,13 @@ const NovaraLanding = () => {
                             onReplaceCheckin={handleReplaceCheckin}
                             onViewInsights={() => setCurrentView('insights')}
                           />
+                        ) : !user?.baseline_completed ? (
+                          <CompleteOnboardingPrompt 
+                            onShowBaseline={() => {
+                              setShowBaselinePanel(true);
+                              setBaselineStartTime(Date.now());
+                            }}
+                          />
                         ) : (
                           <>
                             {checkinPreference === 'quick_daily' ? (
@@ -1427,12 +1417,10 @@ const NovaraLanding = () => {
               )}
             </section>
           </>
-        )}
       </div>
 
       {/* Mobile Content */}
       <div className="block md:hidden">
-        {currentView === 'welcome' && <WelcomeInsight onContinue={() => setCurrentView('dashboard')} />}
         {currentView === 'dashboard' && (
           <>
             {/* ON-01: Baseline Panel Modal for Mobile */}
@@ -1547,6 +1535,13 @@ const NovaraLanding = () => {
                 onReplaceCheckin={handleReplaceCheckin}
                 onViewInsights={() => setCurrentView('insights')}
               />
+            ) : !user?.baseline_completed ? (
+              <CompleteOnboardingPrompt 
+                onShowBaseline={() => {
+                  setShowBaselinePanel(true);
+                  setBaselineStartTime(Date.now());
+                }}
+              />
             ) : (
               <>
                 {checkinPreference === 'quick_daily' ? (
@@ -1563,7 +1558,7 @@ const NovaraLanding = () => {
         )}
         {currentView === 'insights' && <div className="px-4 py-6 pb-24"><DailyInsightsDisplay /></div>}
         
-        {currentView !== 'welcome' && <MobileNavigation />}
+        <MobileNavigation />
       </div>
     </div>
   );
