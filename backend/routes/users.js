@@ -365,6 +365,60 @@ router.post('/complete-onboarding', authenticateToken, asyncHandler(async (req, 
 }));
 
 /**
+ * PATCH /api/users/baseline
+ * Update user baseline data from onboarding
+ */
+router.patch('/baseline', authenticateToken, asyncHandler(async (req, res) => {
+  const user = await userService.findByEmail(req.user.email);
+  
+  if (!user) {
+    throw new AppError('User not found', 404);
+  }
+
+  const {
+    nickname,
+    confidence_meds,
+    confidence_costs,
+    confidence_overall,
+    worst_moment,
+    partner_support,
+    top_priority,
+    primary_concern,
+    biggest_worry
+  } = req.body;
+
+  // Build updates object
+  const updates = {
+    baseline_completed: true,
+    baseline_submission_date: new Date().toISOString(),
+    baseline_confidence_meds: confidence_meds,
+    baseline_confidence_costs: confidence_costs,
+    baseline_confidence_overall: confidence_overall
+  };
+
+  // Add optional fields if provided
+  if (nickname) updates.nickname = nickname;
+  if (worst_moment) updates.worst_moment = worst_moment;
+  if (partner_support !== undefined) updates.partner_support = partner_support;
+  if (top_priority) updates.top_priority = top_priority;
+  if (primary_concern) updates.primary_concern = primary_concern;
+  if (biggest_worry) updates.biggest_worry = biggest_worry;
+
+  await userService.update(user.id, updates);
+
+  res.json({
+    success: true,
+    message: 'Baseline data updated successfully',
+    user: {
+      id: user.id,
+      email: user.email,
+      nickname: updates.nickname || user.nickname,
+      baseline_completed: true
+    }
+  });
+}));
+
+/**
  * Helper function to calculate check-in streak
  */
 function calculateStreak(checkins) {
