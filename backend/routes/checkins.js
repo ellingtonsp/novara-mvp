@@ -110,46 +110,11 @@ router.post('/', authenticateToken, asyncHandler(async (req, res) => {
 
 /**
  * GET /api/checkins
- * Get user's recent check-ins
- */
-router.get('/', authenticateToken, asyncHandler(async (req, res) => {
-  const { limit = 7 } = req.query;
-  console.log(`📈 Fetching recent check-ins for user: ${req.user.email}`);
-
-  // Find user
-  const user = await userService.findByEmail(req.user.email);
-  if (!user) {
-    throw new AppError('User not found', 404);
-  }
-
-  // Get check-ins
-  const result = await checkinService.getUserCheckins(user.id, parseInt(limit));
-  const checkins = result.records || [];
-
-  console.log(`✅ Retrieved ${checkins.length} check-ins for user: ${req.user.email}`);
-
-  res.json({
-    success: true,
-    checkins: checkins.map(record => ({
-      id: record.id,
-      mood_today: record.fields?.mood_today || record.mood_today,
-      primary_concern_today: record.fields?.primary_concern_today || record.primary_concern_today,
-      confidence_today: record.fields?.confidence_today || record.confidence_today,
-      user_note: record.fields?.user_note || record.user_note,
-      date_submitted: record.fields?.date_submitted || record.date_submitted,
-      medication_taken: record.fields?.medication_taken || record.medication_taken,
-      created_at: record.fields?.created_at || record.created_at
-    })),
-    count: checkins.length
-  });
-}));
-
-/**
- * GET /api/checkins
  * Get current user's check-ins
  */
 router.get('/', authenticateToken, asyncHandler(async (req, res) => {
   const { limit = 30 } = req.query;
+  console.log(`📈 Fetching recent check-ins for user: ${req.user.email}`);
 
   // Get current user
   const user = await userService.findByEmail(req.user.email);
@@ -160,6 +125,8 @@ router.get('/', authenticateToken, asyncHandler(async (req, res) => {
   // Get check-ins
   const result = await checkinService.getUserCheckins(user.id, parseInt(limit));
   const checkins = result.records || [];
+  
+  console.log(`✅ Retrieved ${checkins.length} check-ins for user: ${req.user.email}`);
 
   res.json({
     success: true,
