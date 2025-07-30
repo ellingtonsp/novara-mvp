@@ -288,7 +288,7 @@ class PostgresAdapter {
     const query = `
       SELECT 
         he.id,
-        he.occurred_at as date_submitted,
+        he.occurred_at::date::text as date_submitted,
         he.created_at,
         he.event_data->>'mood' as mood_today,
         (he.event_data->>'confidence')::int as confidence_today,
@@ -323,7 +323,7 @@ class PostgresAdapter {
     const query = `
       SELECT 
         he.id,
-        he.occurred_at as date_submitted,
+        he.occurred_at::date::text as date_submitted,
         he.created_at,
         he.event_data->>'mood' as mood_today,
         (he.event_data->>'confidence')::int as confidence_today,

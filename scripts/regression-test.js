@@ -303,7 +303,8 @@ const tests = {
       medication_taken: 'yes',
       user_note: 'Regression test check-in',
       primary_concern_today: 'side_effects',
-      date_submitted: new Date().toISOString().split('T')[0]
+      date_submitted: new Date().toISOString().split('T')[0],
+      anxiety_level: 3
     };
     
     const response = await makeRequest({
