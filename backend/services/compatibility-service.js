@@ -89,6 +89,18 @@ class CompatibilityService {
       if (checkinData.primary_concern_today) moodData.primary_concern = checkinData.primary_concern_today;
       if (checkinData.injection_confidence) moodData.injection_confidence = checkinData.injection_confidence;
       if (checkinData.partner_involved_today) moodData.partner_involved = checkinData.partner_involved_today;
+      
+      // Add missing enhanced fields
+      if (checkinData.appointment_within_3_days !== undefined) {
+        moodData.appointment_within_3_days = checkinData.appointment_within_3_days;
+        if (checkinData.appointment_anxiety) moodData.appointment_anxiety = checkinData.appointment_anxiety;
+      }
+      if (checkinData.coping_strategies_used && checkinData.coping_strategies_used.length > 0) {
+        moodData.coping_strategies = checkinData.coping_strategies_used;
+      }
+      if (checkinData.wish_knew_more_about && checkinData.wish_knew_more_about.length > 0) {
+        moodData.info_needs = checkinData.wish_knew_more_about;
+      }
 
       const moodResult = await this.pool.query(`
         INSERT INTO health_events (
@@ -154,6 +166,39 @@ class CompatibilityService {
       ]);
 
       events.push(symptomResult.rows[0]);
+    }
+
+    // 4. Create PHQ-4 assessment event if data present
+    if (checkinData.phq4_feeling_nervous !== undefined && 
+        checkinData.phq4_stop_worrying !== undefined &&
+        checkinData.phq4_little_interest !== undefined &&
+        checkinData.phq4_feeling_down !== undefined) {
+      
+      const phq4Result = await this.pool.query(`
+        INSERT INTO health_events (
+          user_id, event_type, event_subtype,
+          event_data, occurred_at, correlation_id, source
+        ) VALUES (
+          $1, 'assessment', 'phq4',
+          $2, $3, $4, 'api'
+        ) RETURNING *
+      `, [
+        userId,
+        JSON.stringify({
+          feeling_nervous: checkinData.phq4_feeling_nervous,
+          stop_worrying: checkinData.phq4_stop_worrying,
+          little_interest: checkinData.phq4_little_interest,
+          feeling_down: checkinData.phq4_feeling_down,
+          total_score: checkinData.phq4_feeling_nervous + checkinData.phq4_stop_worrying + 
+                       checkinData.phq4_little_interest + checkinData.phq4_feeling_down,
+          anxiety_score: checkinData.phq4_feeling_nervous + checkinData.phq4_stop_worrying,
+          depression_score: checkinData.phq4_little_interest + checkinData.phq4_feeling_down
+        }),
+        occurredAt,
+        correlationId
+      ]);
+
+      events.push(phq4Result.rows[0]);
     }
 
     // Return V1-compatible format
@@ -438,6 +483,12 @@ class CompatibilityService {
           checkin.primary_concern_today = data.primary_concern;
           checkin.injection_confidence = data.injection_confidence;
           checkin.partner_involved_today = data.partner_involved;
+          
+          // Include new enhanced fields
+          checkin.appointment_within_3_days = data.appointment_within_3_days;
+          checkin.appointment_anxiety = data.appointment_anxiety;
+          checkin.coping_strategies_used = data.coping_strategies;
+          checkin.wish_knew_more_about = data.info_needs;
         }
       } catch (parseError) {
         console.error('Error parsing mood event data:', parseError);
@@ -473,6 +524,28 @@ class CompatibilityService {
         }
       } catch (parseError) {
         console.error('Error parsing symptom event data:', parseError);
+      }
+    }
+
+    // Add PHQ-4 data if present
+    const phq4Event = events.find(e => e.event_type === 'assessment' && e.event_subtype === 'phq4');
+    if (phq4Event) {
+      try {
+        const data = typeof phq4Event.event_data === 'string' 
+          ? JSON.parse(phq4Event.event_data) 
+          : phq4Event.event_data;
+        
+        if (data) {
+          checkin.phq4_feeling_nervous = data.feeling_nervous;
+          checkin.phq4_stop_worrying = data.stop_worrying;
+          checkin.phq4_little_interest = data.little_interest;
+          checkin.phq4_feeling_down = data.feeling_down;
+          checkin.phq4_total_score = data.total_score;
+          checkin.phq4_anxiety_score = data.anxiety_score;
+          checkin.phq4_depression_score = data.depression_score;
+        }
+      } catch (parseError) {
+        console.error('Error parsing PHQ-4 event data:', parseError);
       }
     }
 
