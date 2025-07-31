@@ -21,8 +21,6 @@ import ChecklistCard from './ChecklistCard';
 import { OutcomeMetricsDashboard } from './OutcomeMetricsDashboard';
 import { TodaysCheckinStatus } from './TodaysCheckinStatus';
 import { CompleteOnboardingPrompt } from './CompleteOnboardingPrompt';
-import { SocialLoginButtons } from './auth/SocialLoginButtons';
-import { ProfileCompletionModal } from './auth/ProfileCompletionModal';
 // ON-01: A/B Test Integration
 import { getOnboardingPath, OnboardingPath, trackOnboardingPathSelected, generateSessionId } from '../utils/abTestUtils';
 import { OnboardingFast } from './OnboardingFast';
@@ -140,7 +138,6 @@ const NovaraLanding = () => {
   const [showBaselinePanel, setShowBaselinePanel] = useState(false);
   const [baselineStartTime, setBaselineStartTime] = useState(0);
   const [baselineDismissed, setBaselineDismissed] = useState(false);
-  const [showProfileCompletion, setShowProfileCompletion] = useState(false);
   
   // ON-01: Speed-tapper detection state (commented out for future implementation)
   // const [isSpeedTapper, setIsSpeedTapper] = useState(false);
@@ -258,23 +255,6 @@ const NovaraLanding = () => {
     }
   }, [currentView, user]);
   
-  // Check if user needs profile completion (for social login users)
-  useEffect(() => {
-    if (user && isAuthenticated && !user.baseline_completed) {
-      // Check if this is a social login user who needs profile completion
-      const needsCompletion = !user.primary_need || !user.cycle_stage;
-      if (needsCompletion) {
-        // Check URL params for profile completion flag
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('complete-profile') === 'true') {
-          setShowProfileCompletion(true);
-          // Clean up URL
-          window.history.replaceState({}, document.title, window.location.pathname);
-        }
-      }
-    }
-  }, [user, isAuthenticated]);
-
   const checkForTodaysCheckin = async () => {
     if (!user) {
       setIsCheckingTodaysCheckin(false);
@@ -794,11 +774,6 @@ const NovaraLanding = () => {
                 Already have an account?
               </Button>
             </div>
-
-            {/* Social Login Options on Hero */}
-            <div className="mt-8 max-w-sm mx-auto">
-              <SocialLoginButtons />
-            </div>
           </div>
 
           {/* Features Grid - Responsive */}
@@ -909,12 +884,6 @@ const NovaraLanding = () => {
                       {isSubmitting ? 'Logging in...' : 'Log In'}
                     </Button>
                   </div>
-
-                  {/* Social Login Options */}
-                  <SocialLoginButtons 
-                    onSuccess={() => setShowLogin(false)}
-                    className="mt-4"
-                  />
                 </div>
               </CardContent>
             </Card>
@@ -1161,17 +1130,6 @@ const NovaraLanding = () => {
   // Authenticated User Views - Responsive Layout
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#FFF5F0] via-white to-[#FFF5F0]" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-      {/* Profile Completion Modal for Social Login Users */}
-      <ProfileCompletionModal
-        isOpen={showProfileCompletion}
-        onClose={() => setShowProfileCompletion(false)}
-        onComplete={() => {
-          setShowProfileCompletion(false);
-          // Refresh user data
-          window.location.reload();
-        }}
-      />
-
       {/* Mobile Header - Only show on mobile */}
       <div className="block md:hidden">
         <MobileHeader />
@@ -1293,15 +1251,6 @@ const NovaraLanding = () => {
                     </p>
                   </div>
                   
-                  {/* Profile Completion Prompt for Social Users */}
-                  {user && !user.baseline_completed && (!user.primary_need || !user.cycle_stage) && (
-                    <div className="mb-8">
-                      <CompleteOnboardingPrompt 
-                        onShowBaseline={() => setShowProfileCompletion(true)}
-                      />
-                    </div>
-                  )}
-
                   {/* Outcome Metrics Dashboard */}
                   <div className="mb-8">
                     <OutcomeMetricsDashboard />

@@ -9,8 +9,6 @@ const { authLimiter } = require('../middleware/rate-limit');
 const { asyncHandler, AppError } = require('../middleware/error-handler');
 const userService = require('../services/user-service');
 const logger = require('../utils/logger');
-const oauthService = require('../services/oauth-service');
-const { isProviderConfigured } = require('../config/oauth');
 
 /**
  * POST /api/auth/login
@@ -140,106 +138,6 @@ router.post('/logout', asyncHandler(async (req, res) => {
   res.json({
     success: true,
     message: 'Logged out successfully'
-  });
-}));
-
-/**
- * POST /api/auth/apple
- * Handle Apple Sign In
- */
-router.post('/apple', authLimiter, asyncHandler(async (req, res) => {
-  if (!isProviderConfigured('apple')) {
-    throw new AppError('Apple Sign In is not configured', 501);
-  }
-
-  const { identityToken, authorizationCode, user } = req.body;
-  
-  if (!identityToken) {
-    throw new AppError('Identity token is required', 400);
-  }
-
-  console.log(`🍎 Apple Sign In attempt`);
-
-  // Handle Apple authentication
-  const result = await oauthService.handleAppleAuth(
-    identityToken,
-    authorizationCode,
-    user
-  );
-
-  // Generate JWT token
-  const token = generateToken(result.user);
-
-  // Check if user needs to complete profile
-  const needsProfileCompletion = oauthService.needsProfileCompletion(result.user);
-
-  console.log(`✅ Apple Sign In successful: ${result.user.email} (${result.isNewUser ? 'new' : 'existing'} user)`);
-
-  // Log authentication
-  await logger.logAuth({
-    user_id: result.user.id,
-    event_type: result.isNewUser ? 'signup_apple' : 'login_apple',
-    email: result.user.email
-  });
-
-  res.json({
-    success: true,
-    token,
-    user: {
-      id: result.user.id,
-      email: result.user.email,
-      nickname: result.user.nickname,
-      baseline_completed: result.user.baseline_completed,
-      primary_need: result.user.primary_need,
-      cycle_stage: result.user.cycle_stage,
-      confidence_meds: result.user.confidence_meds,
-      confidence_costs: result.user.confidence_costs,
-      confidence_overall: result.user.confidence_overall,
-      created_at: result.user.created_at
-    },
-    isNewUser: result.isNewUser,
-    needsProfileCompletion
-  });
-}));
-
-/**
- * POST /api/auth/google
- * Handle Google Sign In (placeholder)
- */
-router.post('/google', authLimiter, asyncHandler(async (req, res) => {
-  if (!isProviderConfigured('google')) {
-    throw new AppError('Google Sign In is not configured', 501);
-  }
-
-  throw new AppError('Google Sign In coming soon', 501);
-}));
-
-/**
- * GET /api/auth/providers
- * Get available auth providers
- */
-router.get('/providers', asyncHandler(async (req, res) => {
-  const providers = [];
-  
-  if (isProviderConfigured('apple')) {
-    providers.push({
-      id: 'apple',
-      name: 'Apple',
-      enabled: true
-    });
-  }
-  
-  if (isProviderConfigured('google')) {
-    providers.push({
-      id: 'google', 
-      name: 'Google',
-      enabled: true
-    });
-  }
-
-  res.json({
-    success: true,
-    providers
   });
 }));
 
