@@ -6,7 +6,7 @@ import { Label } from '../ui/label';
 import { Input } from '../ui/input';
 import { AlertCircle, ChevronRight, X } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import api from '../../lib/api';
+import { apiClient } from '../../lib/api';
 
 interface ProfileCompletionModalProps {
   isOpen: boolean;
@@ -110,12 +110,19 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
 
     try {
       // Update user profile
-      const response = await api.put('/users/me', {
-        ...formData,
-        baseline_completed: true
+      const response = await apiClient.makeRequest<{ success: boolean; user: any }>('/api/users/me', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          ...formData,
+          baseline_completed: true
+        })
       });
 
-      if (response.data.success) {
+      if (response.success && response.data) {
         // Update local user state
         updateUser(response.data.user);
         onComplete();
