@@ -15,6 +15,22 @@ async function initDatabase() {
     console.log('🔧 Connecting to database...');
     await client.connect();
     
+    // Check if tables already exist
+    const existingTables = await client.query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_schema = 'public' 
+      AND table_name IN ('users', 'user_profiles', 'health_events', 'insights')
+      ORDER BY table_name;
+    `);
+    
+    if (existingTables.rows.length > 0) {
+      console.log('📊 Found existing tables:');
+      existingTables.rows.forEach(row => console.log(`  - ${row.table_name}`));
+      console.log('✅ Database already initialized, skipping schema creation');
+      return;
+    }
+    
     console.log('📋 Reading schema file...');
     const schemaPath = path.join(__dirname, '../database/schema-v2-production.sql');
     const schema = fs.readFileSync(schemaPath, 'utf8');
@@ -37,6 +53,12 @@ async function initDatabase() {
     
   } catch (error) {
     console.error('❌ Database initialization failed:', error.message);
+    console.error('Stack trace:', error.stack);
+    // Don't exit with error if tables already exist
+    if (error.message.includes('already exists')) {
+      console.log('⚠️  Tables already exist, continuing...');
+      return;
+    }
     process.exit(1);
   } finally {
     await client.end();
