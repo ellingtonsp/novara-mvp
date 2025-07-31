@@ -52,9 +52,6 @@ router.post('/', asyncHandler(async (req, res) => {
   if (req.body.onboarding_path && (req.body.onboarding_path === 'control' || req.body.onboarding_path === 'test')) {
     userData.onboarding_path = req.body.onboarding_path;
   }
-  if (req.body.baseline_completed !== undefined) {
-    userData.baseline_completed = req.body.baseline_completed === true;
-  }
 
   // Only add optional fields if they have values
   if (req.body.primary_need && req.body.primary_need !== '') {
@@ -68,6 +65,22 @@ router.post('/', asyncHandler(async (req, res) => {
   }
   if (req.body.medication_status && req.body.medication_status !== '') {
     userData.medication_status = req.body.medication_status;
+  }
+
+  // Auto-detect baseline completion based on required attributes
+  const hasAllRequiredAttributes = 
+    userData.nickname &&
+    userData.primary_need &&
+    userData.cycle_stage &&
+    userData.confidence_meds >= 1 && userData.confidence_meds <= 10 &&
+    userData.confidence_costs >= 1 && userData.confidence_costs <= 10 &&
+    userData.confidence_overall >= 1 && userData.confidence_overall <= 10;
+
+  // Set baseline_completed based on actual data presence (can be overridden by explicit flag)
+  if (req.body.baseline_completed !== undefined) {
+    userData.baseline_completed = req.body.baseline_completed === true;
+  } else {
+    userData.baseline_completed = hasAllRequiredAttributes;
   }
 
   // Create user
@@ -153,6 +166,21 @@ router.put('/me', authenticateToken, asyncHandler(async (req, res) => {
     if (req.body[field] !== undefined) {
       updates[field] = req.body[field];
     }
+  }
+
+  // Auto-detect baseline completion after updates
+  const mergedUser = { ...user, ...updates };
+  const hasAllRequiredAttributes = 
+    mergedUser.nickname &&
+    mergedUser.primary_need &&
+    mergedUser.cycle_stage &&
+    mergedUser.confidence_meds >= 1 && mergedUser.confidence_meds <= 10 &&
+    mergedUser.confidence_costs >= 1 && mergedUser.confidence_costs <= 10 &&
+    mergedUser.confidence_overall >= 1 && mergedUser.confidence_overall <= 10;
+
+  // Only set baseline_completed if not explicitly provided
+  if (updates.baseline_completed === undefined && hasAllRequiredAttributes) {
+    updates.baseline_completed = true;
   }
 
   const updatedUser = await userService.update(user.id, updates);
@@ -300,30 +328,50 @@ router.get('/metrics', authenticateToken, asyncHandler(async (req, res) => {
   const riskFactors = [];
   const protectiveFactors = [];
   
-  if (medicationAdherenceRate < 80 && totalMedicationCheckIns >= 3) {
-    riskFactors.push('Medication adherence below target');
-  }
-  if (currentPHQ4Score !== null && currentPHQ4Score >= 6) {
-    riskFactors.push('Elevated stress/anxiety levels');
-  }
-  if (insightEngagementRate < 50) {
-    riskFactors.push('Low engagement with tracking');
-  }
-  if (calculateStreak(checkins) === 0) {
-    riskFactors.push('Check-in streak broken');
+  // Determine if user is new (less than 3 days of data)
+  const isNewUser = checkins.length < 3;
+  const currentStreak = calculateStreak(checkins);
+  
+  // Risk factors - only apply to users with sufficient history
+  if (!isNewUser) {
+    if (medicationAdherenceRate < 80 && totalMedicationCheckIns >= 3) {
+      riskFactors.push('Medication adherence below target');
+    }
+    if (currentPHQ4Score !== null && currentPHQ4Score >= 6) {
+      riskFactors.push('Elevated stress/anxiety levels');
+    }
+    if (insightEngagementRate < 50) {
+      riskFactors.push('Low engagement with tracking');
+    }
+    // Only show streak broken if they had a streak before
+    if (currentStreak === 0 && checkins.length >= 7) {
+      riskFactors.push('Check-in streak broken');
+    }
   }
   
-  if (medicationAdherenceRate >= 90 && totalMedicationCheckIns >= 3) {
-    protectiveFactors.push('Excellent medication adherence');
-  }
-  if (currentPHQ4Score !== null && currentPHQ4Score < 3) {
-    protectiveFactors.push('Strong mental well-being');
-  }
-  if (insightEngagementRate >= 70) {
-    protectiveFactors.push('Consistent daily check-ins');
-  }
-  if (calculateStreak(checkins) >= 7) {
-    protectiveFactors.push(`${calculateStreak(checkins)}-day check-in streak`);
+  // Protective factors - adjust thresholds for new users
+  if (isNewUser) {
+    // New user encouragements
+    if (checkins.length > 0) {
+      protectiveFactors.push('Great start on your tracking journey');
+    }
+    if (checkins.length >= 2) {
+      protectiveFactors.push('Building consistency early');
+    }
+  } else {
+    // Established user protective factors
+    if (medicationAdherenceRate >= 90 && totalMedicationCheckIns >= 3) {
+      protectiveFactors.push('Excellent medication adherence');
+    }
+    if (currentPHQ4Score !== null && currentPHQ4Score < 3) {
+      protectiveFactors.push('Strong mental well-being');
+    }
+    if (currentStreak >= 3 && checkins.length >= 7) {
+      protectiveFactors.push('Consistent daily check-ins');
+    }
+    if (currentStreak >= 7) {
+      protectiveFactors.push(`${currentStreak}-day check-in streak`);
+    }
   }
 
   // Default factors if none identified

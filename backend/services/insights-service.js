@@ -35,16 +35,10 @@ class InsightsService {
       throw new AppError('User not found', 404);
     }
 
-    // Check if user has completed onboarding
-    const hasCompletedOnboarding = !!user.baseline_completed || 
-                                  (user.onboarding_path === 'control' && 
-                                   user.primary_need && 
-                                   user.cycle_stage) ||
-                                  (user.confidence_meds && user.confidence_costs && 
-                                   user.confidence_overall && user.primary_need && 
-                                   user.cycle_stage);
+    // Check if user has completed onboarding based on required attributes
+    const hasRequiredAttributes = this.checkOnboardingCompletion(user);
     
-    if (!hasCompletedOnboarding) {
+    if (!hasRequiredAttributes) {
       throw new AppError('Complete your profile to unlock personalized insights', 403);
     }
 
@@ -305,6 +299,38 @@ class InsightsService {
     }
 
     return insights;
+  }
+
+  /**
+   * Check if user has completed onboarding based on required attributes
+   * This is more reliable than checking flags as it validates actual data presence
+   */
+  checkOnboardingCompletion(user) {
+    if (!user) return false;
+    
+    // Required attributes for a complete profile
+    const requiredAttributes = [
+      'nickname',
+      'primary_need',
+      'cycle_stage',
+      'confidence_meds',
+      'confidence_costs', 
+      'confidence_overall'
+    ];
+    
+    // Check if all required attributes exist and are not null/empty
+    const hasAllRequired = requiredAttributes.every(attr => {
+      const value = user[attr];
+      return value !== null && value !== undefined && value !== '';
+    });
+    
+    // Also check that confidence values are valid numbers (1-10)
+    const hasValidConfidence = 
+      user.confidence_meds >= 1 && user.confidence_meds <= 10 &&
+      user.confidence_costs >= 1 && user.confidence_costs <= 10 &&
+      user.confidence_overall >= 1 && user.confidence_overall <= 10;
+    
+    return hasAllRequired && hasValidConfidence;
   }
 }
 
