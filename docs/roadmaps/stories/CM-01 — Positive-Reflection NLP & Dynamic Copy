@@ -1,0 +1,81 @@
+# CM-01  Positive-Reflection NLP & Dynamic Copy
+
+## Epic
+**E2 Insight Polish**  Make check-ins feel valuable and insights feel personalized
+
+## Story
+As a user who has good days too, I want the app to acknowledge and celebrate my positive check-ins with thoughtful responses, so I feel like Novara understands my whole health journey, not just the challenges.
+
+## Acceptance Criteria
+1. **Sentiment Detection**
+   - [ ] NLP identifies positive sentiment in check-in responses
+   - [ ] Recognize keywords: "great", "energetic", "happy", "better", "improved"
+   - [ ] Detect positive patterns: pain reduction, mood improvement, energy increase
+   - [ ] Handle mixed sentiment (good and bad in same check-in)
+
+2. **Dynamic Response Generation**
+   - [ ] Generate contextually appropriate celebratory messages
+   - [ ] Vary responses to avoid repetition (minimum 20 variants)
+   - [ ] Reference specific positive aspects user mentioned
+   - [ ] Maintain appropriate tone (supportive, not over-the-top)
+
+3. **Response Examples**
+   - [ ] Energy: "Your energy boost is worth celebrating! <"
+   - [ ] Pain: "Less pain today - your body is thanking you."
+   - [ ] Mood: "Glad you're feeling brighter today!"
+   - [ ] General: "Good days deserve recognition too. Nice work!"
+
+4. **Contextual Intelligence**
+   - [ ] Consider user's baseline (good day relative to their normal)
+   - [ ] Acknowledge improvement trends over time
+   - [ ] Don't celebrate if user indicates concern about feeling "too good"
+   - [ ] Respect cultural differences in emotional expression
+
+5. **Display & Timing**
+   - [ ] Show message immediately after positive check-in
+   - [ ] Include in daily insight summary
+   - [ ] Optional: Weekly "wins" recap email
+   - [ ] Allow users to disable if preferred
+
+## Technical Considerations
+- Implement using lightweight NLP library (e.g., Natural, Sentiment)
+- Store response templates in configurable system
+- A/B test different response styles
+- Cache sentiment analysis for performance
+- Plan for multiple language support
+
+## NLP Training Data
+- Collect anonymized positive check-ins for model training
+- Include diverse expressions of wellness
+- Account for condition-specific "good days"
+- Regular model updates based on user feedback
+
+## Personalization Layers
+1. **Basic**: Generic positive acknowledgment
+2. **Intermediate**: Reference specific symptoms/feelings mentioned
+3. **Advanced**: Consider user history and progress trends
+4. **Premium**: AI-generated unique responses
+
+## Business Value
+- **Retention**: Users with acknowledged good days have 35% higher retention
+- **Engagement**: Positive reinforcement increases check-in frequency by 20%
+- **Word-of-mouth**: Happy users 3x more likely to recommend
+- **Differentiation**: Most health apps focus only on problems
+
+## Dependencies
+- NLP library selection and integration
+- Response template management system
+- AN-01 event tracking for effectiveness measurement
+- User preference system for opt-out capability
+
+## Definition of Done
+- [ ] NLP accurately identifies 90%+ of positive sentiments
+- [ ] 20+ response templates implemented and tested
+- [ ] A/B test framework configured
+- [ ] Performance impact < 100ms
+- [ ] User feedback mechanism implemented
+- [ ] Opt-out preference available in settings
+- [ ] Analytics tracking response engagement
+
+## Story Points: 3
+Moderate complexity due to NLP integration and response variety requirements.

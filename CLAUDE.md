@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### NEVER Do These:
 - **NEVER** commit directly to `main` or `staging` branches
+- **NEVER** merge feature branches directly to `main` - MUST go through develop → staging → main
+- **NEVER** deploy features requiring external services (OAuth, APIs) without configuration
 - **NEVER** modify .env files directly (they are hidden from Cursor)
 - **NEVER** commit secrets or API keys to git
 - **NEVER** use Railway interactive commands (`railway environment`, `railway link` without parameters)
@@ -15,6 +17,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **ALWAYS** create feature branches from `develop` branch: `feature/EPIC-ID-description`
 - **ALWAYS** target PRs to `develop` branch (not main!)
 - **ALWAYS** follow the git workflow: develop → staging → main
+- **ALWAYS** test features in develop environment before staging
+- **ALWAYS** verify external service configuration before deploying features that need them
 - **ALWAYS** update .env.example files when adding new environment variables
 - **ALWAYS** run BugBot validation before and after deployments
 - **ALWAYS** align work with current sprint priorities from roadmap
@@ -23,6 +27,37 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Improvement Guidelines:
 - If you fail to fix a UI problem based on my feedback, rethink the approach for that element and implement a better solution
+
+## 🔥 INCIDENT PREVENTION - Lessons from Social Login Deployment
+
+### Pre-Deployment Checklist for New Features:
+1. **External Services Check**
+   - Does the feature require OAuth providers? (Apple, Google, etc.)
+   - Does it need API keys or external service configuration?
+   - Are all required credentials configured in staging AND production?
+   - Is there graceful degradation if services are unavailable?
+
+2. **Feature Readiness Verification**
+   - Has the feature been tested in develop environment?
+   - Are all UI components working without errors?
+   - Have you verified the feature works end-to-end?
+   - Is there proper error handling for all edge cases?
+
+3. **Git Workflow Compliance**
+   - Did you create the feature branch from `develop`?
+   - Is your PR targeting `develop` (not main or staging)?
+   - Has the feature been merged to develop and tested there first?
+   - Only after develop testing: develop → staging → main
+
+4. **Configuration Management**
+   - Are feature flags in place to disable incomplete features?
+   - Can the feature be toggled off without code changes?
+   - Have you documented all required environment variables?
+
+### When Things Go Wrong:
+- **Hotfix Process**: Create branch from main, fix issue, PR directly to main
+- **Emergency Rollback**: Use git revert to undo problematic commits
+- **Communication**: Alert team immediately if production issues occur
 
 ## ⚠️ CRITICAL: Before Adding New Fields
 

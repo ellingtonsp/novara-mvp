@@ -279,6 +279,8 @@ const allowedOrigins = [
   'https://novara-mvp.vercel.app', // Production frontend
   'https://novara-mvp-staging.vercel.app', // Staging frontend
   'https://novara-mvp-git-staging-novara-fertility.vercel.app', // Vercel staging frontend
+  'https://novarafertility.com', // Custom domain
+  'https://www.novarafertility.com', // Custom domain with www
   // Dynamic Vercel deployment URLs pattern
   /^https:\/\/novara-[a-z0-9]+-novara-fertility\.vercel\.app$/
 ];
