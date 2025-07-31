@@ -69,35 +69,85 @@ CREATE TABLE user_auth_providers (
 );
 ```
 
+## User Flow Design
+
+### Current Email Signup Flow
+1. User enters email → FastOnboarding (collects cycle_stage, primary_concern)
+2. BaselinePanel (collects nickname, confidence scores, top_concern)
+3. Dashboard with full access
+
+### New Social Login Flow
+1. User clicks "Sign in with Apple/Google" on home page
+2. OAuth flow completes → Account created with:
+   - email (from provider)
+   - name (if available, used as nickname default)
+   - auth_provider and provider_id
+3. Redirect to Dashboard
+4. Show "Complete Your Profile" prompt (similar to current CompleteOnboardingPrompt)
+5. Collect missing required fields:
+   - cycle_stage
+   - primary_need
+   - confidence scores (meds, costs, overall)
+   - Option to change nickname
+
+### Key Design Decisions
+1. **Immediate Dashboard Access**: Users can see the dashboard structure but need to complete profile for:
+   - Daily check-ins
+   - Personalized insights
+   - Full feature access
+
+2. **Minimal Required Fields**: Only collect what's absolutely necessary:
+   - cycle_stage (required for personalization)
+   - primary_need (required for insights)
+   - confidence scores (required for baseline)
+
+3. **Progressive Disclosure**: Don't overwhelm with all fields at once
+
 ## Implementation Steps
 
 ### Phase 1: Backend OAuth Setup
 1. Install OAuth libraries (passport.js strategies)
 2. Configure OAuth apps with providers
 3. Implement OAuth callback endpoints
-4. Add JWT generation for social logins
+4. Modify user creation to handle social auth:
+   ```javascript
+   // Social auth creates user with minimal data
+   const socialUser = {
+     email: profile.email,
+     nickname: profile.name || profile.email.split('@')[0],
+     auth_provider: 'google', // or 'apple', 'facebook'
+     provider_id: profile.id,
+     baseline_completed: false, // Always false for social login
+     // Don't set cycle_stage or primary_need - collect later
+   }
+   ```
 
 ### Phase 2: Database Updates
-1. Run schema migrations
+1. Run schema migrations for auth providers
 2. Update user service to handle social auth
 3. Implement account linking logic
+4. Ensure insights service checks for required fields
 
 ### Phase 3: Frontend Integration
-1. Add social login buttons to AuthModal
-2. Implement OAuth redirect flows
-3. Handle callback and token storage
-4. Update user context for social auth
+1. Add social login buttons to landing page
+2. Create SocialAuthCallback component
+3. Modify Dashboard to show completion prompt for social users:
+   ```typescript
+   const needsProfileCompletion = user && !user.baseline_completed && 
+     (!user.cycle_stage || !user.primary_need);
+   ```
+4. Create streamlined ProfileCompletionModal
 
-### Phase 4: Apple Sign In Special Handling
-1. Configure Apple Developer account
-2. Implement Sign in with Apple JS
-3. Handle private relay emails
-4. Test on iOS and web
+### Phase 4: Profile Completion Flow
+1. Create new component: ProfileCompletionModal
+2. Collect only missing required fields
+3. Update user profile on completion
+4. Set baseline_completed = true
 
 ### Phase 5: Testing & Polish
 1. End-to-end testing of each provider
 2. Error state handling
-3. Account linking flows
+3. Account linking for existing emails
 4. Performance optimization
 
 ## Success Metrics
