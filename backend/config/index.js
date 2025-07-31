@@ -9,6 +9,9 @@ const config = {
   // Server Configuration
   port: process.env.PORT || 9002,
   nodeEnv: process.env.NODE_ENV || 'development',
+  server: {
+    baseUrl: process.env.API_BASE_URL || `http://localhost:${process.env.PORT || 9002}`
+  },
   
   // JWT Configuration
   jwt: {
@@ -49,14 +52,27 @@ const config = {
       // Allow requests with no origin (like mobile apps or Postman)
       if (!origin) return callback(null, true);
       
-      const allowedOrigins = [
+      // Get allowed origins from environment variable or use defaults
+      const envOrigins = process.env.ALLOWED_ORIGINS ? 
+        process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim()) : [];
+      
+      const defaultOrigins = [
         'http://localhost:3000',
         'http://localhost:4200',
-        'http://localhost:5173',
-        'https://app.novara.team',
-        'https://novara.team',
-        'https://staging.novara.team'
+        'http://localhost:5173'
       ];
+      
+      const allowedOrigins = [...defaultOrigins, ...envOrigins];
+      
+      // Debug logging in production
+      if (process.env.NODE_ENV === 'production' || process.env.DEBUG_CORS) {
+        console.log('CORS Debug:', {
+          requestOrigin: origin,
+          envOrigins: envOrigins,
+          allowedOrigins: allowedOrigins,
+          ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS
+        });
+      }
       
       // Allow any Vercel preview URL
       if (origin.includes('.vercel.app')) {
