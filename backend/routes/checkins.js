@@ -38,6 +38,7 @@ router.post('/', authenticateToken, asyncHandler(async (req, res) => {
   }
 
   // Find user
+  console.log('🔍 JWT user:', req.user);
   const user = await userService.findByEmail(req.user.email);
   if (!user) {
     throw new AppError('User not found', 404);
@@ -86,6 +87,7 @@ router.post('/', authenticateToken, asyncHandler(async (req, res) => {
     success: true,
     checkin: {
       id: result.id,
+      ...result.fields || result,
       mood_today: result.mood_today || checkinData.mood_today,
       confidence_today: result.confidence_today || checkinData.confidence_today,
       date_submitted: result.date_submitted || checkinData.date_submitted,

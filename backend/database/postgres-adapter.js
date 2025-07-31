@@ -66,7 +66,17 @@ class PostgresAdapter {
               confidence: checkinData.confidence_today,
               anxiety_level: checkinData.anxiety_level,
               note: checkinData.user_note,
-              primary_concern: checkinData.primary_concern_today
+              primary_concern: checkinData.primary_concern_today,
+              appointment_within_3_days: checkinData.appointment_within_3_days,
+              appointment_anxiety: checkinData.appointment_anxiety,
+              coping_strategies_used: checkinData.coping_strategies_used,
+              wish_knew_more_about: checkinData.wish_knew_more_about,
+              phq4_feeling_nervous: checkinData.phq4_feeling_nervous,
+              phq4_stop_worrying: checkinData.phq4_stop_worrying,
+              phq4_little_interest: checkinData.phq4_little_interest,
+              phq4_feeling_down: checkinData.phq4_feeling_down,
+              physical_symptoms: checkinData.physical_symptoms,
+              symptom_severity: checkinData.symptom_severity
             }),
             occurredAt,
             correlationId
@@ -232,15 +242,24 @@ class PostgresAdapter {
 
   async updateUser(userId, updates) {
     const userFields = ['email'];
+    // Only include fields that exist in the user_profiles table
+    const profileFields = [
+      'nickname', 'timezone', 'email_opt_in', 'status',
+      'cycle_stage', 'primary_need', 'onboarding_path',
+      'baseline_completed', 'confidence_meds', 'confidence_costs',
+      'confidence_overall'
+    ];
+    
     const userUpdates = {};
     const profileUpdates = {};
     
     Object.entries(updates).forEach(([key, value]) => {
       if (userFields.includes(key)) {
         userUpdates[key] = value;
-      } else {
+      } else if (profileFields.includes(key)) {
         profileUpdates[key] = value;
       }
+      // Silently ignore fields that don't exist in the schema
     });
     
     const client = await this.pool.connect();
@@ -289,11 +308,22 @@ class PostgresAdapter {
       SELECT 
         he.id,
         he.occurred_at::date::text as date_submitted,
-        he.created_at,
+        he.recorded_at as created_at,
         he.event_data->>'mood' as mood_today,
         (he.event_data->>'confidence')::int as confidence_today,
         he.event_data->>'note' as user_note,
         he.event_data->>'primary_concern' as primary_concern_today,
+        (he.event_data->>'anxiety_level')::int as anxiety_level,
+        he.event_data->>'appointment_within_3_days' as appointment_within_3_days,
+        (he.event_data->>'appointment_anxiety')::int as appointment_anxiety,
+        he.event_data->'coping_strategies_used' as coping_strategies_used,
+        he.event_data->'wish_knew_more_about' as wish_knew_more_about,
+        (he.event_data->>'phq4_feeling_nervous')::int as phq4_feeling_nervous,
+        (he.event_data->>'phq4_stop_worrying')::int as phq4_stop_worrying,
+        (he.event_data->>'phq4_little_interest')::int as phq4_little_interest,
+        (he.event_data->>'phq4_feeling_down')::int as phq4_feeling_down,
+        he.event_data->'physical_symptoms' as physical_symptoms,
+        he.event_data->'symptom_severity' as symptom_severity,
         CASE 
           WHEN med.event_data->>'status' = 'taken' THEN 'yes'
           WHEN med.event_data->>'status' = 'missed' THEN 'no'
@@ -324,7 +354,7 @@ class PostgresAdapter {
       SELECT 
         he.id,
         he.occurred_at::date::text as date_submitted,
-        he.created_at,
+        he.recorded_at as created_at,
         he.event_data->>'mood' as mood_today,
         (he.event_data->>'confidence')::int as confidence_today,
         he.event_data->>'note' as user_note,

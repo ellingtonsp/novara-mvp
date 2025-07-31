@@ -100,17 +100,23 @@ logger.response = (req, res, message, meta = {}) => {
 };
 
 logger.error = (error, req = null, meta = {}) => {
+  // Handle both string messages and error objects
+  const isErrorObject = error instanceof Error;
+  const errorMessage = isErrorObject ? error.message : error;
+  
   const errorMeta = {
     ...meta,
     type: 'error',
-    error: {
+    error: isErrorObject ? {
       message: error.message,
       stack: error.stack,
       name: error.name
+    } : {
+      message: errorMessage
     }
   };
   
-  if (req) {
+  if (req && typeof req.get === 'function') {
     errorMeta.request = {
       method: req.method,
       url: req.url,
@@ -119,7 +125,8 @@ logger.error = (error, req = null, meta = {}) => {
     };
   }
   
-  logger.error(error.message, errorMeta);
+  // Use winston's error method directly, not our own
+  winston.error(errorMessage, errorMeta);
 };
 
 logger.performance = (operation, duration, meta = {}) => {

@@ -184,14 +184,19 @@ async function startServer() {
 
 // Handle uncaught errors
 process.on('uncaughtException', (error) => {
-  logger.error(error, null, { type: 'uncaughtException' });
+  console.error('Uncaught Exception:', error);
+  logger.error(`Uncaught Exception: ${error.message}`, { 
+    type: 'uncaughtException',
+    stack: error.stack 
+  });
   process.exit(1);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  logger.error(new Error(`Unhandled Rejection: ${reason}`), null, { 
+  console.error('Unhandled Rejection:', reason);
+  logger.error(`Unhandled Rejection: ${reason}`, { 
     type: 'unhandledRejection',
-    promise 
+    promise: promise.toString()
   });
   process.exit(1);
 });

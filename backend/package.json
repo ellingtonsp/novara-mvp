@@ -10,7 +10,7 @@
     "test:coverage": "jest --coverage",
     "dev": "nodemon server-switcher.js",
     "local": "NODE_ENV=development USE_LOCAL_DATABASE=true nodemon server.js",
-    "dev:postgres": "NODE_ENV=development nodemon -r dotenv/config server.js dotenv_config_path=.env.local",
+    "dev:postgres": "NODE_ENV=development USE_REFACTORED_SERVER=true nodemon -r dotenv/config server-switcher.js dotenv_config_path=.env.local",
     "test:regression": "node production-regression-test.js",
     "db:setup": "psql $DATABASE_URL < ../database/schema.sql",
     "db:migrate": "node scripts/migrate-to-postgres.js",

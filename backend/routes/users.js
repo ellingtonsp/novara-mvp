@@ -240,8 +240,36 @@ router.get('/metrics', authenticateToken, asyncHandler(async (req, res) => {
   let currentPHQ4Score = null;
   let phq4Trend = null;
   
-  // TODO: Check for actual PHQ-4 assessment data
-  // For now, we don't have PHQ-4 assessments implemented
+  // Calculate PHQ-4 from enhanced check-ins that have the data
+  const phq4Checkins = lastWeekCheckins.filter(c => {
+    const fields = c.fields || c;
+    return fields.phq4_feeling_nervous !== undefined && 
+           fields.phq4_feeling_nervous !== null;
+  });
+  
+  if (phq4Checkins.length > 0) {
+    // Get the most recent PHQ-4 score
+    const latestPHQ4 = phq4Checkins[0];
+    const fields = latestPHQ4.fields || latestPHQ4;
+    currentPHQ4Score = (fields.phq4_feeling_nervous || 0) + 
+                      (fields.phq4_stop_worrying || 0) + 
+                      (fields.phq4_little_interest || 0) + 
+                      (fields.phq4_feeling_down || 0);
+    
+    // Calculate trend if we have multiple PHQ-4 assessments
+    if (phq4Checkins.length > 1) {
+      const previousPHQ4 = phq4Checkins[1];
+      const prevFields = previousPHQ4.fields || previousPHQ4;
+      const previousScore = (prevFields.phq4_feeling_nervous || 0) + 
+                          (prevFields.phq4_stop_worrying || 0) + 
+                          (prevFields.phq4_little_interest || 0) + 
+                          (prevFields.phq4_feeling_down || 0);
+      
+      if (currentPHQ4Score < previousScore) phq4Trend = 'improving';
+      else if (currentPHQ4Score > previousScore) phq4Trend = 'worsening';
+      else phq4Trend = 'stable';
+    }
+  }
   
   // Determine trends
   const medicationAdherenceTrend = 'stable'; // Would need historical data to calculate
@@ -317,6 +345,7 @@ router.get('/metrics', authenticateToken, asyncHandler(async (req, res) => {
       totalMedicationCheckIns,
       
       // Mental health metrics
+      averageMoodScore,
       currentPHQ4Score,
       phq4Trend,
       anxietyAverage: currentPHQ4Score !== null ? Math.round(currentPHQ4Score / 2) : null, // Only available with PHQ-4 data
@@ -352,8 +381,7 @@ router.post('/complete-onboarding', authenticateToken, asyncHandler(async (req, 
   }
 
   const updates = {
-    baseline_completed: true,
-    baseline_submission_date: new Date().toISOString()
+    baseline_completed: true
   };
 
   await userService.update(user.id, updates);
@@ -390,7 +418,6 @@ router.patch('/baseline', authenticateToken, asyncHandler(async (req, res) => {
   // Build updates object
   const updates = {
     baseline_completed: true,
-    baseline_submission_date: new Date().toISOString(),
     confidence_meds: confidence_meds,
     confidence_costs: confidence_costs,
     confidence_overall: confidence_overall

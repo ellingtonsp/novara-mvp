@@ -393,7 +393,7 @@ function authenticateToken(req, res, next) {
 function generateToken(user) {
   return jwt.sign(
     { 
-      userId: user.id, 
+      id: user.id, 
       email: user.email,
       nickname: user.nickname 
     },
