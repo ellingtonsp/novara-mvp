@@ -9,6 +9,9 @@ const config = {
   // Server Configuration
   port: process.env.PORT || 9002,
   nodeEnv: process.env.NODE_ENV || 'development',
+  server: {
+    baseUrl: process.env.API_BASE_URL || 'http://localhost:9002'
+  },
   
   // JWT Configuration
   jwt: {
