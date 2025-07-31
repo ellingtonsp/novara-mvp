@@ -12,7 +12,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **NEVER** break legacy functions unless explicitly requested
 
 ### ALWAYS Do These:
-- **ALWAYS** create feature branches for ALL changes: `feature/EPIC-ID-description`
+- **ALWAYS** create feature branches from `develop` branch: `feature/EPIC-ID-description`
+- **ALWAYS** target PRs to `develop` branch (not main!)
+- **ALWAYS** follow the git workflow: develop → staging → main
 - **ALWAYS** update .env.example files when adding new environment variables
 - **ALWAYS** run BugBot validation before and after deployments
 - **ALWAYS** align work with current sprint priorities from roadmap
@@ -44,8 +46,12 @@ cd backend && npm run local  # Backend on port 9002
 cd frontend && npm run dev   # Frontend on port 4200
 ```
 
-## Deployment Notes
+## Git Workflow & Deployment Notes
+- Follow the branch flow: `develop` → `staging` → `main` (production)
+- Create all feature branches from `develop`
+- See GIT_WORKFLOW.md for detailed git workflow
 - Railway deployments are handled via GitHub
+- Vercel deployments: `staging` branch → staging env, `main` branch → production
 
 ## Backend and Data Handling Rules
 - All forms require true backend endpoints
