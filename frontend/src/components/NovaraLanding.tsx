@@ -446,7 +446,7 @@ const NovaraLanding = () => {
   
   const handleReplaceCheckin = () => {
     setShowCheckinForm(true);
-    setTodaysCheckin(null);
+    // Keep todaysCheckin so the form knows it's an update
   };
 
   // ON-01: Handle fast onboarding completion
@@ -1347,9 +1347,13 @@ const NovaraLanding = () => {
                               <QuickDailyCheckinForm 
                                 onComplete={handleCheckinComplete}
                                 onSwitchToFull={handleSwitchToComprehensive}
+                                existingCheckin={todaysCheckin}
                               />
                             ) : (
-                              <EnhancedDailyCheckinForm onComplete={handleCheckinComplete} />
+                              <EnhancedDailyCheckinForm 
+                                onComplete={handleCheckinComplete}
+                                existingCheckin={todaysCheckin}
+                              />
                             )}
                           </>
                         )}
@@ -1510,9 +1514,13 @@ const NovaraLanding = () => {
                   <QuickDailyCheckinForm 
                     onComplete={handleCheckinComplete}
                     onSwitchToFull={handleSwitchToComprehensive}
+                    existingCheckin={todaysCheckin}
                   />
                 ) : (
-                  <EnhancedDailyCheckinForm onComplete={handleCheckinComplete} />
+                  <EnhancedDailyCheckinForm 
+                    onComplete={handleCheckinComplete}
+                    existingCheckin={todaysCheckin}
+                  />
                 )}
               </>
             )}

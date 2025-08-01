@@ -303,6 +303,105 @@ class PostgresAdapter {
     }
   }
 
+  async updateCheckin(checkinId, updateData) {
+    if (this.useSchemaV2) {
+      console.log('🚀 Updating check-in with Schema V2');
+      
+      const client = await this.pool.connect();
+      
+      try {
+        await client.query('BEGIN');
+        
+        // Build event data
+        const eventData = {
+          mood: updateData.mood_today || '',
+          confidence: parseInt(updateData.confidence_today) || 0,
+          note: updateData.user_note || '',
+          primary_concern: updateData.primary_concern_today || '',
+          anxiety_level: updateData.anxiety_level || 0,
+          medication_taken: updateData.medication_taken || false
+        };
+        
+        // Add optional fields if present
+        if (updateData.appointment_within_3_days) {
+          eventData.appointment_within_3_days = updateData.appointment_within_3_days;
+        }
+        if (updateData.appointment_anxiety !== undefined) {
+          eventData.appointment_anxiety = updateData.appointment_anxiety;
+        }
+        if (updateData.coping_strategies_used) {
+          eventData.coping_strategies_used = updateData.coping_strategies_used;
+        }
+        if (updateData.sleep_hours !== undefined) {
+          eventData.sleep_hours = updateData.sleep_hours;
+        }
+        if (updateData.energy_level !== undefined) {
+          eventData.energy_level = updateData.energy_level;
+        }
+        if (updateData.side_effects) {
+          eventData.side_effects = updateData.side_effects;
+        }
+        if (updateData.emotion_score !== undefined) {
+          eventData.emotion_score = updateData.emotion_score;
+        }
+        if (updateData.physical_symptoms_score !== undefined) {
+          eventData.physical_symptoms_score = updateData.physical_symptoms_score;
+        }
+        
+        // Update the health event
+        const result = await client.query(`
+          UPDATE health_events
+          SET 
+            event_data = $2,
+            updated_at = CURRENT_TIMESTAMP
+          WHERE id = $1 AND event_type = 'daily_checkin'
+          RETURNING id, occurred_at::date::text as date_submitted
+        `, [checkinId, JSON.stringify(eventData)]);
+        
+        await client.query('COMMIT');
+        
+        // Return the updated checkin
+        return {
+          id: checkinId,
+          ...updateData,
+          date_submitted: result.rows[0].date_submitted
+        };
+        
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      } finally {
+        client.release();
+      }
+    } else {
+      // Legacy V1 implementation
+      const query = `
+        UPDATE daily_checkins 
+        SET 
+          mood_today = $2,
+          confidence_today = $3,
+          user_note = $4,
+          primary_concern_today = $5,
+          medication_taken = $6,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = $1
+        RETURNING *
+      `;
+      
+      const values = [
+        checkinId,
+        updateData.mood_today,
+        updateData.confidence_today,
+        updateData.user_note || null,
+        updateData.primary_concern_today || null,
+        updateData.medication_taken || false
+      ];
+      
+      const result = await this.pool.query(query, values);
+      return result.rows[0];
+    }
+  }
+
   async getUserCheckins(userId, limit = 30) {
     const query = `
       SELECT 

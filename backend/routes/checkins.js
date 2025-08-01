@@ -188,6 +188,41 @@ router.get('/:checkinId', authenticateToken, asyncHandler(async (req, res) => {
 }));
 
 /**
+ * PUT /api/checkins/:checkinId
+ * Update specific check-in
+ */
+router.put('/:checkinId', authenticateToken, asyncHandler(async (req, res) => {
+  const { checkinId } = req.params;
+  const updateData = req.body;
+
+  // Get check-in
+  const checkin = await checkinService.findById(checkinId);
+  if (!checkin) {
+    throw new AppError('Check-in not found', 404);
+  }
+
+  // Verify user owns this check-in
+  const user = await userService.findByEmail(req.user.email);
+  if (!user || checkin.user_id !== user.id) {
+    throw new AppError('Unauthorized to update this check-in', 403);
+  }
+
+  // Update check-in
+  const result = await checkinService.update(checkinId, {
+    ...updateData,
+    user_id: user.id
+  });
+
+  console.log('✅ Check-in updated successfully:', checkinId);
+
+  res.json({
+    success: true,
+    checkin: result,
+    message: 'Check-in updated successfully! 🌟'
+  });
+}));
+
+/**
  * DELETE /api/checkins/:checkinId
  * Delete specific check-in (for testing/admin)
  */
