@@ -3,7 +3,7 @@
 ## 🚀 Current Status
 - ✅ **Frontend**: Deployed on Vercel (https://novara-mvp.vercel.app)
 - ✅ **Backend**: Deployed on Railway (https://novara-mvp-production.up.railway.app)
-- ✅ **Database**: Airtable (functional)
+- ✅ **Database**: PostgreSQL on Railway (migration completed)
 
 ## 🎯 Deployment Options
 
@@ -24,10 +24,14 @@
 ### Backend Environment Variables (Railway)
 ```
 NODE_ENV=production
-PORT=$PORT
-AIRTABLE_API_KEY=your_airtable_key
-AIRTABLE_BASE_ID=your_base_id
+# PORT is provided automatically by Railway - DO NOT SET
+DATABASE_TYPE=postgresql
+DATABASE_URL=${{Postgres.DATABASE_URL}}
+USE_SCHEMA_V2=true
+USE_REFACTORED_SERVER=true
 JWT_SECRET=your_jwt_secret
+API_BASE_URL=https://novara-mvp-production.up.railway.app
+CORS_ORIGIN=https://novara-mvp.vercel.app,https://novarafertility.com
 ```
 
 ### Frontend Environment Variables (Vercel)
@@ -100,15 +104,15 @@ Look for URLs in the format:
 ## 📈 Scalability Plan
 
 ### Phase 1: MVP (Current)
-- Railway backend
-- Vercel frontend
-- Airtable database
+- Railway backend with PostgreSQL
+- Vercel frontend  
+- PostgreSQL database on Railway
 
 ### Phase 2: Growth (Future)
-- Migrate to AWS/GCP
-- PostgreSQL database
-- Redis caching
+- Migrate to AWS/GCP or scale Railway
+- Redis caching for performance
 - CDN optimization
+- Database read replicas
 
 ### Phase 3: Enterprise (Future)
 - Microservices architecture

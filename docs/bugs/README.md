@@ -4,10 +4,10 @@
 
 | **Priority** | **Open** | **In Progress** | **Resolved** |
 |--------------|----------|-----------------|--------------|
-| **🔴 Large** | 1 | 0 | 8 |
-| **🟡 Medium** | 0 | 0 | 7 |
-| **🟢 Small** | 0 | 0 | 8 |
-| **📊 TOTAL** | **1** | **0** | **22** |
+| **🔴 Large** | 0 | 0 | 8 |
+| **🟡 Medium** | 0 | 0 | 10 |
+| **🟢 Small** | 0 | 0 | 10 |
+| **📊 TOTAL** | **0** | **0** | **28** |
 
 ---
 
@@ -153,6 +153,22 @@
 - **Content**: Explains how checklist is tailored to IVF stage, shows personalized insights when available
 - **Status**: ✅ **RESOLVED** - Users now understand Smart Prep Checklist purpose and benefits
 
+#### **M-010: PHQ-4 Assessment Unclear Progression UX (BUG-010)** *(Resolved 2025-08-01)*
+- **Problem**: PHQ-4 assessment lacked clear user feedback when options were selected, unclear progression
+- **Root Cause**: No visual feedback on selection, ambiguous auto-advance behavior, too-fast transitions
+- **Impact**: User confusion about form completion, potential incomplete assessments
+- **Fix**: Enhanced auto-advance with clear visual feedback and proper timing
+- **Technical**: Added scale animation on selection, 800ms transition delay, progress bar, loading message
+- **Status**: ✅ **RESOLVED** - Clear feedback and smooth transitions implemented
+
+#### **M-011: Daily Insight Feedback Shows Wrong UI Options (BUG-013)** *(Resolved 2025-08-01)*
+- **Problem**: Daily Insight modal showing generic interaction buttons instead of "Helpful/Not Helpful" feedback
+- **Root Cause**: Generic button row (thumbs up, bookmark, share, refresh) not replaced with proper feedback UI
+- **Impact**: Unable to collect actionable feedback to improve insight engine and personalization
+- **Fix**: Replaced generic buttons with proper "Was this helpful?" feedback UI with comment collection
+- **Technical**: Added POST /api/insights/feedback endpoint, enhanced InsightFeedback component integration
+- **Status**: ✅ **RESOLVED** - Proper feedback collection system implemented
+
 ---
 
 ## 🟢 **Small Priority Issues** *(Minor improvements/cleanup)*
@@ -213,6 +229,22 @@
 - **Impact**: Misleading information, minor UX issue
 - **Fix**: Updated to use actual submission timestamp from check-in data
 - **Status**: ✅ **RESOLVED** - Check-in completion now shows accurate time
+
+#### **S-011: Missed Doses Field Pre-populates with Zero (BUG-006)** *(Resolved 2025-08-01)*
+- **Problem**: "How many doses missed?" field pre-populated with "0" when "Missed some" selected
+- **Root Cause**: Initial state defaulted to numeric value instead of empty string
+- **Impact**: Contradictory UX - selecting "Missed some" showed 0 doses missed
+- **Fix**: Changed initial state from 1 to empty string, field now appears blank when "Missed some" selected  
+- **Technical**: Updated EnhancedDailyCheckinForm.tsx state management
+- **Status**: ✅ **RESOLVED** - Field shows empty as expected, eliminating user confusion
+
+#### **S-012: Medication Button Color Inconsistency Between Forms (BUG-007)** *(Resolved 2025-08-01)*
+- **Problem**: Enhanced Daily Check-in medication buttons used different colors than Quick Daily Check-in
+- **Root Cause**: Inconsistent styling between form components
+- **Impact**: Visual inconsistency reduced app polish and user experience
+- **Fix**: Updated Enhanced Daily Check-in to match Quick Daily Check-in appearance
+- **Technical**: Added icons (✅ for "Yes, all doses", ⚠️ for "Missed some") and consistent styling (h-auto py-3)
+- **Status**: ✅ **RESOLVED** - Visual consistency achieved across all check-in forms
 
 ---
 

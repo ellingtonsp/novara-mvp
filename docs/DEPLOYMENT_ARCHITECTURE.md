@@ -46,13 +46,19 @@ This document describes the complete deployment architecture for Novara MVP, inc
 
 ### 3. Database
 
-**Type**: PostgreSQL
+**Type**: PostgreSQL (All Environments)
 **Schema Version**: V2
+**Deployment**:
+- **Production**: Railway PostgreSQL instance
+- **Staging**: Railway PostgreSQL instance  
+- **Local**: PostgreSQL 14+ (localhost)
+
 **Features**:
-- User management
-- Daily check-ins
-- Insights tracking
-- Social auth support
+- User management and authentication
+- Daily check-ins and tracking
+- Insights and analytics data
+- Social authentication support
+- Full ACID compliance and referential integrity
 
 ### 4. Custom Domain Configuration
 
@@ -107,9 +113,9 @@ JWT_SECRET=[64+ character secret]
 # CORS
 CORS_ORIGIN=https://novara-mvp.vercel.app,https://novarafertility.com,https://www.novarafertility.com
 
-# External Services
-AIRTABLE_API_KEY=[if-needed]
-AIRTABLE_BASE_ID=[if-needed]
+# External Services (Legacy - No longer used)
+# AIRTABLE_API_KEY=[removed - migrated to PostgreSQL]
+# AIRTABLE_BASE_ID=[removed - migrated to PostgreSQL]
 
 # Logging
 LOG_LEVEL=info
