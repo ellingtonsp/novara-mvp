@@ -52,7 +52,12 @@ class InsightsService {
         title: 'Start Your Journey',
         message: 'Complete your first daily check-in to receive personalized insights!',
         icon: '🌟',
-        confidence: 0.5
+        confidence: 0.5,
+        analysisData: {
+          checkins_analyzed: 0,
+          date_range: 'No recent check-ins',
+          user_id: userId
+        }
       };
     }
 
@@ -61,6 +66,15 @@ class InsightsService {
     
     // Save insight to database
     const savedInsight = await this.saveInsight(userId, insight);
+    
+    // Add analysis metadata
+    savedInsight.analysisData = {
+      checkins_analyzed: checkins.length,
+      date_range: checkins.length > 0 ? 
+        `${checkins[checkins.length - 1].date_submitted || checkins[checkins.length - 1].fields?.date_submitted} to ${checkins[0].date_submitted || checkins[0].fields?.date_submitted}` : 
+        'No recent check-ins',
+      user_id: userId
+    };
     
     return savedInsight;
   }

@@ -93,6 +93,16 @@ if (process.env.NODE_ENV === 'production') {
 const getRateLimitConfig = () => {
   const env = process.env.NODE_ENV || 'development';
   
+  // Allow disabling rate limiting for rapid testing
+  if (process.env.DISABLE_RATE_LIMIT === 'true') {
+    logger.info('⚠️  Rate limiting DISABLED for testing');
+    return {
+      windowMs: 15 * 60 * 1000,
+      max: 999999, // Effectively unlimited
+      skip: () => true // Skip all rate limiting
+    };
+  }
+  
   switch (env) {
     case 'development':
       return {
@@ -686,6 +696,16 @@ function selectBestInsight(patterns, checkins, user) {
   return insights.sort((a, b) => b.priority - a.priority)[0];
 }
 
+// Utility function to format variable names for human-readable display
+function formatVariableName(variableName) {
+  if (!variableName || typeof variableName !== 'string') return '';
+  return variableName
+    .replace(/_/g, ' ')           // Replace underscores with spaces
+    .replace(/([a-z])([A-Z])/g, '$1 $2') // Add space before capital letters (camelCase)
+    .toLowerCase()                // Convert to lowercase for consistency
+    .trim();                      // Remove extra whitespace
+}
+
 // Advanced Insight Generation Engine - TRULY PERSONALIZED
 function generateDailyInsights(checkins, user) {
   // Always use user's onboarding data for personalization
@@ -738,7 +758,7 @@ function generateWelcomeInsightFromOnboarding(data, user) {
       return {
         type: 'focused_support',
         title: `${name}, let's tackle the medication uncertainty together`,
-        message: `I see medication protocols feel uncertain right now (you rated confidence at ${confidence_meds}/10). This is incredibly common—the medical side can feel overwhelming before you have all the details. Plus, "${top_concern}" weighs on your mind—let's address that specific worry. How are you feeling today?`,
+        message: `I see medication protocols feel uncertain right now (you rated confidence at ${confidence_meds}/10). This is incredibly common—the medical side can feel overwhelming before you have all the details. Plus, ${formatVariableName(top_concern)} weighs on your mind—let's address that specific worry. How are you feeling today?`,
         confidence: 0.9
       };
     }
@@ -748,7 +768,7 @@ function generateWelcomeInsightFromOnboarding(data, user) {
       return {
         type: 'focused_support', 
         title: `${name}, your financial concerns make complete sense`,
-        message: `You rated financial confidence at ${confidence_costs}/10, and honestly, that's realistic. IVF costs can feel overwhelming, but there are ways to approach this step by step. Plus, "${top_concern}" weighs on your mind—let's address that specific worry. How are you feeling today?`,
+        message: `You rated financial confidence at ${confidence_costs}/10, and honestly, that's realistic. IVF costs can feel overwhelming, but there are ways to approach this step by step. Plus, ${formatVariableName(top_concern)} weighs on your mind—let's address that specific worry. How are you feeling today?`,
         confidence: 0.9
       };
     }
@@ -759,7 +779,7 @@ function generateWelcomeInsightFromOnboarding(data, user) {
     let message = `Welcome back, ${name}! Your confidence levels from onboarding show real strength in approaching IVF.`;
     
     if (top_concern && top_concern.trim() !== '') {
-      message += ` I noticed you mentioned "${top_concern}" as a concern. Even when we feel confident overall, specific worries are completely normal.`;
+      message += ` I noticed you mentioned ${formatVariableName(top_concern)} as a concern. Even when we feel confident overall, specific worries are completely normal.`;
     }
     
     if (primary_need === 'emotional_support') {
@@ -793,7 +813,7 @@ function generateWelcomeInsightFromOnboarding(data, user) {
     }
     
     if (top_concern && top_concern.trim() !== '') {
-      message += ` Plus, "${top_concern}" weighs on your mind—let's address that specific worry.`;
+      message += ` Plus, ${formatVariableName(top_concern)} weighs on your mind—let's address that specific worry.`;
     }
     
     return {
@@ -813,7 +833,7 @@ function generateWelcomeInsightFromOnboarding(data, user) {
     }
     
     if (top_concern && top_concern.trim() !== '') {
-      message += `"${top_concern}" weighs heavily, and that makes perfect sense. `;
+      message += `${formatVariableName(top_concern)} weighs heavily, and that makes perfect sense. `;
     }
     
     message += `You don't have to figure everything out at once. Let's start with how you're feeling right now, today.`;
@@ -830,7 +850,7 @@ function generateWelcomeInsightFromOnboarding(data, user) {
   return {
     type: 'balanced_welcome',
     title: `Welcome back, ${name}`,
-    message: `Based on your onboarding, you're approaching IVF with a realistic mix of confidence and natural concerns. ${top_concern ? `"${top_concern}" is on your mind, ` : ''}and that's exactly the kind of honest self-assessment that helps. How are you feeling today?`,
+    message: `Based on your onboarding, you're approaching IVF with a realistic mix of confidence and natural concerns. ${top_concern ? `${formatVariableName(top_concern)} is on your mind, ` : ''}and that's exactly the kind of honest self-assessment that helps. How are you feeling today?`,
     confidence: 0.8
   };
 }
@@ -925,7 +945,7 @@ function generateContextualInsight(analysis, checkins, user) {
       latest_checkin.primary_concern_today.toLowerCase().includes(onboarding_concern.toLowerCase().split(' ')[0])) {
     return {
       type: 'persistent_concern_support',
-      title: `${name}, I see "${onboarding_concern}" is still on your mind`,
+      title: `${name}, I see ${formatVariableName(onboarding_concern)} is still on your mind`,
       message: `This was important to you from the start, and it came up again today. That consistency tells me this isn't just a passing worry—it's something worth addressing directly. Your recent check-ins show you're being thoughtful about tracking what matters most.`,
       confidence: 0.9
     };
@@ -951,7 +971,7 @@ function generateContextualInsight(analysis, checkins, user) {
       return {
         type: 'emotional_complexity',
         title: `${name}, feeling ${emotions[0]} and ${emotions[1]} makes complete sense`,
-        message: `IVF brings up complex emotions—it's normal to feel multiple things at once. ${latest_checkin.primary_concern_today ? `"${latest_checkin.primary_concern_today}" weighs on you today, ` : ''}and holding space for all these feelings is part of the journey.`,
+        message: `IVF brings up complex emotions—it's normal to feel multiple things at once. ${latest_checkin.primary_concern_today ? `${formatVariableName(latest_checkin.primary_concern_today)} weighs on you today, ` : ''}and holding space for all these feelings is part of the journey.`,
         confidence: 0.88
       };
     }
@@ -959,7 +979,7 @@ function generateContextualInsight(analysis, checkins, user) {
   
   // PATTERN: Low confidence + specific concern
   if (latest_checkin.confidence_today <= 4 && latest_checkin.primary_concern_today) {
-    let contextMessage = `Today's confidence (${latest_checkin.confidence_today}/10) and your concern about "${latest_checkin.primary_concern_today}" both deserve attention. `;
+    let contextMessage = `Today's confidence (${latest_checkin.confidence_today}/10) and your concern about ${formatVariableName(latest_checkin.primary_concern_today)} both deserve attention. `;
     
     // Connect to onboarding if relevant
     if (confidence_costs <= 4 && latest_checkin.primary_concern_today.toLowerCase().includes('financial')) {
@@ -983,7 +1003,7 @@ function generateContextualInsight(analysis, checkins, user) {
     return {
       type: 'confident_check_in',
       title: `${name}, your ${latest_checkin.confidence_today}/10 confidence shows real strength`,
-      message: `Feeling ${latest_checkin.mood_today || 'strong'} with high confidence suggests you're finding your footing in this process. ${latest_checkin.primary_concern_today ? `Even with "${latest_checkin.primary_concern_today}" on your mind, ` : ''}you're approaching this from a place of growing strength.`,
+      message: `Feeling ${latest_checkin.mood_today || 'strong'} with high confidence suggests you're finding your footing in this process. ${latest_checkin.primary_concern_today ? `Even with ${formatVariableName(latest_checkin.primary_concern_today)} on your mind, ` : ''}you're approaching this from a place of growing strength.`,
       confidence: 0.85
     };
   }
@@ -1067,7 +1087,7 @@ function generatePersonalizedMicroInsight(data, user) {
   else if (avgConfidence >= 7 && data.top_concern && data.top_concern.trim() !== '') {
     insights.push({
       title: "You're handling this well overall",
-      message: `Your confidence levels show real strength, ${user.nickname}. The one thing weighing on you—"${data.top_concern}"—makes sense to think about. Want a gentle strategy for this specific worry?`,
+      message: `Your confidence levels show real strength, ${user.nickname}. The one thing weighing on you—${formatVariableName(data.top_concern)}—makes sense to think about. Want a gentle strategy for this specific worry?`,
       action: {
         label: "Get targeted support for this concern",
         type: "concern_strategy"
@@ -1529,7 +1549,7 @@ function generatePersonalizedCheckInQuestions(user) {
     questions.push({
       id: 'top_concern_today',
       type: 'text',
-      question: `You mentioned "${top_concern}" was important to you. How is that feeling today?`,
+      question: `You mentioned ${formatVariableName(top_concern)} was important to you. How is that feeling today?`,
       placeholder: 'better, worse, same...',
       required: false,
       priority: 4,
@@ -1587,7 +1607,7 @@ function generateEnhancedMicroInsight(checkinData, user) {
 
   // TOP CONCERN FOLLOW-UP
   if (checkinData.top_concern_today && checkinData.top_concern_today.trim() !== '') {
-    enhancements.push(`About "${user.top_concern}" - noting that it's "${checkinData.top_concern_today}" today. We're tracking this with you. 📝`);
+    enhancements.push(`About ${formatVariableName(user.top_concern)} - noting that it's ${formatVariableName(checkinData.top_concern_today)} today. We're tracking this with you. 📝`);
   }
 
   // Add enhancements to the insight

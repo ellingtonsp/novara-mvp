@@ -13,7 +13,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { trackCheckinSubmitted } from '../lib/analytics';
 import { API_BASE_URL } from '../lib/environment';
-import { CenteredSlider } from './CenteredSlider';
+import { UnifiedSlider } from './UnifiedSlider';
 import { MetricTooltip } from './MetricTooltip';
 import { getLocalDateString } from '../lib/dateUtils';
 
@@ -116,18 +116,34 @@ export const QuickDailyCheckinForm: React.FC<QuickDailyCheckinFormProps> = ({
 
   if (showCompletion) {
     const lastComprehensive = localStorage.getItem(`last_comprehensive_${user?.email}`);
+    const firstCheckinDate = localStorage.getItem(`first_checkin_${user?.email}`);
+    const storedCount = parseInt(localStorage.getItem(`checkin_count_${user?.email}`) || '0');
+    // Add 1 because we're showing this AFTER a successful submission
+    const checkinsCount = storedCount + 1;
+    
+    // Calculate days since first check-in for new users
+    const daysSinceFirstCheckin = firstCheckinDate 
+      ? Math.floor((Date.now() - new Date(firstCheckinDate).getTime()) / (1000 * 60 * 60 * 24))
+      : 0;
+    
+    // Only show weekly reminder if user has been using app for 7+ days AND hasn't done comprehensive recently
     const daysSinceComprehensive = lastComprehensive 
       ? Math.floor((Date.now() - new Date(lastComprehensive).getTime()) / (1000 * 60 * 60 * 24))
-      : 7;
-    const isWeeklyDue = daysSinceComprehensive >= 7;
+      : daysSinceFirstCheckin; // Use days since first check-in if no comprehensive done yet
+    
+    const isWeeklyDue = daysSinceFirstCheckin >= 7 && daysSinceComprehensive >= 7;
 
     return (
       <Card className="border-green-200 bg-gradient-to-r from-green-50 to-emerald-50">
         <CardContent className="p-4 sm:p-6 text-center">
           <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-3" />
-          <h3 className="text-lg font-semibold text-green-800 mb-2">Quick Check-in Complete!</h3>
+          <h3 className="text-lg font-semibold text-green-800 mb-2">
+            {checkinsCount === 1 ? 'First Check-in Complete!' : 'Quick Check-in Complete!'}
+          </h3>
           <p className="text-sm text-green-600">
-            Great job staying consistent! Your personalized insights are ready.
+            {checkinsCount === 1 
+              ? 'Welcome to Novara! Great job completing your first check-in.'
+              : 'Great job staying consistent! Your personalized insights are ready.'}
           </p>
           {/* Show weekly reminder if due */}
           {isWeeklyDue && (
@@ -250,24 +266,18 @@ export const QuickDailyCheckinForm: React.FC<QuickDailyCheckinFormProps> = ({
               Overall confidence today
             </Label>
           </MetricTooltip>
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm text-gray-600">
-              <span>Low</span>
-              <span className={`font-bold ${hasInteractedWithSlider ? 'text-purple-600' : 'text-gray-400'}`}>
-                {hasInteractedWithSlider ? confidence : '—'}
-              </span>
-              <span>High</span>
-            </div>
-            <CenteredSlider
-              value={confidence}
-              onChange={(value) => {
-                setConfidence(value);
-                setHasInteractedWithSlider(true);
-              }}
-              hasInteracted={hasInteractedWithSlider}
-              className="mt-2"
-            />
-          </div>
+          <UnifiedSlider
+            value={confidence}
+            onChange={(value) => {
+              setConfidence(value);
+              setHasInteractedWithSlider(true);
+            }}
+            hasInteracted={hasInteractedWithSlider}
+            leftLabel="Low"
+            rightLabel="High"
+            variant="centered"
+            showValue={true}
+          />
         </div>
 
         {/* Submit Button */}

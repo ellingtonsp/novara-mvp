@@ -11,6 +11,7 @@
 - **Frontend**: http://localhost:4200/
 - **Backend**: http://localhost:9002/
 - **Health**: http://localhost:9002/api/health
+- **Database**: PostgreSQL on localhost:5432
 
 ## 🔒 **Port Strategy**
 
@@ -97,10 +98,26 @@ Port 3000 is in use, trying another one...
 zsh: killed     npm run dev
 ```
 
+## 🐘 **Database Configuration**
+
+**Local PostgreSQL** (matching staging/production):
+- Host: localhost
+- Port: 5432
+- Database: novara_local
+- User: novara
+- Password: novara_local_dev
+
 ## ✅ **Result**
 
-**Before (3000s)**: Constant port conflicts, random assignments, unreliable startup
-**After (4200/9002)**: Stable, predictable, conflict-free development
+**Before**: 
+- Port conflicts on 3000s
+- SQLite locally (schema drift)
+- Deployment surprises
+
+**After**: 
+- Stable ports (4200/9002)
+- PostgreSQL everywhere
+- True environment parity
 
 ---
 

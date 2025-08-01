@@ -25,20 +25,36 @@ fi
 
 echo "✅ Ports cleaned and verified"
 
-# Start backend on stable port
-echo "📊 Starting backend on port $BACKEND_PORT..."
+# Start backend on stable port with PostgreSQL
+echo "📊 Starting backend on port $BACKEND_PORT with PostgreSQL..."
 cd backend
 
-# Create optimized .env.development
-cat > .env.development << EOF
-NODE_ENV=development
-PORT=$BACKEND_PORT
-USE_LOCAL_DATABASE=true
-DATABASE_TYPE=sqlite
-JWT_SECRET=dev_secret_key_not_for_production
-EOF
+# Check if PostgreSQL is running
+if ! pgrep -x "postgres" > /dev/null; then
+    echo "⚠️  PostgreSQL not running. Starting it..."
+    if command -v brew &> /dev/null; then
+        brew services start postgresql@15
+        sleep 2
+    else
+        echo "❌ PostgreSQL not found. Please install PostgreSQL 15+"
+        exit 1
+    fi
+fi
 
-PORT=$BACKEND_PORT npm run local &
+# Verify PostgreSQL connection
+if ! /opt/homebrew/opt/postgresql@15/bin/psql "postgresql://novara:novara_local_dev@localhost:5432/novara_local" -c "SELECT 1;" >/dev/null 2>&1; then
+    echo "❌ Cannot connect to PostgreSQL database 'novara_local'"
+    echo "   Please ensure PostgreSQL is set up with:"
+    echo "   - Database: novara_local"
+    echo "   - User: novara"
+    echo "   - Password: novara_local_dev"
+    exit 1
+fi
+
+echo "✅ PostgreSQL connection verified"
+
+# Use dev:postgres command which reads from .env.local
+PORT=$BACKEND_PORT npm run dev:postgres &
 BACKEND_PID=$!
 cd ..
 
@@ -119,8 +135,9 @@ echo "🔒 Port Strategy: Using conflict-free ports"
 echo "   ❌ Avoided: 3000, 3001, 3002 (high conflict)"
 echo "   ✅ Using: $BACKEND_PORT, $FRONTEND_PORT (stable)"
 echo ""
-echo "🗄️ Database: Local SQLite (isolated from production)"
-echo "🔗 API URL: http://localhost:$BACKEND_PORT (configured in .env.development)"
+echo "🗄️ Database: PostgreSQL (matching staging/production)"
+echo "🔗 API URL: http://localhost:$BACKEND_PORT (configured in .env.local)"
+echo "🐘 DB Connection: postgresql://novara:***@localhost:5432/novara_local"
 echo ""
 echo "🛑 To stop: kill $BACKEND_PID $FRONTEND_PID"
 echo "   Or run: ./scripts/kill-local-servers.sh" 

@@ -4,6 +4,27 @@
 
 This guide explains how to run a **stable, conflict-free local development environment** for Novara MVP.
 
+## 📋 Prerequisites
+
+Before starting local development, ensure you have:
+
+- **Node.js** 18+ installed
+- **PostgreSQL** 14+ installed and running
+- **Git** for version control
+
+### PostgreSQL Setup (macOS)
+```bash
+# Install PostgreSQL via Homebrew
+brew install postgresql@14
+brew services start postgresql@14
+
+# Create development database
+psql -U postgres -c "CREATE DATABASE novara_local;"
+```
+
+### PostgreSQL Setup (Windows/Linux)
+Download and install PostgreSQL from https://postgresql.org/download/
+
 ## 🚀 Quick Start
 
 ```bash
@@ -26,9 +47,10 @@ This guide explains how to run a **stable, conflict-free local development envir
 ## 🗄️ Database Configuration
 
 **Local Development:**
-- Uses **SQLite** database (`backend/data/novara-local.db`)
+- Uses **PostgreSQL** database (`postgresql://localhost:5432/novara_local`)
 - **Isolated** from production data
-- Automatically created on first run
+- Requires PostgreSQL server running locally
+- Database automatically initialized on first connection
 
 **Environment Variables:**
 ```bash
@@ -36,7 +58,9 @@ This guide explains how to run a **stable, conflict-free local development envir
 NODE_ENV=development
 PORT=9002
 USE_LOCAL_DATABASE=true
-DATABASE_TYPE=sqlite
+DATABASE_TYPE=postgresql
+DATABASE_URL=postgresql://postgres:password@localhost:5432/novara_local
+USE_SCHEMA_V2=true
 JWT_SECRET=dev_secret_key_not_for_production
 
 # Frontend (.env.development)
@@ -132,9 +156,13 @@ npm install
 
 ### Database Issues
 ```bash
-# Reset local SQLite database
-rm backend/data/novara-local.db
+# Reset local PostgreSQL database
+psql -U postgres -c "DROP DATABASE IF EXISTS novara_local;"
+psql -U postgres -c "CREATE DATABASE novara_local;"
 ./scripts/start-dev-stable.sh
+
+# Or using the convenience script (if available)
+./scripts/reset-local-db.sh
 ```
 
 ### Process Killed by macOS
@@ -172,7 +200,8 @@ ulimit -u 2048
 
 **Backend Logs:**
 - Check terminal output for backend process
-- SQLite operations logged automatically
+- PostgreSQL operations logged automatically
+- Connection status and query logs available
 
 **Frontend Logs:**
 - Browser developer tools
@@ -201,7 +230,7 @@ curl http://localhost:4200/
 | Port conflicts | Use stable script, avoid 3000-3002 |
 | CORS errors | Backend configured for port 4200 |
 | Import errors | Clear Vite cache, check path aliases |
-| Database errors | Reset SQLite database |
+| Database errors | Reset PostgreSQL database |
 | Process killed | Increase memory limits or restart |
 | API not responding | Check backend health endpoint |
 

@@ -38,8 +38,9 @@ This guide covers common issues and their solutions for the Novara MVP deploymen
 
 4. **Database configuration issue**
    ```env
-   DATABASE_TYPE=postgresql     # Not 'postgres' or 'airtable'
-   USE_LOCAL_DATABASE=false    # Must be false for Railway
+   DATABASE_TYPE=postgresql     # Required for all environments
+   USE_LOCAL_DATABASE=false    # Must be false for Railway/staging
+   USE_SCHEMA_V2=true          # Required for current schema
    ```
 
 **Debugging Steps:**
@@ -190,6 +191,24 @@ app.options('*', cors()); // Enable preflight for all routes
 ```env
 # Check DATABASE_URL format:
 DATABASE_URL=postgresql://user:password@host:port/database?sslmode=require
+
+# Local development:
+DATABASE_URL=postgresql://postgres:password@localhost:5432/novara_local
+
+# Railway (use provided variable):
+DATABASE_URL=${{Postgres.DATABASE_URL}}
+```
+
+**Local PostgreSQL Not Running:**
+```bash
+# macOS with Homebrew
+brew services start postgresql@14
+
+# Check if PostgreSQL is running
+psql -U postgres -l
+
+# Create database if missing
+psql -U postgres -c "CREATE DATABASE novara_local;"
 ```
 
 **Connection Pool Exhausted:**

@@ -87,18 +87,49 @@ export const PHQ4Assessment: React.FC<PHQ4Props> = ({
   const [showResults, setShowResults] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [assessmentResult, setAssessmentResult] = useState<PHQ4Result | null>(null);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [selectedOption, setSelectedOption] = useState<number | null>(null);
+  const [showSkipped, setShowSkipped] = useState(false);
+
+  // Function to scroll to top with smooth animation
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+  
+  // Custom setCurrentQuestion that includes scroll-to-top
+  const handleQuestionChange = (newQuestion: number) => {
+    setCurrentQuestion(newQuestion);
+    setSelectedOption(null); // Reset selected option for new question
+    setIsTransitioning(false); // Reset transition state
+    // Use setTimeout to ensure DOM has updated before scrolling
+    setTimeout(() => scrollToTop(), 50);
+  };
 
   const handleResponse = (questionId: string, value: number) => {
     const newResponses = { ...responses, [questionId]: value };
     setResponses(newResponses);
+    setSelectedOption(value);
+    setIsTransitioning(true);
     
-    // Auto-advance to next question
+    // Auto-advance to next question with enhanced delay and feedback
     if (currentQuestion < PHQ4_QUESTIONS.length - 1) {
-      setTimeout(() => setCurrentQuestion(currentQuestion + 1), 300);
+      setTimeout(() => handleQuestionChange(currentQuestion + 1), 800);
     } else {
       // All questions answered, calculate results
-      calculateAndShowResults(newResponses);
+      setTimeout(() => {
+        setIsTransitioning(false);
+        calculateAndShowResults(newResponses);
+      }, 800);
     }
+  };
+
+  const handleSkipAssessment = () => {
+    setShowSkipped(true);
+    track('phq4_skipped', {
+      questions_answered: Object.keys(responses).length,
+      frequency,
+      environment: import.meta.env.MODE
+    });
   };
 
   const calculateAndShowResults = (allResponses: Record<string, number>) => {
@@ -144,6 +175,34 @@ export const PHQ4Assessment: React.FC<PHQ4Props> = ({
       default: return 'text-gray-600';
     }
   };
+
+  if (showSkipped) {
+    return (
+      <Card className="border-purple-200 bg-gradient-to-r from-purple-50 to-pink-50">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-purple-800">
+            <Heart className="h-5 w-5" />
+            Assessment Skipped
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 text-center">
+          <div className="py-6">
+            <p className="text-lg text-gray-800 mb-3">That's perfectly okay!</p>
+            <p className="text-gray-600 mb-4">
+              We understand that mental health assessments aren't always convenient. 
+              We'll check in again in 2 weeks when you might be more ready.
+            </p>
+            <div className="bg-blue-50 rounded-lg p-4 mt-4">
+              <p className="text-sm text-blue-800">
+                <strong>Remember:</strong> Your wellbeing matters, and these check-ins help us provide better support. 
+                You can always take the assessment later from your dashboard.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (showResults && assessmentResult) {
     const outcomeData = OUTCOME_IMPACTS[assessmentResult.riskLevel];
@@ -205,6 +264,7 @@ export const PHQ4Assessment: React.FC<PHQ4Props> = ({
   }
 
   const question = PHQ4_QUESTIONS[currentQuestion];
+  const progressPercentage = ((currentQuestion + 1) / PHQ4_QUESTIONS.length) * 100;
 
   return (
     <Card className="border-purple-200 bg-gradient-to-r from-purple-50 to-pink-50">
@@ -213,30 +273,85 @@ export const PHQ4Assessment: React.FC<PHQ4Props> = ({
           <Heart className="h-5 w-5" />
           Quick Mental Health Check-in
         </CardTitle>
-        <p className="text-sm text-purple-600">
-          Question {currentQuestion + 1} of {PHQ4_QUESTIONS.length}
-        </p>
+        <div className="space-y-2">
+          <p className="text-sm text-purple-600">
+            Question {currentQuestion + 1} of {PHQ4_QUESTIONS.length}
+          </p>
+          {/* Animated Progress Bar */}
+          <div className="w-full bg-purple-100 rounded-full h-2">
+            <div 
+              className="bg-purple-600 h-2 rounded-full transition-all duration-500 ease-out"
+              style={{ width: `${progressPercentage}%` }}
+            />
+          </div>
+        </div>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
           <p className="text-gray-800 font-medium">{question.text}</p>
           
+          {/* Transition Message */}
+          {isTransitioning && (
+            <div className="flex items-center justify-center py-3">
+              <div className="flex items-center gap-2 text-purple-600 animate-pulse">
+                <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                <span className="text-sm font-medium ml-2">
+                  {currentQuestion < PHQ4_QUESTIONS.length - 1 ? 'Moving to next question...' : 'Calculating your results...'}
+                </span>
+              </div>
+            </div>
+          )}
+          
           <div className="grid grid-cols-1 gap-2">
-            {RESPONSE_OPTIONS.map((option) => (
-              <Button
-                key={option.value}
-                variant="outline"
-                className={`justify-start text-left p-4 h-auto ${
-                  responses[question.id] === option.value 
-                    ? option.color 
-                    : 'hover:bg-gray-50'
-                }`}
-                onClick={() => handleResponse(question.id, option.value)}
-              >
-                <span className="font-medium">{option.label}</span>
-              </Button>
-            ))}
+            {RESPONSE_OPTIONS.map((option) => {
+              const isSelected = responses[question.id] === option.value;
+              const isSelectedForTransition = selectedOption === option.value;
+              
+              return (
+                <Button
+                  key={option.value}
+                  variant="outline"
+                  disabled={isTransitioning}
+                  className={`justify-start text-left p-4 h-auto transition-all duration-200 ${
+                    isSelected 
+                      ? option.color 
+                      : 'hover:bg-gray-50'
+                  } ${
+                    isSelectedForTransition && !isTransitioning
+                      ? 'transform scale-105 shadow-md'
+                      : ''
+                  } ${
+                    isTransitioning && isSelectedForTransition
+                      ? 'transform scale-105 shadow-md opacity-90'
+                      : ''
+                  } ${
+                    isTransitioning && !isSelectedForTransition
+                      ? 'opacity-50'
+                      : ''
+                  }`}
+                  onClick={() => !isTransitioning && handleResponse(question.id, option.value)}
+                >
+                  <span className="font-medium">{option.label}</span>
+                </Button>
+              );
+            })}
           </div>
+
+          {/* Skip Assessment Option */}
+          {!isTransitioning && (
+            <div className="pt-4 border-t border-purple-100">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleSkipAssessment}
+                className="text-purple-600 hover:text-purple-700 hover:bg-purple-50 w-full"
+              >
+                Skip this assessment for now
+              </Button>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
