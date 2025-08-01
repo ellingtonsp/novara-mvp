@@ -7,8 +7,11 @@
 # Backend specific  
 /backend/ @ellingtonsp
 
-# Documentation
+# Documentation - can be fast-tracked with single review
 /docs/ @ellingtonsp
+*.md @ellingtonsp
+CLAUDE.md @ellingtonsp
+README.md @ellingtonsp
 
 # Scripts
 /scripts/ @ellingtonsp
