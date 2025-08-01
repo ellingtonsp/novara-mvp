@@ -32,7 +32,7 @@ router.get('/daily', authenticateToken, asyncHandler(async (req, res) => {
       success: true,
       insight,
       analysis_data: {
-        user_id: user.id,
+        ...insight.analysisData,
         generated_at: new Date().toISOString()
       }
     });
@@ -180,6 +180,61 @@ router.post('/engagement', authenticateToken, asyncHandler(async (req, res) => {
   res.json({
     success: true,
     message: 'Engagement tracked successfully'
+  });
+}));
+
+/**
+ * POST /api/insights/feedback
+ * Submit feedback for an insight
+ */
+router.post('/feedback', authenticateToken, asyncHandler(async (req, res) => {
+  console.log(`💬 Submitting insight feedback for user: ${req.user.email}`);
+
+  const { 
+    insight_id, 
+    helpful, 
+    comment, 
+    insight_context,
+    timestamp 
+  } = req.body;
+
+  // Find user
+  const user = await userService.findByEmail(req.user.email);
+  if (!user) {
+    throw new AppError('User not found', 404);
+  }
+
+  // Validate required fields
+  if (!insight_id || typeof helpful !== 'boolean') {
+    throw new AppError('Missing required fields: insight_id, helpful', 400);
+  }
+
+  const feedbackData = {
+    user_id: user.id,
+    insight_id,
+    helpful,
+    comment: comment || null,
+    insight_context: insight_context || {},
+    timestamp: timestamp || new Date().toISOString(),
+    created_at: new Date().toISOString()
+  };
+
+  // Log feedback for analytics and debugging
+  console.log('📊 Insight feedback received:', {
+    user: req.user.email,
+    insight_id,
+    helpful,
+    has_comment: !!comment,
+    context: insight_context
+  });
+
+  // TODO: Store feedback in database for analysis
+  // For now, we'll log it and track it via analytics
+  
+  res.json({
+    success: true,
+    message: 'Feedback submitted successfully',
+    feedback_id: `fb_${Date.now()}_${user.id}`
   });
 }));
 

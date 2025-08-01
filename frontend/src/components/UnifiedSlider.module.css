@@ -1,0 +1,76 @@
+/* UnifiedSlider specific styles - scoped to prevent conflicts */
+
+/* Remove all default browser styling for the input */
+.slider-input {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background: transparent;
+  outline: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Remove all track styling to rely on our custom implementation */
+.slider-input::-webkit-slider-track {
+  -webkit-appearance: none;
+  background: transparent;
+  height: 100%;
+}
+
+.slider-input::-moz-range-track {
+  -moz-appearance: none;
+  background: transparent;
+  height: 100%;
+}
+
+.slider-input::-ms-track {
+  background: transparent;
+  border-color: transparent;
+  color: transparent;
+  height: 100%;
+}
+
+/* Remove all thumb styling to use our custom thumb */
+.slider-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 1px;
+  height: 1px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.slider-input::-moz-range-thumb {
+  -moz-appearance: none;
+  border: none;
+  width: 1px;
+  height: 1px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.slider-input::-ms-thumb {
+  width: 1px;
+  height: 1px;
+  background: transparent;
+  cursor: pointer;
+}
+
+/* Ensure no focus outlines on the invisible input */
+.slider-input:focus {
+  outline: none;
+}
+
+/* Disable all browser-specific styling */
+.slider-input::-webkit-slider-runnable-track {
+  background: transparent;
+}
+
+.slider-input::-moz-range-progress {
+  background: transparent;
+}
+
+.slider-input::-ms-fill-lower,
+.slider-input::-ms-fill-upper {
+  background: transparent;
+}

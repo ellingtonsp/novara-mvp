@@ -210,19 +210,32 @@ const ChecklistCard: React.FC<ChecklistCardProps> = ({ onComplete, className = '
 
       <CardContent className="pt-0 px-3 sm:px-6 pb-3 sm:pb-6">
         {/* Personalized info panel */}
-        {showPersonalizedInfo && smartSuggestions.length > 0 && (
+        {showPersonalizedInfo && (
           <div className="mb-3 p-2 sm:p-3 bg-purple-100 rounded-lg">
             <h4 className="text-xs sm:text-sm font-semibold text-purple-800 mb-2 flex items-center gap-1">
-              <Sparkles className="h-3 w-3 sm:h-4 sm:w-4" />
-              Smart Insights
+              <Info className="h-3 w-3 sm:h-4 sm:w-4" />
+              About Your Smart Prep Checklist
             </h4>
-            <ul className="space-y-1">
-              {smartSuggestions.map((suggestion, index) => (
-                <li key={index} className="text-xs sm:text-sm text-purple-700">
-                  • {suggestion}
-                </li>
-              ))}
-            </ul>
+            <p className="text-xs sm:text-sm text-purple-700 mb-2">
+              Your checklist is personalized based on your current IVF stage and recent check-ins. 
+              Items are tailored to your {user.cycle_stage.replace('_', ' ')} phase to ensure you're 
+              ready with the right questions and information.
+            </p>
+            {smartSuggestions.length > 0 && (
+              <>
+                <h5 className="text-xs sm:text-sm font-semibold text-purple-800 mb-1 flex items-center gap-1">
+                  <Sparkles className="h-3 w-3 sm:h-4 sm:w-4" />
+                  Personalized Insights
+                </h5>
+                <ul className="space-y-1">
+                  {smartSuggestions.map((suggestion, index) => (
+                    <li key={index} className="text-xs sm:text-sm text-purple-700">
+                      • {suggestion}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
           </div>
         )}
         

@@ -41,6 +41,7 @@ export const MetricTooltip: React.FC<MetricTooltipProps> = ({ metric, children }
   });
   const tooltipRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent | TouchEvent) => {
@@ -62,6 +63,10 @@ export const MetricTooltip: React.FC<MetricTooltipProps> = ({ metric, children }
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('touchstart', handleClickOutside);
+      // Clean up any pending timeout
+      if (closeTimeoutRef.current) {
+        clearTimeout(closeTimeoutRef.current);
+      }
     };
   }, [isOpen]);
 
@@ -123,10 +128,25 @@ export const MetricTooltip: React.FC<MetricTooltipProps> = ({ metric, children }
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
+            // Clear any pending close timeout when clicking
+            if (closeTimeoutRef.current) {
+              clearTimeout(closeTimeoutRef.current);
+            }
             setIsOpen(!isOpen);
           }}
-          onMouseEnter={() => setIsOpen(true)}
-          onMouseLeave={() => setIsOpen(false)}
+          onMouseEnter={() => {
+            // Clear any pending close timeout
+            if (closeTimeoutRef.current) {
+              clearTimeout(closeTimeoutRef.current);
+            }
+            setIsOpen(true);
+          }}
+          onMouseLeave={() => {
+            // Add 3-second delay before closing
+            closeTimeoutRef.current = setTimeout(() => {
+              setIsOpen(false);
+            }, 3000);
+          }}
           className="p-0 text-gray-400 hover:text-gray-600 transition-colors"
           aria-label={`Learn more about ${content.title}`}
         >
@@ -138,6 +158,18 @@ export const MetricTooltip: React.FC<MetricTooltipProps> = ({ metric, children }
             ref={tooltipRef}
             style={tooltipStyle}
             className="w-64 p-3 bg-white rounded-lg shadow-lg border border-gray-200 text-sm"
+            onMouseEnter={() => {
+              // Clear timeout when hovering over tooltip
+              if (closeTimeoutRef.current) {
+                clearTimeout(closeTimeoutRef.current);
+              }
+            }}
+            onMouseLeave={() => {
+              // Start close timeout when leaving tooltip
+              closeTimeoutRef.current = setTimeout(() => {
+                setIsOpen(false);
+              }, 3000);
+            }}
           >
             <div className="font-semibold text-gray-900 mb-1">{content.title}</div>
             <div className="text-gray-600 text-xs leading-relaxed">{content.description}</div>

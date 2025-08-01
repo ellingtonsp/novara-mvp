@@ -328,28 +328,48 @@ export const OutcomeMetricsDashboard: React.FC<OutcomeMetricsDashboardProps> = (
       </div>
       
       {/* Mobile Header with Current Section */}
-      <div className="sm:hidden space-y-2">
-        <h3 className="text-lg font-semibold text-center">
-          {tabs[currentTabIndex].label}
+      <div className="sm:hidden">
+        <h3 className="text-lg font-semibold text-center flex items-center justify-center gap-2 mb-1.5">
+          {(() => {
+            const CurrentIcon = tabs[currentTabIndex].icon;
+            return (
+              <>
+                <CurrentIcon className="h-5 w-5" />
+                {tabs[currentTabIndex].label}
+              </>
+            );
+          })()}
         </h3>
         
-        {/* Icon Indicators */}
-        <div className="flex justify-center items-center gap-3 pb-2">
-          {tabs.map((tab, index) => {
-            const Icon = tab.icon;
-            return (
-              <div 
-                key={index}
-                className={`transition-all duration-300 flex items-center justify-center ${
+        {/* iOS-style dot indicators */}
+        <div className="flex justify-center items-center gap-2 pb-1.5">
+          {tabs.map((tab, index) => (
+            <div
+              key={index}
+              onClick={() => setSelectedView(tab.id as any)}
+              className="cursor-pointer p-1"
+              role="button"
+              tabIndex={0}
+              aria-label={`Navigate to ${tab.label}`}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  setSelectedView(tab.id as any);
+                }
+              }}
+            >
+              <div
+                className={`rounded-full transition-all duration-200 ${
                   index === currentTabIndex 
-                    ? 'w-10 h-10 bg-primary rounded-full text-white' 
-                    : 'w-2 h-2 bg-gray-300 rounded-full'
+                    ? 'bg-gray-700' 
+                    : 'bg-gray-300'
                 }`}
-              >
-                {index === currentTabIndex && <Icon className="h-5 w-5" />}
-              </div>
-            );
-          })}
+                style={{
+                  width: '6px',
+                  height: '6px'
+                }}
+              />
+            </div>
+          ))}
         </div>
       </div>
       
@@ -489,7 +509,10 @@ export const OutcomeMetricsDashboard: React.FC<OutcomeMetricsDashboardProps> = (
         <div className="space-y-4">
           <Card className="border-purple-200 bg-gradient-to-r from-purple-50 to-pink-50">
             <CardHeader>
-              <CardTitle className="text-purple-800">Treatment Adherence Insights</CardTitle>
+              <CardTitle className="text-purple-800 flex items-center gap-2">
+                <Pill className="h-5 w-5" />
+                Treatment Adherence Insights
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="bg-white rounded-lg p-4">
@@ -596,7 +619,10 @@ export const OutcomeMetricsDashboard: React.FC<OutcomeMetricsDashboardProps> = (
         <div className="space-y-4">
           <Card className="border-purple-200 bg-gradient-to-r from-purple-50 to-pink-50">
             <CardHeader>
-              <CardTitle className="text-purple-800">Mental Health & Well-being</CardTitle>
+              <CardTitle className="text-purple-800 flex items-center gap-2">
+                <Brain className="h-5 w-5" />
+                Mental Health & Well-being
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="bg-white rounded-lg p-4">
@@ -656,7 +682,10 @@ export const OutcomeMetricsDashboard: React.FC<OutcomeMetricsDashboardProps> = (
         <div className="space-y-4">
           <Card className="border-purple-200 bg-gradient-to-r from-purple-50 to-pink-50">
             <CardHeader>
-              <CardTitle className="text-purple-800">Your Treatment Outlook</CardTitle>
+              <CardTitle className="text-purple-800 flex items-center gap-2">
+                <Target className="h-5 w-5" />
+                Your Treatment Outlook
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-lg p-6 text-center">

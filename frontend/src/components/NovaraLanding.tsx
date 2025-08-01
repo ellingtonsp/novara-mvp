@@ -26,29 +26,9 @@ import { getOnboardingPath, OnboardingPath, trackOnboardingPathSelected, generat
 import { OnboardingFast } from './OnboardingFast';
 import { getLocalDateString, logTimezoneDebug } from '../lib/dateUtils';
 import { isCheckinToday, debugCheckinDates } from '../lib/checkinMigration';
+import { UnifiedSlider } from './UnifiedSlider';
 
-const sliderThumbStyle = `
-  input[type="range"]::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: #FF6F61;
-    cursor: pointer;
-    border: 2px solid white;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  }
-  input[type="range"]::-moz-range-thumb {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: #FF6F61;
-    cursor: pointer;
-    border: 2px solid white;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    border: none;
-  }
-`;
+// Slider styles removed - now using UnifiedSlider component
 
 const NovaraLanding = () => {
   const { user, isAuthenticated, isLoading, login, logout, updateUser } = useAuth();
@@ -58,6 +38,16 @@ const NovaraLanding = () => {
   const [todaysCheckin, setTodaysCheckin] = useState<any>(null);
   const [showCheckinForm, setShowCheckinForm] = useState(false);
   const [isCheckingTodaysCheckin, setIsCheckingTodaysCheckin] = useState(true);
+  
+  // Check URL hash for direct navigation
+  useEffect(() => {
+    const hash = window.location.hash.substring(1);
+    if (hash === 'checkin') {
+      setCurrentView('checkin');
+    } else if (hash === 'insights') {
+      setCurrentView('insights');
+    }
+  }, []);
   
   // Load DM Sans font
   useEffect(() => {
@@ -73,50 +63,9 @@ const NovaraLanding = () => {
     };
   }, []);
 
-  useEffect(() => {
-    const styleElement = document.createElement('style');
-    styleElement.textContent = sliderThumbStyle;
-    document.head.appendChild(styleElement);
+  // Slider style injection removed - now using UnifiedSlider component
 
-    return () => {
-      document.head.removeChild(styleElement);
-    };
-  }, []);
-
-  useEffect(() => {
-    // Inject slider styles globally to avoid JSX parsing issues
-    const style = document.createElement('style');
-    style.textContent = `
-      .slider-gradient {
-        appearance: none;
-        height: 12px;
-        border-radius: 6px;
-        outline: none;
-        cursor: pointer;
-      }
-      .slider-gradient::-webkit-slider-thumb {
-        appearance: none;
-        width: 20px;
-        height: 20px;
-        border-radius: 50%;
-        background: #FF6F61;
-        cursor: pointer;
-        border: 2px solid white;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-      }
-      .slider-gradient::-moz-range-thumb {
-        width: 20px;
-        height: 20px;
-        border-radius: 50%;
-        background: #FF6F61;
-        cursor: pointer;
-        border: 2px solid white;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-      }
-    `;
-    document.head.appendChild(style);
-    return () => style.remove();
-  }, []);
+  // Slider gradient styles removed - now using UnifiedSlider component
 
   // Function to get slider background with gradient based on value (commented out for future use)
   // const getSliderBackground = (value: number, min: number = 1, max: number = 10) => {
@@ -246,7 +195,28 @@ const NovaraLanding = () => {
     
     // Check for today's check-in
     checkForTodaysCheckin();
-  }, [user]);
+    
+    // Check weekly reminder status on load, but only if user has checkins
+    const checkinsCount = parseInt(localStorage.getItem(`checkin_count_${user?.email}`) || '0');
+    if (checkinsCount > 0) {
+      const lastComprehensive = localStorage.getItem(`last_comprehensive_${user?.email}`);
+      const firstCheckinDate = localStorage.getItem(`first_checkin_${user?.email}`);
+      
+      // Calculate days since first check-in
+      const daysSinceFirstCheckin = firstCheckinDate 
+        ? Math.floor((Date.now() - new Date(firstCheckinDate).getTime()) / (1000 * 60 * 60 * 24))
+        : 0;
+      
+      // Only show weekly reminder if user has been using app for 7+ days
+      const daysSinceComprehensive = lastComprehensive 
+        ? Math.floor((Date.now() - new Date(lastComprehensive).getTime()) / (1000 * 60 * 60 * 24))
+        : daysSinceFirstCheckin;
+      
+      if (checkinPreference === 'quick_daily' && daysSinceFirstCheckin >= 7 && daysSinceComprehensive >= 7) {
+        setShowWeeklyReminder(true);
+      }
+    }
+  }, [user, checkinPreference]);
   
   // Check for today's check-in when switching to check-in tab
   useEffect(() => {
@@ -432,6 +402,11 @@ const NovaraLanding = () => {
     const count = parseInt(localStorage.getItem(`checkin_count_${user?.email}`) || '0') + 1;
     localStorage.setItem(`checkin_count_${user?.email}`, count.toString());
     
+    // Track first check-in date if this is the first one
+    if (count === 1) {
+      localStorage.setItem(`first_checkin_${user?.email}`, new Date().toISOString());
+    }
+    
     // Refresh today's check-in status after a short delay to ensure the API is updated
     setTimeout(() => {
       checkForTodaysCheckin();
@@ -439,11 +414,19 @@ const NovaraLanding = () => {
     
     // Check if it's time for weekly comprehensive check-in
     const lastComprehensive = localStorage.getItem(`last_comprehensive_${user?.email}`);
-    const daysSince = lastComprehensive 
-      ? Math.floor((Date.now() - new Date(lastComprehensive).getTime()) / (1000 * 60 * 60 * 24))
-      : 7;
+    const firstCheckinDate = localStorage.getItem(`first_checkin_${user?.email}`);
     
-    if (checkinPreference === 'quick_daily' && daysSince >= 7) {
+    // Calculate days since first check-in
+    const daysSinceFirstCheckin = firstCheckinDate 
+      ? Math.floor((Date.now() - new Date(firstCheckinDate).getTime()) / (1000 * 60 * 60 * 24))
+      : 0;
+    
+    // Only show weekly reminder if user has been using app for 7+ days
+    const daysSinceComprehensive = lastComprehensive 
+      ? Math.floor((Date.now() - new Date(lastComprehensive).getTime()) / (1000 * 60 * 60 * 24))
+      : daysSinceFirstCheckin; // Use days since first check-in if no comprehensive done yet
+    
+    if (checkinPreference === 'quick_daily' && daysSinceFirstCheckin >= 7 && daysSinceComprehensive >= 7) {
       setShowWeeklyReminder(true);
     }
     
@@ -985,70 +968,49 @@ const NovaraLanding = () => {
 
                   <div>
                     <Label htmlFor="confidence_meds">
-                      When you think about your IVF medications, do you feel prepared or a bit lost? ({formData.confidence_meds}/10)
+                      When you think about your IVF medications, do you feel prepared or a bit lost?
                     </Label>
-                    <div className="mt-4 px-2">
-                                              <input
-                          type="range"
-                          min="1"
-                          max="10"
-                          value={formData.confidence_meds}
-                          onChange={(e) => handleInputChange('confidence_meds', parseInt(e.target.value))}
-                          className="w-full h-3 cursor-pointer rounded-lg appearance-none outline-none"
-                          style={{
-                            background: `linear-gradient(to right, #FF6F61 0%, #FF6F61 ${((formData.confidence_meds - 1) / 9) * 100}%, #e5e7eb ${((formData.confidence_meds - 1) / 9) * 100}%, #e5e7eb 100%)`
-                          }}
-                        />
-                      <div className="flex justify-between text-sm text-gray-500 mt-2">
-                        <span>Very lost</span>
-                        <span>Totally prepared</span>
-                      </div>
+                    <div className="mt-4">
+                      <UnifiedSlider
+                        value={formData.confidence_meds}
+                        onChange={(value) => handleInputChange('confidence_meds', value)}
+                        leftLabel="Very lost"
+                        rightLabel="Totally prepared"
+                        variant="centered"
+                        showValue={true}
+                      />
                     </div>
                   </div>
 
                   <div>
                     <Label htmlFor="confidence_costs">
-                      When it comes to costs and insurance, do you feel on top of things or a bit in the dark? ({formData.confidence_costs}/10)
+                      When it comes to costs and insurance, do you feel on top of things or a bit in the dark?
                     </Label>
-                    <div className="mt-4 px-2">
-                                              <input
-                          type="range"
-                          min="1"
-                          max="10"
-                          value={formData.confidence_costs}
-                          onChange={(e) => handleInputChange('confidence_costs', parseInt(e.target.value))}
-                          className="w-full h-3 cursor-pointer rounded-lg appearance-none outline-none"
-                          style={{
-                            background: `linear-gradient(to right, #FF6F61 0%, #FF6F61 ${((formData.confidence_costs - 1) / 9) * 100}%, #e5e7eb ${((formData.confidence_costs - 1) / 9) * 100}%, #e5e7eb 100%)`
-                          }}
-                        />
-                      <div className="flex justify-between text-sm text-gray-500 mt-2">
-                        <span>In the dark</span>
-                        <span>On top of it</span>
-                      </div>
+                    <div className="mt-4">
+                      <UnifiedSlider
+                        value={formData.confidence_costs}
+                        onChange={(value) => handleInputChange('confidence_costs', value)}
+                        leftLabel="In the dark"
+                        rightLabel="On top of it"
+                        variant="centered"
+                        showValue={true}
+                      />
                     </div>
                   </div>
 
                   <div>
                     <Label htmlFor="confidence_overall">
-                      When you look at the road ahead, do you feel steady or shaky? ({formData.confidence_overall}/10)
+                      When you look at the road ahead, do you feel steady or shaky?
                     </Label>
-                    <div className="mt-4 px-2">
-                                              <input
-                          type="range"
-                          min="1"
-                          max="10"
-                          value={formData.confidence_overall}
-                          onChange={(e) => handleInputChange('confidence_overall', parseInt(e.target.value))}
-                          className="w-full h-3 cursor-pointer rounded-lg appearance-none outline-none"
-                          style={{
-                            background: `linear-gradient(to right, #FF6F61 0%, #FF6F61 ${((formData.confidence_overall - 1) / 9) * 100}%, #e5e7eb ${((formData.confidence_overall - 1) / 9) * 100}%, #e5e7eb 100%)`
-                          }}
-                        />
-                      <div className="flex justify-between text-sm text-gray-500 mt-2">
-                        <span>Very shaky</span>
-                        <span>Steady</span>
-                      </div>
+                    <div className="mt-4">
+                      <UnifiedSlider
+                        value={formData.confidence_overall}
+                        onChange={(value) => handleInputChange('confidence_overall', value)}
+                        leftLabel="Very shaky"
+                        rightLabel="Steady"
+                        variant="centered"
+                        showValue={true}
+                      />
                     </div>
                   </div>
 
@@ -1366,7 +1328,7 @@ const NovaraLanding = () => {
                           </Card>
                         ) : todaysCheckin && !showCheckinForm ? (
                           <TodaysCheckinStatus
-                            lastCheckinTime={todaysCheckin.date_submitted}
+                            lastCheckinTime={todaysCheckin.created_at || todaysCheckin.date_submitted}
                             lastMood={todaysCheckin.mood_today}
                             lastConfidence={todaysCheckin.confidence_today}
                             onReplaceCheckin={handleReplaceCheckin}
@@ -1529,7 +1491,7 @@ const NovaraLanding = () => {
               </Card>
             ) : todaysCheckin && !showCheckinForm ? (
               <TodaysCheckinStatus
-                lastCheckinTime={todaysCheckin.date_submitted}
+                lastCheckinTime={todaysCheckin.created_at || todaysCheckin.date_submitted}
                 lastMood={todaysCheckin.mood_today}
                 lastConfidence={todaysCheckin.confidence_today}
                 onReplaceCheckin={handleReplaceCheckin}
