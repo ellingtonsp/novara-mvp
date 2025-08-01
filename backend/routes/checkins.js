@@ -139,6 +139,104 @@ router.get('/', authenticateToken, asyncHandler(async (req, res) => {
 }));
 
 /**
+ * GET /api/checkins/last-values
+ * Get last check-in values for form defaults
+ */
+router.get('/last-values', authenticateToken, asyncHandler(async (req, res) => {
+  console.log('📊 Fetching last check-in values for user:', req.user.email);
+
+  // Find user record
+  const user = await userService.findByEmail(req.user.email);
+  if (!user) {
+    throw new AppError('User not found', 404);
+  }
+
+  // Get the most recent check-in for this user
+  const result = await checkinService.getUserCheckins(user.id, 1);
+  const userRecords = result.records || [];
+
+  if (userRecords.length === 0) {
+    console.log('No previous check-ins found for user:', req.user.email);
+    return res.json({
+      success: true,
+      hasValues: false,
+      message: 'No previous check-ins found'
+    });
+  }
+
+  // Extract last values from the most recent check-in
+  const lastCheckin = userRecords[0];
+  const fields = lastCheckin.fields || lastCheckin;
+
+  // Build response with last values
+  const lastValues = {
+    mood_today: fields.mood_today || null,
+    confidence_today: fields.confidence_today || null,
+    medication_taken: fields.medication_taken || null,
+    primary_concern_today: fields.primary_concern_today || null,
+    user_note: fields.user_note || null,
+    journey_reflection_today: fields.journey_reflection_today || null,
+    
+    // Include dimension-specific values if present
+    medication_confidence_today: fields.medication_confidence_today || null,
+    medication_readiness_today: fields.medication_readiness_today || null,
+    financial_confidence_today: fields.financial_confidence_today || null,
+    journey_confidence_today: fields.journey_confidence_today || null,
+    
+    // Include any other tracked fields
+    symptom_tracking: fields.symptom_tracking || null,
+    cycle_day: fields.cycle_day || null,
+    
+    // Metadata
+    last_checkin_date: fields.date_submitted || lastCheckin.date_submitted,
+    days_since_last_checkin: Math.floor(
+      (Date.now() - new Date(fields.date_submitted || lastCheckin.date_submitted).getTime()) / 
+      (1000 * 60 * 60 * 24)
+    )
+  };
+
+  console.log('✅ Found last check-in values from:', lastValues.last_checkin_date);
+
+  res.json({
+    success: true,
+    hasValues: true,
+    lastValues,
+    message: 'Last check-in values retrieved successfully'
+  });
+}));
+
+/**
+ * GET /api/checkins/questions
+ * Get personalized check-in questions
+ */
+router.get('/questions', authenticateToken, asyncHandler(async (req, res) => {
+  console.log(`🎯 Generating personalized questions for user: ${req.user.email}`);
+
+  // Find user to get their onboarding data
+  const user = await userService.findByEmail(req.user.email);
+  
+  if (!user) {
+    throw new AppError('User not found', 404);
+  }
+
+  // Generate personalized questions based on their concerns
+  const questions = generatePersonalizedCheckInQuestions(user);
+  
+  console.log(`✅ Generated ${questions.length} personalized questions for ${req.user.email}`);
+  console.log('📝 Question contexts:', questions.map(q => q.context || 'baseline').join(', '));
+
+  res.json({
+    success: true,
+    questions,
+    metadata: {
+      total_questions: questions.length,
+      required_questions: questions.filter(q => q.required).length,
+      dimension_focus: questions.find(q => q.context && q.context.includes('focus'))?.context || 'baseline'
+    }
+  });
+}));
+
+/**
  * GET /api/checkins/user/:userId
  * Get check-ins for specific user (admin or self only)
  */

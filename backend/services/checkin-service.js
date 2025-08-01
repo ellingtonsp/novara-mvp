@@ -124,9 +124,14 @@ class CheckinService {
    * Find check-in by ID
    */
   async findById(checkinId) {
+    // Initialize database if needed
+    if (!this.db) {
+      await this.initialize();
+    }
+    
     if (this.db.isPostgres || this.db.isUsingLocalDatabase()) {
-      // For now, we'd need to add this method to the adapters
-      throw new AppError('Finding by ID not implemented for this database', 501);
+      console.log('🔍 Using PostgreSQL/SQLite for check-in lookup');
+      return await this.db.localDb.findCheckinById(checkinId);
     }
     
     // Airtable
@@ -150,8 +155,14 @@ class CheckinService {
    * Delete check-in
    */
   async delete(checkinId) {
+    // Initialize database if needed
+    if (!this.db) {
+      await this.initialize();
+    }
+    
     if (this.db.isPostgres || this.db.isUsingLocalDatabase()) {
-      throw new AppError('Deletion not implemented for this database', 501);
+      console.log('🐘 Using PostgreSQL/SQLite for check-in deletion');
+      return await this.db.localDb.deleteCheckin(checkinId);
     }
     
     // Airtable
@@ -197,8 +208,38 @@ class CheckinService {
    * Update an existing check-in
    */
   async update(checkinId, updateData) {
-    console.log('🐘 Using PostgreSQL for check-in update');
-    const result = await this.db.localDb.updateCheckin(checkinId, updateData);
+    // Initialize database if needed
+    if (!this.db) {
+      await this.initialize();
+    }
+    
+    if (this.db.isPostgres || this.db.isUsingLocalDatabase()) {
+      console.log('🐘 Using PostgreSQL/SQLite for check-in update');
+      return await this.db.localDb.updateCheckin(checkinId, updateData);
+    }
+    
+    // Airtable
+    console.log('☁️  Using Airtable for check-in update');
+    
+    // Filter for production schema
+    const filteredData = filterForProductionSchema('DailyCheckins', updateData);
+    
+    const response = await fetch(`${config.airtable.baseUrl}/DailyCheckins/${checkinId}`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${config.airtable.apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        fields: filteredData
+      })
+    });
+    
+    if (!response.ok) {
+      throw new AppError('Failed to update check-in', response.status);
+    }
+    
+    const result = await response.json();
     return result;
   }
 }
