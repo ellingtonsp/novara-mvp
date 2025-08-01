@@ -107,9 +107,9 @@ const config = {
   // Rate Limiting
   rateLimiting: {
     windowMs: 15 * 60 * 1000, // 15 minutes
-    maxRequests: 100,
+    maxRequests: process.env.NODE_ENV === 'production' ? 500 : 100, // Match legacy server in production
     authWindowMs: 5 * 60 * 1000, // 5 minutes
-    authMaxRequests: 10
+    authMaxRequests: process.env.NODE_ENV === 'production' ? 50 : 10 // More lenient in production
   }
 };
 
