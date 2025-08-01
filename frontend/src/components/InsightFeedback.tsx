@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Button } from './ui/button';
 import { ThumbsUp, ThumbsDown, MessageSquare } from 'lucide-react';
 import { trackInsightFeedback } from '../lib/analytics';
+import { API_BASE_URL } from '../lib/environment';
 
 interface InsightFeedbackProps {
   insightId: string;
@@ -50,11 +51,38 @@ export const InsightFeedback: React.FC<InsightFeedbackProps> = ({
         timestamp: new Date().toISOString()
       };
 
+      // Track with analytics
       trackInsightFeedback(feedbackPayload);
+
+      // Submit to backend API
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_BASE_URL}/api/insights/feedback`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          insight_id: insightId,
+          helpful: type === 'helpful',
+          comment: text || undefined,
+          insight_context: insightContext,
+          timestamp: new Date().toISOString()
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Backend API error: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log('✅ Insight feedback submitted to backend:', result);
       
       console.log('✅ Insight feedback submitted:', type, text ? `with comment: "${text}"` : '');
     } catch (error) {
       console.error('❌ Failed to submit insight feedback:', error);
+      // Continue to show success to user even if backend fails
+      // Analytics tracking has already succeeded
     } finally {
       setIsSubmitting(false);
     }

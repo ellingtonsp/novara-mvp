@@ -50,7 +50,7 @@ export default defineConfig({
   },
   // Development server configuration
   server: {
-    port: 3000,
+    port: 4200,
     host: true
   },
   // Preview server configuration

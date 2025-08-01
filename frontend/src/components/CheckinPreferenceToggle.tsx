@@ -83,20 +83,22 @@ export const CheckinPreferenceToggle: React.FC<CheckinPreferenceToggleProps> = (
     onPreferenceChange?.(newPreference);
   };
 
-  if (!showOptions && hasSeenOptions) {
-    // Show subtle preference indicator
-    return (
-      <button
-        onClick={() => setShowOptions(true)}
-        className="flex items-center gap-2 text-sm text-purple-600 hover:text-purple-800 transition-colors"
-      >
-        <Settings className="h-4 w-4" />
-        {localPreference === 'quick_daily' ? 'Quick daily check-ins' : 'Comprehensive daily check-ins'}
-      </button>
-    );
-  }
-
   if (!showOptions) {
+    // Always show subtle preference indicator for users who have done at least one check-in
+    const checkinsCount = parseInt(localStorage.getItem(`checkin_count_${user?.email}`) || '0');
+    if (checkinsCount > 0 || hasSeenOptions) {
+      return (
+        <button
+          onClick={() => setShowOptions(true)}
+          className="flex items-center gap-2 text-sm text-purple-600 hover:text-purple-800 transition-colors"
+        >
+          <Settings className="h-4 w-4" />
+          {localPreference === 'quick_daily' ? 'Quick daily check-ins' : 'Comprehensive daily check-ins'}
+        </button>
+      );
+    }
+    
+    // Don't show anything for brand new users
     return null;
   }
 

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
-
+import { UnifiedSlider } from './UnifiedSlider';
 import { X } from 'lucide-react';
 import { trackBaselineCompleted } from '../utils/abTestUtils';
 
@@ -150,28 +150,17 @@ export const BaselinePanel: React.FC<BaselinePanelProps> = ({
         const value = formData[currentQ.id as keyof BaselineData] as number;
         return (
           <div className="space-y-6">
-            <div className="text-center">
-              <div className="text-3xl font-bold text-[#FF6F61] mb-2">
-                {value}/10
-              </div>
-            </div>
-            
             <div className="px-4">
-              <input
-                type="range"
+              <UnifiedSlider
+                value={value}
+                onChange={(val) => handleInputChange(currentQ.id as keyof BaselineData, val)}
                 min={currentQ.min}
                 max={currentQ.max}
-                value={value}
-                onChange={(e) => handleInputChange(currentQ.id as keyof BaselineData, parseInt(e.target.value))}
-                className="w-full h-3 cursor-pointer rounded-lg appearance-none outline-none"
-                style={{
-                  background: `linear-gradient(to right, #FF6F61 0%, #FF6F61 ${((value - (currentQ.min || 1)) / ((currentQ.max || 10) - (currentQ.min || 1))) * 100}%, #e5e7eb ${((value - (currentQ.min || 1)) / ((currentQ.max || 10) - (currentQ.min || 1))) * 100}%, #e5e7eb 100%)`
-                }}
+                leftLabel={currentQ.labels?.min}
+                rightLabel={currentQ.labels?.max}
+                variant="centered"
+                showValue={true}
               />
-              <div className="flex justify-between text-sm text-gray-500 mt-2">
-                <span>{currentQ.labels?.min}</span>
-                <span>{currentQ.labels?.max}</span>
-              </div>
             </div>
           </div>
         );
