@@ -303,6 +303,173 @@ class PostgresAdapter {
     }
   }
 
+  async updateCheckin(checkinId, updateData) {
+    // Always use Schema V2 since database only has health_events table
+    console.log('🚀 Updating check-in with health_events table');
+    
+    const client = await this.pool.connect();
+    
+    try {
+      await client.query('BEGIN');
+      
+      // Build event data
+      const eventData = {
+        mood: updateData.mood_today || '',
+        confidence: parseInt(updateData.confidence_today) || 0,
+        note: updateData.user_note || '',
+        primary_concern: updateData.primary_concern_today || '',
+        anxiety_level: updateData.anxiety_level || 0,
+        medication_taken: updateData.medication_taken || false
+      };
+      
+      // Add optional fields if present
+      if (updateData.appointment_within_3_days) {
+        eventData.appointment_within_3_days = updateData.appointment_within_3_days;
+      }
+      if (updateData.appointment_anxiety !== undefined) {
+        eventData.appointment_anxiety = updateData.appointment_anxiety;
+      }
+      if (updateData.coping_strategies_used) {
+        eventData.coping_strategies_used = updateData.coping_strategies_used;
+      }
+      if (updateData.sleep_hours !== undefined) {
+        eventData.sleep_hours = updateData.sleep_hours;
+      }
+      if (updateData.energy_level !== undefined) {
+        eventData.energy_level = updateData.energy_level;
+      }
+      if (updateData.side_effects) {
+        eventData.side_effects = updateData.side_effects;
+      }
+      if (updateData.emotion_score !== undefined) {
+        eventData.emotion_score = updateData.emotion_score;
+      }
+      if (updateData.physical_symptoms_score !== undefined) {
+        eventData.physical_symptoms_score = updateData.physical_symptoms_score;
+      }
+      
+      // Update the health event
+      const result = await client.query(`
+        UPDATE health_events
+        SET 
+          event_data = $2
+        WHERE id = $1 AND event_type = 'mood'
+        RETURNING id, occurred_at::date::text as date_submitted
+      `, [checkinId, JSON.stringify(eventData)]);
+      
+      if (result.rows.length === 0) {
+        throw new Error('Check-in not found or not a mood event');
+      }
+      
+      await client.query('COMMIT');
+      
+      // Return the updated checkin
+      return {
+        id: checkinId,
+        ...updateData,
+        date_submitted: result.rows[0].date_submitted
+      };
+      
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  async findCheckinById(checkinId) {
+    console.log('🔍 PostgreSQL: Finding check-in by ID:', checkinId);
+    
+    // Always use health_events table since daily_checkins doesn't exist
+    const query = `
+      SELECT 
+        he.id,
+        he.occurred_at::date::text as date_submitted,
+        he.recorded_at as created_at,
+        he.event_data->>'mood' as mood_today,
+        (he.event_data->>'confidence')::int as confidence_today,
+        he.event_data->>'note' as user_note,
+        he.event_data->>'primary_concern' as primary_concern_today,
+        he.user_id,
+        he.event_data->>'medication_taken' as medication_taken,
+        (he.event_data->>'anxiety_level')::int as anxiety_level,
+        he.event_data->'side_effects' as side_effects,
+        (he.event_data->>'appointment_within_3_days')::boolean as appointment_within_3_days,
+        (he.event_data->>'appointment_anxiety')::int as appointment_anxiety,
+        he.event_data->'coping_strategies_used' as coping_strategies_used,
+        he.event_data->'wish_knew_more_about' as wish_knew_more_about,
+        (he.event_data->>'partner_involved_today')::boolean as partner_involved_today,
+        (he.event_data->>'injection_confidence')::int as injection_confidence,
+        (he.event_data->>'missed_doses')::int as missed_doses
+      FROM health_events he
+      WHERE he.id = $1 AND he.event_type = 'mood'
+    `;
+    
+    const result = await this.pool.query(query, [checkinId]);
+    console.log('🔍 PostgreSQL: Query result rows:', result.rows.length);
+    
+    if (result.rows.length > 0) {
+      // Return the data in a format compatible with the API
+      const row = result.rows[0];
+      return {
+        id: row.id,
+        fields: {
+          date_submitted: row.date_submitted,
+          mood_today: row.mood_today,
+          confidence_today: row.confidence_today,
+          user_note: row.user_note,
+          primary_concern_today: row.primary_concern_today,
+          medication_taken: row.medication_taken,
+          anxiety_level: row.anxiety_level,
+          side_effects: row.side_effects,
+          appointment_within_3_days: row.appointment_within_3_days,
+          appointment_anxiety: row.appointment_anxiety,
+          coping_strategies_used: row.coping_strategies_used,
+          wish_knew_more_about: row.wish_knew_more_about,
+          partner_involved_today: row.partner_involved_today,
+          injection_confidence: row.injection_confidence,
+          missed_doses: row.missed_doses
+        },
+        // Also provide direct access to fields (for compatibility)
+        mood_today: row.mood_today,
+        confidence_today: row.confidence_today,
+        user_note: row.user_note,
+        primary_concern_today: row.primary_concern_today,
+        medication_taken: row.medication_taken,
+        anxiety_level: row.anxiety_level,
+        side_effects: row.side_effects,
+        appointment_within_3_days: row.appointment_within_3_days,
+        appointment_anxiety: row.appointment_anxiety,
+        coping_strategies_used: row.coping_strategies_used,
+        wish_knew_more_about: row.wish_knew_more_about,
+        partner_involved_today: row.partner_involved_today,
+        injection_confidence: row.injection_confidence,
+        missed_doses: row.missed_doses,
+        user_id: row.user_id,
+        created_at: row.created_at
+      };
+    }
+    
+    return null;
+  }
+
+  async deleteCheckin(checkinId) {
+    if (this.useSchemaV2) {
+      const result = await this.pool.query(
+        'DELETE FROM health_events WHERE id = $1 AND event_type = $2 RETURNING id',
+        [checkinId, 'mood']
+      );
+      return result.rowCount > 0;
+    } else {
+      const result = await this.pool.query(
+        'DELETE FROM daily_checkins WHERE id = $1 RETURNING id',
+        [checkinId]
+      );
+      return result.rowCount > 0;
+    }
+  }
+
   async getUserCheckins(userId, limit = 30) {
     const query = `
       SELECT 

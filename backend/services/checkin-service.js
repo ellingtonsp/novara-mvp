@@ -192,6 +192,15 @@ class CheckinService {
     const result = await response.json();
     return result;
   }
+
+  /**
+   * Update an existing check-in
+   */
+  async update(checkinId, updateData) {
+    console.log('🐘 Using PostgreSQL for check-in update');
+    const result = await this.db.localDb.updateCheckin(checkinId, updateData);
+    return result;
+  }
 }
 
 // Export singleton instance

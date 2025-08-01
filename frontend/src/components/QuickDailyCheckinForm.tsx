@@ -20,6 +20,7 @@ import { getLocalDateString } from '../lib/dateUtils';
 interface QuickDailyCheckinFormProps {
   onComplete?: () => void;
   onSwitchToFull?: () => void;
+  existingCheckin?: any;
 }
 
 // Only the most predictive moods for outcomes
@@ -34,12 +35,13 @@ const QUICK_MOOD_OPTIONS = [
 
 export const QuickDailyCheckinForm: React.FC<QuickDailyCheckinFormProps> = ({ 
   onComplete, 
-  onSwitchToFull 
+  onSwitchToFull,
+  existingCheckin
 }) => {
   const { user } = useAuth();
-  const [selectedMood, setSelectedMood] = useState<string>('');
-  const [tookMedications, setTookMedications] = useState<boolean | null>(null);
-  const [confidence, setConfidence] = useState<number>(5);
+  const [selectedMood, setSelectedMood] = useState<string>(existingCheckin?.mood_today || '');
+  const [tookMedications, setTookMedications] = useState<boolean | null>(existingCheckin ? existingCheckin.medication_taken : null);
+  const [confidence, setConfidence] = useState<number>(existingCheckin?.confidence_today || 5);
   const [hasInteractedWithSlider, setHasInteractedWithSlider] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showCompletion, setShowCompletion] = useState(false);
@@ -82,8 +84,13 @@ export const QuickDailyCheckinForm: React.FC<QuickDailyCheckinFormProps> = ({
         date_submitted: todayString
       };
 
-      const response = await fetch(`${API_BASE_URL}/api/checkins`, {
-        method: 'POST',
+      const isUpdate = !!existingCheckin;
+      const url = isUpdate 
+        ? `${API_BASE_URL}/api/checkins/${existingCheckin.id}`
+        : `${API_BASE_URL}/api/checkins`;
+      
+      const response = await fetch(url, {
+        method: isUpdate ? 'PUT' : 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -295,7 +302,7 @@ export const QuickDailyCheckinForm: React.FC<QuickDailyCheckinFormProps> = ({
             ) : (
               <>
                 <CheckCircle className="mr-2 h-4 w-4" />
-                Complete Quick Check-in
+                {existingCheckin ? 'Update Quick Check-in' : 'Complete Quick Check-in'}
               </>
             )}
           </Button>
