@@ -53,6 +53,26 @@ cd frontend && npm run dev   # Frontend on port 4200
 - Railway deployments are handled via GitHub
 - Vercel deployments: `staging` branch → staging env, `main` branch → production
 
+### 📚 Documentation Fast-Track Workflow
+Documentation changes can be fast-tracked to production:
+1. **Separate commits**: Never mix documentation and code changes
+2. **Use prefix**: Start documentation commits with `docs:`
+3. **Automatic handling**: GitHub Actions will detect docs-only PRs
+4. **Fast deployment**: Documentation can skip staging if needed
+
+#### Documentation Commit Guidelines:
+```bash
+# ✅ Good - documentation only
+git add docs/ *.md
+git commit -m "docs: update deployment guide"
+
+# ❌ Bad - mixed commit
+git add docs/ backend/
+git commit -m "update docs and fix API"
+```
+
+The pre-commit hook will prevent mixed commits automatically.
+
 ## Backend and Data Handling Rules
 - All forms require true backend endpoints
 - Never default to localStorage and if localStorage might be best, confirm first

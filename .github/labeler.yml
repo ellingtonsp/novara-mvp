@@ -1,0 +1,21 @@
+documentation:
+  - docs/**
+  - '**/*.md'
+  - CLAUDE.md
+  - README.md
+
+frontend:
+  - frontend/**
+  - '**/*.tsx'
+  - '**/*.ts'
+  - '**/*.css'
+
+backend:
+  - backend/**
+  - '**/*.js'
+
+deployment:
+  - .github/**
+  - scripts/**
+  - '**/*.yml'
+  - '**/*.yaml'

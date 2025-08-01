@@ -1,0 +1,63 @@
+#!/bin/bash
+# Pre-commit hook to prevent mixed documentation and code commits
+
+# Get list of staged files
+STAGED_FILES=$(git diff --cached --name-only)
+
+# Check if we have any files staged
+if [ -z "$STAGED_FILES" ]; then
+    exit 0
+fi
+
+# Separate documentation and code files
+DOC_FILES=""
+CODE_FILES=""
+
+for file in $STAGED_FILES; do
+    if [[ "$file" =~ \.(md|MD)$ ]] || [[ "$file" =~ ^docs/ ]]; then
+        DOC_FILES="$DOC_FILES$file\n"
+    else
+        CODE_FILES="$CODE_FILES$file\n"
+    fi
+done
+
+# Check if we have both documentation and code files
+if [ -n "$DOC_FILES" ] && [ -n "$CODE_FILES" ]; then
+    echo "❌ Error: Mixed commit detected!"
+    echo ""
+    echo "You're trying to commit both documentation and code files in the same commit."
+    echo "This prevents documentation from being fast-tracked to production."
+    echo ""
+    echo "📝 Documentation files:"
+    echo -e "$DOC_FILES"
+    echo "💻 Code files:"
+    echo -e "$CODE_FILES"
+    echo ""
+    echo "Please commit these separately:"
+    echo "  1. git reset HEAD <files>  # Unstage files"
+    echo "  2. git add <docs-files>    # Stage only docs"
+    echo "  3. git commit              # Commit docs"
+    echo "  4. git add <code-files>    # Stage code"
+    echo "  5. git commit              # Commit code"
+    echo ""
+    echo "Or use --no-verify to skip this check (not recommended)"
+    exit 1
+fi
+
+# Check commit message format for documentation commits
+if [ -n "$DOC_FILES" ] && [ -z "$CODE_FILES" ]; then
+    # Get the commit message
+    COMMIT_MSG_FILE=$1
+    if [ -f "$COMMIT_MSG_FILE" ]; then
+        COMMIT_MSG=$(cat "$COMMIT_MSG_FILE")
+        
+        # Check if commit message starts with "docs:" or "documentation:"
+        if ! [[ "$COMMIT_MSG" =~ ^(docs|documentation): ]]; then
+            echo "📝 Tip: Documentation commits should start with 'docs:'"
+            echo "Example: docs: update roadmap with completed features"
+            # Don't fail, just warn
+        fi
+    fi
+fi
+
+exit 0
