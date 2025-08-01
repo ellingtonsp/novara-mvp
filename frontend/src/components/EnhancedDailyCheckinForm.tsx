@@ -21,6 +21,7 @@ import { getLocalDateString } from '../lib/dateUtils';
 
 interface EnhancedDailyCheckinFormProps {
   onComplete?: () => void;
+  existingCheckin?: any;
 }
 
 // Enhanced checkin data interface - not used directly but shows the data structure
@@ -114,7 +115,7 @@ const INFO_NEEDS = [
   'When to consider stopping'
 ];
 
-export const EnhancedDailyCheckinForm: React.FC<EnhancedDailyCheckinFormProps> = ({ onComplete }) => {
+export const EnhancedDailyCheckinForm: React.FC<EnhancedDailyCheckinFormProps> = ({ onComplete, existingCheckin }) => {
   const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   
@@ -157,6 +158,22 @@ export const EnhancedDailyCheckinForm: React.FC<EnhancedDailyCheckinFormProps> =
   const [outcomePredictions, setOutcomePredictions] = useState<any>(null);
   
   // PHQ-4 check removed - should be handled separately from daily check-ins
+  
+  // Initialize form with existing check-in data if updating
+  useEffect(() => {
+    if (existingCheckin) {
+      setSelectedMood(existingCheckin.mood_today || '');
+      setConfidence(existingCheckin.confidence_today || 5);
+      setAnxietyLevel(existingCheckin.anxiety_level || 5);
+      setTookMedications(existingCheckin.medication_taken || false);
+      setUserNote(existingCheckin.user_note || '');
+      // Set other fields as needed
+      setSideEffects(existingCheckin.side_effects || []);
+      setInjectionConfidence(existingCheckin.injection_confidence || 7);
+      setCopingStrategies(existingCheckin.coping_strategies_used || []);
+      setInfoNeeds(existingCheckin.information_needs || []);
+    }
+  }, [existingCheckin]);
   
   // Calculate outcome predictions based on inputs
   useEffect(() => {
@@ -252,8 +269,13 @@ export const EnhancedDailyCheckinForm: React.FC<EnhancedDailyCheckinFormProps> =
         // PHQ-4 scores removed from enhanced check-in
       };
       
-      const response = await fetch(`${API_BASE_URL}/api/checkins`, {
-        method: 'POST',
+      const isUpdate = !!existingCheckin;
+      const url = isUpdate 
+        ? `${API_BASE_URL}/api/checkins/${existingCheckin.id}`
+        : `${API_BASE_URL}/api/checkins`;
+      
+      const response = await fetch(url, {
+        method: isUpdate ? 'PUT' : 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -772,6 +794,8 @@ export const EnhancedDailyCheckinForm: React.FC<EnhancedDailyCheckinFormProps> =
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Submitting...
                 </>
+              ) : existingCheckin ? (
+                'Update Check-in'
               ) : (
                 'Complete Check-in'
               )}

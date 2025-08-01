@@ -55,7 +55,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
    - Have you documented all required environment variables?
 
 ### When Things Go Wrong:
-- **Hotfix Process**: Create branch from main, fix issue, PR directly to main
+- **Hotfix Process**: 
+  1. Create hotfix branch from main: `hotfix/description`
+  2. Fix the issue
+  3. Test locally (Frontend: 4200, Backend: 9002)
+  4. Deploy and test on staging environment
+  5. After verification, PR directly to main
+  6. Deploy to production
 - **Emergency Rollback**: Use git revert to undo problematic commits
 - **Communication**: Alert team immediately if production issues occur
 
@@ -68,6 +74,15 @@ When adding new fields to any table (especially daily_checkins):
 4. **Test the migration** in local environment first
 
 Always test schema changes locally before deploying!
+
+## ⚠️ CRITICAL DATABASE INFORMATION
+
+**ALL ENVIRONMENTS USE POSTGRESQL - NO SQLITE OR AIRTABLE**
+- Local: PostgreSQL (postgresql://localhost:5432/novara_local)
+- Staging: PostgreSQL (Railway)
+- Production: PostgreSQL (Railway)
+
+Never write code for SQLite or Airtable - these are deprecated and not used in any environment.
 
 ## Common Development Commands
 
