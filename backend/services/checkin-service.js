@@ -30,7 +30,6 @@ class CheckinService {
   async create(checkinData) {
     // Handle PostgreSQL
     if (this.db.isPostgres) {
-      console.log('🐘 Using PostgreSQL for check-in creation');
       const result = await this.db.localDb.createCheckin(checkinData);
       
       // Ensure response format consistency
@@ -42,13 +41,11 @@ class CheckinService {
     
     // Handle local SQLite database
     if (this.db.isUsingLocalDatabase()) {
-      console.log('💾 Using SQLite for check-in creation');
       const result = await this.db.localDb.createCheckin(checkinData);
       return result;
     }
     
     // Handle Airtable
-    console.log('☁️  Using Airtable for check-in creation');
     
     // Ensure user_id is in array format for Airtable
     const airtableData = {
@@ -130,7 +127,6 @@ class CheckinService {
     }
     
     if (this.db.isPostgres || this.db.isUsingLocalDatabase()) {
-      console.log('🔍 Using PostgreSQL/SQLite for check-in lookup');
       return await this.db.localDb.findCheckinById(checkinId);
     }
     
@@ -161,7 +157,6 @@ class CheckinService {
     }
     
     if (this.db.isPostgres || this.db.isUsingLocalDatabase()) {
-      console.log('🐘 Using PostgreSQL/SQLite for check-in deletion');
       return await this.db.localDb.deleteCheckin(checkinId);
     }
     
@@ -214,12 +209,10 @@ class CheckinService {
     }
     
     if (this.db.isPostgres || this.db.isUsingLocalDatabase()) {
-      console.log('🐘 Using PostgreSQL/SQLite for check-in update');
       return await this.db.localDb.updateCheckin(checkinId, updateData);
     }
     
     // Airtable
-    console.log('☁️  Using Airtable for check-in update');
     
     // Filter for production schema
     const filteredData = filterForProductionSchema('DailyCheckins', updateData);

@@ -1,13 +1,13 @@
 # Novara MVP - Bug Tracking & Resolution System
 
-## 🎯 **Current Status** *(Last updated: 2025-08-01)*
+## 🎯 **Current Status** *(Last updated: 2025-08-02)*
 
 | **Priority** | **Open** | **In Progress** | **Resolved** |
 |--------------|----------|-----------------|--------------|
-| **🔴 Large** | 0 | 0 | 8 |
+| **🔴 Large** | 0 | 0 | 9 |
 | **🟡 Medium** | 0 | 0 | 10 |
 | **🟢 Small** | 0 | 0 | 10 |
-| **📊 TOTAL** | **0** | **0** | **28** |
+| **📊 TOTAL** | **0** | **0** | **29** |
 
 ---
 
@@ -76,6 +76,15 @@
 - **Prevention**: Keep mental health assessments separate from daily check-in flows
 - **Status**: ✅ **RESOLVED** - Enhanced check-in now shows correctly
 - **Next Steps**: Created user story MH-01 for proper PHQ-4 scheduling system
+
+#### **L-009: Express Route Ordering Caused 501 Errors** *(Resolved 2025-08-02)*
+- **Problem**: Check-in updates failing with 501 Not Implemented errors in production
+- **Root Cause**: Parameterized route `/:checkinId` defined before specific routes `/last-values` and `/questions`
+- **Impact**: All API calls to specific endpoints were caught by parameterized route, blocking check-in updates
+- **Fix**: Reordered routes to define specific routes before parameterized routes
+- **Prevention**: Added route ordering documentation and troubleshooting guide to CLAUDE.md
+- **Status**: ✅ **RESOLVED** - Check-in updates working correctly
+- **Incident Report**: See `/docs/incidents/2025-08-02-route-ordering-incident.md`
 
 ---
 
