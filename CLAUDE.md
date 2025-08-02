@@ -1,32 +1,92 @@
 # CLAUDE.md
 
+**Version:** 2.0.0  
+**Last Updated:** 2025-08-02
+
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## ⚡ Quick Reference
+- **Ports**: Frontend: 4200, Backend: 9002
+- **Database**: PostgreSQL only (no SQLite/Airtable)
+- **Git Flow**: develop → staging → main
+- **Hotfix**: Create from main, PR to main, backport to staging/develop
+- **Before Deploy**: Run BugBot validation, test on staging, verify external services
+- **Testing**: Run `npm test` locally before commits
+- **Documentation**: See [GIT_WORKFLOW.md](./GIT_WORKFLOW.md) for detailed git processes
 
 ## 🚨 CRITICAL RULES - READ FIRST
 
 ### NEVER Do These:
-- **NEVER** commit directly to `main` or `staging` branches
-- **NEVER** merge feature branches directly to `main` - MUST go through develop → staging → main
 - **NEVER** deploy features requiring external services (OAuth, APIs) without configuration
 - **NEVER** modify .env files directly (they are hidden from Cursor)
 - **NEVER** commit secrets or API keys to git
-- **NEVER** use Railway interactive commands (`railway environment`, `railway link` without parameters)
+- **NEVER** use Railway interactive commands (`railway environment`, `railway link` without parameters) - they require interactive input which breaks automation
 - **NEVER** break legacy functions unless explicitly requested
 
 ### ALWAYS Do These:
-- **ALWAYS** create feature branches from `develop` branch: `feature/EPIC-ID-description`
-- **ALWAYS** target PRs to `develop` branch (not main!)
-- **ALWAYS** follow the git workflow: develop → staging → main
 - **ALWAYS** test features in develop environment before staging
 - **ALWAYS** verify external service configuration before deploying features that need them
 - **ALWAYS** update .env.example files when adding new environment variables
 - **ALWAYS** run BugBot validation before and after deployments
-- **ALWAYS** align work with current sprint priorities from roadmap
-- **ALWAYS** use stable ports: Frontend 4200, Backend 9002
-- **ALWAYS** be sure to follow safe port guidance in our documentation
+- **ALWAYS** align work with current sprint priorities from [roadmap](./docs/roadmap/)
+- **ALWAYS** use ports 4200 (frontend) and 9002 (backend) exclusively
 
 ### Improvement Guidelines:
 - If you fail to fix a UI problem based on my feedback, rethink the approach for that element and implement a better solution
+
+## 🔄 Git & Deployment Rules
+
+### Git Workflow
+- **NEVER** commit directly to `main` or `staging` branches
+- **NEVER** merge feature branches directly to `main` - MUST go through develop → staging → main
+- **ALWAYS** create feature branches from `develop` branch: `feature/EPIC-ID-description`
+- **ALWAYS** target PRs to `develop` branch (not main!)
+- **ALWAYS** follow the branch flow: `develop` → `staging` → `main` (production)
+- See [GIT_WORKFLOW.md](./GIT_WORKFLOW.md) for detailed git workflow
+
+### Deployment Pipeline
+- Railway deployments are handled via GitHub integration
+- Vercel deployments: `staging` branch → staging env, `main` branch → production
+- **ALWAYS** verify deployments complete successfully
+
+### 📚 Documentation Fast-Track Workflow
+Documentation changes can be fast-tracked to production:
+1. **Separate commits**: Never mix documentation and code changes
+2. **Use prefix**: Start documentation commits with `docs:`
+3. **Automatic handling**: GitHub Actions will detect docs-only PRs
+4. **Fast deployment**: Documentation can skip staging if needed
+
+#### Documentation Commit Guidelines:
+```bash
+# ✅ Good - documentation only
+git add docs/ *.md
+git commit -m "docs: update deployment guide"
+
+# ❌ Bad - mixed commit
+git add docs/ backend/
+git commit -m "update docs and fix API"
+```
+
+The pre-commit hook will prevent mixed commits automatically.
+
+## ✅ Pre-Deployment Checklist
+
+### Before ANY Deployment
+- [ ] All tests passing locally (`npm test`)
+- [ ] Feature tested on develop environment
+- [ ] No console errors in browser
+- [ ] Database migrations tested (if applicable)
+- [ ] Environment variables documented in `.env.example`
+- [ ] Error handling implemented for edge cases
+- [ ] BugBot validation passed
+- [ ] Documentation updated (if applicable)
+
+### Additional for Staging → Production
+- [ ] Tested on staging environment for at least 24 hours
+- [ ] External service configurations verified (OAuth, APIs)
+- [ ] Performance impact assessed
+- [ ] Rollback plan documented
+- [ ] Team notified of deployment window
 
 ## 🔥 INCIDENT PREVENTION - Lessons from Social Login Deployment
 
@@ -62,8 +122,67 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   4. Deploy and test on staging environment
   5. After verification, PR directly to main
   6. Deploy to production
+  7. Backport fix to staging and develop branches
 - **Emergency Rollback**: Use git revert to undo problematic commits
 - **Communication**: Alert team immediately if production issues occur
+
+## 🧪 Testing Requirements
+- **ALWAYS** run tests before committing code
+- **ALWAYS** test locally on ports 4200 (frontend) and 9002 (backend)
+- **NEVER** deploy untested code to staging or production
+- **ALWAYS** verify no regressions in related functionality
+
+### Testing Commands
+```bash
+# Unit tests
+npm test
+
+# API endpoint tests
+./scripts/test-endpoints.js
+
+# Full regression test
+./scripts/test-regression.sh
+```
+
+## 🔄 Handling Merge Conflicts
+- **ALWAYS** pull latest from target branch before creating new branches
+- **NEVER** force push to shared branches (develop, staging, main)
+- **ALWAYS** test thoroughly after resolving conflicts
+
+### Conflict Resolution Process
+1. Pull latest from target branch: `git pull origin develop`
+2. Resolve conflicts locally using your preferred merge tool
+3. Test all affected functionality
+4. Commit with clear message: `git commit -m "resolve: merge conflicts with develop"`
+5. Push resolved changes: `git push origin feature/your-branch`
+
+## 🤖 CI/CD Integration
+- GitHub Actions run automatically on all PRs
+- Required checks must pass before merge is allowed
+- BugBot validation runs pre and post-deployment
+
+### Deployment Triggers
+- Push to `staging` branch → Vercel staging deployment
+- Push to `main` branch → Vercel production deployment
+- Railway deployments triggered via GitHub integration
+
+### BugBot Validation
+BugBot is our automated validation tool that checks:
+- All critical endpoints are responding
+- Database connectivity is working
+- External services are configured correctly
+- No regression in core functionality
+
+Run manually with: `./scripts/run-bugbot.sh`
+
+## ⚠️ CRITICAL DATABASE INFORMATION
+
+**ALL ENVIRONMENTS USE POSTGRESQL - NO SQLITE OR AIRTABLE**
+- Local: PostgreSQL (postgresql://localhost:5432/novara_local)
+- Staging: PostgreSQL (Railway)
+- Production: PostgreSQL (Railway)
+
+Never write code for SQLite or Airtable - these are deprecated and not used in any environment.
 
 ## ⚠️ CRITICAL: Before Adding New Fields
 
@@ -74,15 +193,6 @@ When adding new fields to any table (especially daily_checkins):
 4. **Test the migration** in local environment first
 
 Always test schema changes locally before deploying!
-
-## ⚠️ CRITICAL DATABASE INFORMATION
-
-**ALL ENVIRONMENTS USE POSTGRESQL - NO SQLITE OR AIRTABLE**
-- Local: PostgreSQL (postgresql://localhost:5432/novara_local)
-- Staging: PostgreSQL (Railway)
-- Production: PostgreSQL (Railway)
-
-Never write code for SQLite or Airtable - these are deprecated and not used in any environment.
 
 ## Common Development Commands
 
@@ -97,33 +207,6 @@ Never write code for SQLite or Airtable - these are deprecated and not used in a
 # - Database: postgresql://localhost:5432/novara_local
 # - True environment parity with PostgreSQL!
 ```
-
-## Git Workflow & Deployment Notes
-- Follow the branch flow: `develop` → `staging` → `main` (production)
-- Create all feature branches from `develop`
-- See GIT_WORKFLOW.md for detailed git workflow
-- Railway deployments are handled via GitHub
-- Vercel deployments: `staging` branch → staging env, `main` branch → production
-
-### 📚 Documentation Fast-Track Workflow
-Documentation changes can be fast-tracked to production:
-1. **Separate commits**: Never mix documentation and code changes
-2. **Use prefix**: Start documentation commits with `docs:`
-3. **Automatic handling**: GitHub Actions will detect docs-only PRs
-4. **Fast deployment**: Documentation can skip staging if needed
-
-#### Documentation Commit Guidelines:
-```bash
-# ✅ Good - documentation only
-git add docs/ *.md
-git commit -m "docs: update deployment guide"
-
-# ❌ Bad - mixed commit
-git add docs/ backend/
-git commit -m "update docs and fix API"
-```
-
-The pre-commit hook will prevent mixed commits automatically.
 
 ## Bug Handling Process
 
@@ -228,3 +311,46 @@ cd backend && npm run test:endpoints
 # 4. Run pre-deployment checks
 ./scripts/pre-deployment-final-check.sh
 ```
+
+## 📐 Architecture Decision Records (ADR)
+
+### Why PostgreSQL Only?
+- **Decision**: All environments use PostgreSQL exclusively
+- **Rationale**: Ensures consistent behavior across development, staging, and production
+- **Alternatives Rejected**: SQLite (different SQL dialect), Airtable (API limitations)
+
+### Why Ports 4200/9002?
+- **Decision**: Frontend on 4200, Backend on 9002
+- **Rationale**: Avoids conflicts with common development tools (React: 3000, Rails: 3000, Vue: 8080)
+- **Benefits**: Consistent across all developer machines, no port conflicts
+
+### Why Three-Branch Strategy?
+- **Decision**: develop → staging → main workflow
+- **Rationale**: Multiple safety gates prevent untested code reaching production
+- **Benefits**: 
+  - develop: Integration testing
+  - staging: User acceptance testing
+  - main: Production-ready code only
+
+### Why BugBot Validation?
+- **Decision**: Automated validation tool for deployments
+- **Rationale**: Human error in deployment checks caused production incidents
+- **Benefits**: Consistent validation, catches configuration issues early
+
+## 🚫 Common Mistakes to Avoid
+
+Based on past incidents:
+1. **Deploying OAuth features without credentials** - Always verify external service configuration
+2. **Mixing documentation and code commits** - Use separate commits for clarity
+3. **Skipping develop environment** - Always test in develop before staging
+4. **Using wrong ports** - Stick to 4200/9002 to avoid conflicts
+5. **Force pushing to shared branches** - Never force push to develop/staging/main
+6. **Ignoring test failures** - All tests must pass before deployment
+7. **Forgetting to update bug documentation** - Always document bug resolutions
+
+## 📖 Related Documentation
+- [GIT_WORKFLOW.md](./GIT_WORKFLOW.md) - Detailed git workflow and branching strategy
+- [/docs/roadmap/](./docs/roadmap/) - Current sprint priorities and epic planning
+- [/docs/bugs/](./docs/bugs/) - Bug tracking and resolution history
+- [DEPLOYMENT_ARCHITECTURE.md](./docs/DEPLOYMENT_ARCHITECTURE.md) - Infrastructure details
+- [ENVIRONMENT_SETUP_GUIDE.md](./docs/ENVIRONMENT_SETUP_GUIDE.md) - Local setup instructions
