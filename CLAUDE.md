@@ -166,3 +166,65 @@ After confirming a bug is fixed, ALWAYS update documentation:
 - All forms require true backend endpoints
 - Never default to localStorage and if localStorage might be best, confirm first
 - Critical app data for insights must only be stored in the database
+
+## 🔧 Troubleshooting Common Issues
+
+### Express Route Ordering (501 Not Implemented Error)
+**Problem**: Getting 501 errors when calling endpoints that should exist
+**Root Cause**: Express route ordering - parameterized routes (`:id`) must come AFTER specific routes
+**Solution**: Always define specific routes before parameterized routes
+
+```javascript
+// ❌ WRONG - Will cause 501 errors
+router.get('/:checkinId', handler);  // This catches ALL requests
+router.get('/last-values', handler);  // Never reached!
+router.get('/questions', handler);    // Never reached!
+
+// ✅ CORRECT - Specific routes first
+router.get('/last-values', handler);  // Specific route
+router.get('/questions', handler);    // Specific route
+router.get('/:checkinId', handler);  // Parameterized route last
+```
+
+### Rate Limiting Issues ("Too Many Requests")
+**Problem**: Production returns 429 "Too many requests" errors
+**Root Cause**: Mismatched rate limits between legacy and refactored servers
+**Solution**: Ensure rate limits match across all environments
+
+```javascript
+// config/index.js
+rateLimiting: {
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  maxRequests: process.env.NODE_ENV === 'production' ? 500 : 100, // Match legacy
+}
+```
+
+### Missing Endpoints After Refactor
+**Problem**: Frontend calls fail with 404 after switching to refactored server
+**Root Cause**: Endpoints not implemented in refactored server
+**Solution**: Implement all endpoints used by frontend before switching servers
+
+Required endpoints checklist:
+- [ ] GET /api/checkins/last-values
+- [ ] GET /api/checkins/questions
+- [ ] POST /api/daily-checkin-enhanced
+- [ ] PUT /api/checkins/:checkinId (critical for updates)
+- [ ] GET /api/users/profile
+- [ ] PATCH /api/users/cycle-stage
+- [ ] PATCH /api/users/medication-status
+
+### Testing Before Production Deployment
+Always run these checks before deploying:
+```bash
+# 1. Run endpoint tests
+cd backend && npm run test:endpoints
+
+# 2. Verify refactored server starts
+./scripts/verify-refactored-server.sh
+
+# 3. Test all endpoints on staging
+./scripts/test-staging-endpoints.js
+
+# 4. Run pre-deployment checks
+./scripts/pre-deployment-final-check.sh
+```
