@@ -93,6 +93,16 @@ if (process.env.NODE_ENV === 'production') {
 const getRateLimitConfig = () => {
   const env = process.env.NODE_ENV || 'development';
   
+  // Allow disabling rate limiting for rapid testing
+  if (process.env.DISABLE_RATE_LIMIT === 'true') {
+    logger.info('⚠️  Rate limiting DISABLED for testing');
+    return {
+      windowMs: 15 * 60 * 1000,
+      max: 999999, // Effectively unlimited
+      skip: () => true // Skip all rate limiting
+    };
+  }
+  
   switch (env) {
     case 'development':
       return {
@@ -686,6 +696,16 @@ function selectBestInsight(patterns, checkins, user) {
   return insights.sort((a, b) => b.priority - a.priority)[0];
 }
 
+// Utility function to format variable names for human-readable display
+function formatVariableName(variableName) {
+  if (!variableName || typeof variableName !== 'string') return '';
+  return variableName
+    .replace(/_/g, ' ')           // Replace underscores with spaces
+    .replace(/([a-z])([A-Z])/g, '$1 $2') // Add space before capital letters (camelCase)
+    .toLowerCase()                // Convert to lowercase for consistency
+    .trim();                      // Remove extra whitespace
+}
+
 // Advanced Insight Generation Engine - TRULY PERSONALIZED
 function generateDailyInsights(checkins, user) {
   // Always use user's onboarding data for personalization
@@ -699,9 +719,6 @@ function generateDailyInsights(checkins, user) {
     nickname: user.nickname
   };
   
-  console.log('🧠 Generating personalized dashboard insight for:', user.nickname || user.email);
-  console.log('📊 User profile:', onboardingData);
-  console.log('📈 Recent check-ins:', checkins?.length || 0);
 
   // NEW USERS (No check-ins yet) - Use onboarding data
   if (!checkins || checkins.length === 0) {
@@ -738,7 +755,7 @@ function generateWelcomeInsightFromOnboarding(data, user) {
       return {
         type: 'focused_support',
         title: `${name}, let's tackle the medication uncertainty together`,
-        message: `I see medication protocols feel uncertain right now (you rated confidence at ${confidence_meds}/10). This is incredibly common—the medical side can feel overwhelming before you have all the details. Plus, "${top_concern}" weighs on your mind—let's address that specific worry. How are you feeling today?`,
+        message: `I see medication protocols feel uncertain right now (you rated confidence at ${confidence_meds}/10). This is incredibly common—the medical side can feel overwhelming before you have all the details. Plus, ${formatVariableName(top_concern)} weighs on your mind—let's address that specific worry. How are you feeling today?`,
         confidence: 0.9
       };
     }
@@ -748,7 +765,7 @@ function generateWelcomeInsightFromOnboarding(data, user) {
       return {
         type: 'focused_support', 
         title: `${name}, your financial concerns make complete sense`,
-        message: `You rated financial confidence at ${confidence_costs}/10, and honestly, that's realistic. IVF costs can feel overwhelming, but there are ways to approach this step by step. Plus, "${top_concern}" weighs on your mind—let's address that specific worry. How are you feeling today?`,
+        message: `You rated financial confidence at ${confidence_costs}/10, and honestly, that's realistic. IVF costs can feel overwhelming, but there are ways to approach this step by step. Plus, ${formatVariableName(top_concern)} weighs on your mind—let's address that specific worry. How are you feeling today?`,
         confidence: 0.9
       };
     }
@@ -759,7 +776,7 @@ function generateWelcomeInsightFromOnboarding(data, user) {
     let message = `Welcome back, ${name}! Your confidence levels from onboarding show real strength in approaching IVF.`;
     
     if (top_concern && top_concern.trim() !== '') {
-      message += ` I noticed you mentioned "${top_concern}" as a concern. Even when we feel confident overall, specific worries are completely normal.`;
+      message += ` I noticed you mentioned ${formatVariableName(top_concern)} as a concern. Even when we feel confident overall, specific worries are completely normal.`;
     }
     
     if (primary_need === 'emotional_support') {
@@ -793,7 +810,7 @@ function generateWelcomeInsightFromOnboarding(data, user) {
     }
     
     if (top_concern && top_concern.trim() !== '') {
-      message += ` Plus, "${top_concern}" weighs on your mind—let's address that specific worry.`;
+      message += ` Plus, ${formatVariableName(top_concern)} weighs on your mind—let's address that specific worry.`;
     }
     
     return {
@@ -813,7 +830,7 @@ function generateWelcomeInsightFromOnboarding(data, user) {
     }
     
     if (top_concern && top_concern.trim() !== '') {
-      message += `"${top_concern}" weighs heavily, and that makes perfect sense. `;
+      message += `${formatVariableName(top_concern)} weighs heavily, and that makes perfect sense. `;
     }
     
     message += `You don't have to figure everything out at once. Let's start with how you're feeling right now, today.`;
@@ -830,7 +847,7 @@ function generateWelcomeInsightFromOnboarding(data, user) {
   return {
     type: 'balanced_welcome',
     title: `Welcome back, ${name}`,
-    message: `Based on your onboarding, you're approaching IVF with a realistic mix of confidence and natural concerns. ${top_concern ? `"${top_concern}" is on your mind, ` : ''}and that's exactly the kind of honest self-assessment that helps. How are you feeling today?`,
+    message: `Based on your onboarding, you're approaching IVF with a realistic mix of confidence and natural concerns. ${top_concern ? `${formatVariableName(top_concern)} is on your mind, ` : ''}and that's exactly the kind of honest self-assessment that helps. How are you feeling today?`,
     confidence: 0.8
   };
 }
@@ -912,20 +929,13 @@ function generateContextualInsight(analysis, checkins, user) {
     }
   }
   
-  console.log('📊 Analyzing returning user patterns:', {
-    latest_mood: latest_checkin.mood_today,
-    latest_confidence: latest_checkin.confidence_today,
-    avg_confidence: avg_recent_confidence,
-    onboarding_concern,
-    recent_concerns
-  });
   
   // PATTERN: Recent concern matches onboarding concern
   if (latest_checkin.primary_concern_today && onboarding_concern && 
       latest_checkin.primary_concern_today.toLowerCase().includes(onboarding_concern.toLowerCase().split(' ')[0])) {
     return {
       type: 'persistent_concern_support',
-      title: `${name}, I see "${onboarding_concern}" is still on your mind`,
+      title: `${name}, I see ${formatVariableName(onboarding_concern)} is still on your mind`,
       message: `This was important to you from the start, and it came up again today. That consistency tells me this isn't just a passing worry—it's something worth addressing directly. Your recent check-ins show you're being thoughtful about tracking what matters most.`,
       confidence: 0.9
     };
@@ -951,7 +961,7 @@ function generateContextualInsight(analysis, checkins, user) {
       return {
         type: 'emotional_complexity',
         title: `${name}, feeling ${emotions[0]} and ${emotions[1]} makes complete sense`,
-        message: `IVF brings up complex emotions—it's normal to feel multiple things at once. ${latest_checkin.primary_concern_today ? `"${latest_checkin.primary_concern_today}" weighs on you today, ` : ''}and holding space for all these feelings is part of the journey.`,
+        message: `IVF brings up complex emotions—it's normal to feel multiple things at once. ${latest_checkin.primary_concern_today ? `${formatVariableName(latest_checkin.primary_concern_today)} weighs on you today, ` : ''}and holding space for all these feelings is part of the journey.`,
         confidence: 0.88
       };
     }
@@ -959,7 +969,7 @@ function generateContextualInsight(analysis, checkins, user) {
   
   // PATTERN: Low confidence + specific concern
   if (latest_checkin.confidence_today <= 4 && latest_checkin.primary_concern_today) {
-    let contextMessage = `Today's confidence (${latest_checkin.confidence_today}/10) and your concern about "${latest_checkin.primary_concern_today}" both deserve attention. `;
+    let contextMessage = `Today's confidence (${latest_checkin.confidence_today}/10) and your concern about ${formatVariableName(latest_checkin.primary_concern_today)} both deserve attention. `;
     
     // Connect to onboarding if relevant
     if (confidence_costs <= 4 && latest_checkin.primary_concern_today.toLowerCase().includes('financial')) {
@@ -983,7 +993,7 @@ function generateContextualInsight(analysis, checkins, user) {
     return {
       type: 'confident_check_in',
       title: `${name}, your ${latest_checkin.confidence_today}/10 confidence shows real strength`,
-      message: `Feeling ${latest_checkin.mood_today || 'strong'} with high confidence suggests you're finding your footing in this process. ${latest_checkin.primary_concern_today ? `Even with "${latest_checkin.primary_concern_today}" on your mind, ` : ''}you're approaching this from a place of growing strength.`,
+      message: `Feeling ${latest_checkin.mood_today || 'strong'} with high confidence suggests you're finding your footing in this process. ${latest_checkin.primary_concern_today ? `Even with ${formatVariableName(latest_checkin.primary_concern_today)} on your mind, ` : ''}you're approaching this from a place of growing strength.`,
       confidence: 0.85
     };
   }
@@ -1036,8 +1046,6 @@ function generateMicroInsight(userData) {
 // ============================================================================
 
 function generatePersonalizedMicroInsight(data, user) {
-  console.log('🎯 Generating personalized micro-insight for:', user.nickname || user.email);
-  console.log('📊 Input data:', data);
   const insights = [];
   
   // Calculate overall confidence profile
@@ -1067,7 +1075,7 @@ function generatePersonalizedMicroInsight(data, user) {
   else if (avgConfidence >= 7 && data.top_concern && data.top_concern.trim() !== '') {
     insights.push({
       title: "You're handling this well overall",
-      message: `Your confidence levels show real strength, ${user.nickname}. The one thing weighing on you—"${data.top_concern}"—makes sense to think about. Want a gentle strategy for this specific worry?`,
+      message: `Your confidence levels show real strength, ${user.nickname}. The one thing weighing on you—${formatVariableName(data.top_concern)}—makes sense to think about. Want a gentle strategy for this specific worry?`,
       action: {
         label: "Get targeted support for this concern",
         type: "concern_strategy"
@@ -1236,8 +1244,6 @@ function generatePersonalizedMicroInsight(data, user) {
   insights.sort((a, b) => (b.priority + b.specificity) - (a.priority + a.specificity));
   
   const selectedInsight = insights[0];
-  console.log('✨ Selected insight:', selectedInsight.title);
-  console.log('📝 Generated insights count:', insights.length);
   
   // Remove internal scoring for response
   delete selectedInsight.priority;
@@ -1325,7 +1331,6 @@ function generatePersonalizedCheckInQuestions(user) {
 
   // ENHANCED: Calculate which dimension to focus on today
   const dimensionToFocus = calculateDimensionFocus(user);
-  console.log(`🎯 Today's dimension focus for ${user.email}: ${dimensionToFocus}`);
 
   // Add concern-specific questions based on ENHANCED dimension focus
   const { confidence_meds, confidence_costs, confidence_overall, top_concern } = user;
@@ -1529,7 +1534,7 @@ function generatePersonalizedCheckInQuestions(user) {
     questions.push({
       id: 'top_concern_today',
       type: 'text',
-      question: `You mentioned "${top_concern}" was important to you. How is that feeling today?`,
+      question: `You mentioned ${formatVariableName(top_concern)} was important to you. How is that feeling today?`,
       placeholder: 'better, worse, same...',
       required: false,
       priority: 4,
@@ -1543,8 +1548,6 @@ function generatePersonalizedCheckInQuestions(user) {
 
 // Generate contextual insights based on the enhanced check-in data
 function generateEnhancedMicroInsight(checkinData, user) {
-  console.log('🎯 Generating enhanced micro-insight for:', user.nickname || user.email);
-  console.log('📊 Enhanced check-in data:', checkinData);
 
   // Start with standard insight generation
   const baseInsight = generatePersonalizedMicroInsight(checkinData, user);
@@ -1587,7 +1590,7 @@ function generateEnhancedMicroInsight(checkinData, user) {
 
   // TOP CONCERN FOLLOW-UP
   if (checkinData.top_concern_today && checkinData.top_concern_today.trim() !== '') {
-    enhancements.push(`About "${user.top_concern}" - noting that it's "${checkinData.top_concern_today}" today. We're tracking this with you. 📝`);
+    enhancements.push(`About ${formatVariableName(user.top_concern)} - noting that it's ${formatVariableName(checkinData.top_concern_today)} today. We're tracking this with you. 📝`);
   }
 
   // Add enhancements to the insight
@@ -1646,7 +1649,6 @@ app.post('/api/insights/micro', authenticateToken, async (req, res) => {
       if (!user) {
         return res.status(404).json({ success: false, error: 'User not found' });
       }
-      console.log('User fetched for micro-insight:', user.id, 'Email:', userEmail);
     } catch (error) {
       console.error('User lookup error:', error);
       return res.status(500).json({ success: false, error: 'Internal server error' });
@@ -1681,13 +1683,11 @@ app.post('/api/insights/micro', authenticateToken, async (req, res) => {
         insightData.action_type = micro_insight.action.type;
       }
 
-      console.log('💾 Saving insight to database:', insightData);
       
       const result = await airtableRequest('Insights', 'POST', {
         fields: insightData
       });
       
-      console.log('✅ Insight saved to database:', result.id);
 
       res.json({
         success: true,
@@ -2092,7 +2092,6 @@ app.get('/api/users/profile', authenticateToken, async (req, res) => {
 // Get Last Check-in Values (Protected Route) - for form defaults
 app.get('/api/checkins/last-values', authenticateToken, async (req, res) => {
   try {
-    console.log('📊 Fetching last check-in values for user:', req.user.email);
 
     // Find user record
     const user = await findUserByEmail(req.user.email);
@@ -2135,7 +2134,6 @@ app.get('/api/checkins/last-values', authenticateToken, async (req, res) => {
 
     if (userRecords.length > 0) {
       const lastCheckin = userRecords[0].fields;
-      console.log('✅ Found last check-in:', lastCheckin.date_submitted);
       
       // Return the last values as defaults
       res.json({
@@ -2151,7 +2149,6 @@ app.get('/api/checkins/last-values', authenticateToken, async (req, res) => {
       });
     } else {
       // No previous check-ins - return onboarding defaults
-      console.log('📝 No previous check-ins found, using onboarding defaults');
       res.json({
         success: true,
         last_values: {
@@ -2177,11 +2174,9 @@ app.get('/api/checkins/last-values', authenticateToken, async (req, res) => {
 app.post('/api/checkins', authenticateToken, async (req, res) => {
   try {
     
-    console.log('📝 Daily check-in submission received:', req.body);
     
     // Handle PostgreSQL database
     if (databaseAdapter.isPostgres) {
-      console.log('🐘 Using PostgreSQL for check-in creation');
       try {
         const user = await databaseAdapter.localDb.findUserByEmail(req.user.email);
         if (!user) {
@@ -2233,7 +2228,6 @@ app.post('/api/checkins', authenticateToken, async (req, res) => {
         // Create check-in using PostgreSQL adapter
         const result = await databaseAdapter.localDb.createCheckin(checkinData);
         
-        console.log('✅ Check-in created successfully:', result.id);
         
         // Return response
         const responseData = {
@@ -2286,7 +2280,6 @@ app.post('/api/checkins', authenticateToken, async (req, res) => {
 
     // Validation - ensure required fields are present
     if (!mood_today || !confidence_today) {
-      console.error('❌ Missing required fields');
       return res.status(400).json({ 
         success: false, 
         error: 'Missing required fields: mood_today and confidence_today are required' 
@@ -2295,7 +2288,6 @@ app.post('/api/checkins', authenticateToken, async (req, res) => {
 
     // Validate confidence_today is between 1-10
     if (confidence_today < 1 || confidence_today > 10) {
-      console.error('❌ Invalid confidence rating');
       return res.status(400).json({ 
         success: false, 
         error: 'confidence_today must be between 1 and 10' 
@@ -2306,23 +2298,16 @@ app.post('/api/checkins', authenticateToken, async (req, res) => {
     const userRecordId = await findUserByEmail(req.user.email);
     
     if (!userRecordId) {
-      console.error('❌ User not found:', req.user.email);
       return res.status(404).json({ 
         success: false, 
         error: 'User not found' 
       });
     }
 
-    console.log('✅ Found user record:', userRecordId.id);
 
     // Check for existing check-in today to prevent duplicates
     // Use date from frontend (user's local timezone) or fall back to server UTC
     const today = date_submitted || new Date().toISOString().split('T')[0];
-    console.log('📅 Date handling:', {
-      frontendDate: date_submitted,
-      serverUTCDate: new Date().toISOString().split('T')[0],
-      usingDate: today
-    });
     const existingCheckinUrl = `${config.airtable.baseUrl}/DailyCheckins?filterByFormula=AND(user_id='${userRecordId.id}',date_submitted='${today}')`;
     
     try {
@@ -2335,7 +2320,6 @@ app.post('/api/checkins', authenticateToken, async (req, res) => {
       const existingCheckinResult = await existingCheckinResponse.json();
       
       if (existingCheckinResponse.ok && existingCheckinResult.records && existingCheckinResult.records.length > 0) {
-        console.log('⚠️ Check-in already exists for today:', existingCheckinResult.records[0].id);
         return res.status(409).json({
           success: false,
           error: 'You have already submitted a check-in for today. Please try again tomorrow.',
@@ -2372,7 +2356,6 @@ app.post('/api/checkins', authenticateToken, async (req, res) => {
     // Handle medication tracking field explicitly
     if (medication_taken) {
       checkinData.medication_taken = medication_taken;
-      console.log('💊 Medication tracking:', medication_taken);
     }
 
     // Handle all additional form fields from personalized questions
@@ -2389,7 +2372,6 @@ app.post('/api/checkins', authenticateToken, async (req, res) => {
       }
     });
 
-    console.log('📝 Dynamic form fields processed:', Object.keys(additionalFormFields));
 
     // CM-01: Add sentiment analysis data if provided
     if (sentiment_analysis) {
@@ -2398,26 +2380,17 @@ app.post('/api/checkins', authenticateToken, async (req, res) => {
       checkinData.sentiment_scores = JSON.stringify(sentiment_analysis.scores);
       checkinData.sentiment_processing_time = sentiment_analysis.processing_time;
       
-      console.log('🎭 CM-01: Sentiment data added to check-in:', {
-        sentiment: sentiment_analysis.sentiment,
-        confidence: sentiment_analysis.confidence,
-        processing_time: sentiment_analysis.processing_time
-      });
     }
 
-    console.log('📊 Sending to Airtable DailyCheckins:', checkinData);
-    console.log('📅 Check-in date_submitted field:', checkinData.date_submitted);
 
     // Filter data to only include fields that exist in production schema
     const filteredCheckinData = filterForProductionSchema('DailyCheckins', checkinData);
-    console.log('📅 Filtered date_submitted field:', filteredCheckinData.date_submitted);
 
     // Create record in Airtable DailyCheckins table
     const result = await airtableRequest('DailyCheckins', 'POST', {
       fields: filteredCheckinData
     });
 
-    console.log('✅ Daily check-in saved successfully:', result.id);
 
     // Return success response with the created record
     const responseData = {
@@ -2461,7 +2434,6 @@ app.get('/api/checkins', authenticateToken, async (req, res) => {
   try {
     const { limit = 7 } = req.query;
 
-    console.log(`📈 Fetching recent check-ins for user: ${req.user.email}`);
 
     // Find user first
     const user = await findUserByEmail(req.user.email);
@@ -2482,8 +2454,6 @@ app.get('/api/checkins', authenticateToken, async (req, res) => {
     } else {
       // Use Airtable with email-based filter for production
       const airtableUrl = `${config.airtable.baseUrl}/DailyCheckins?filterByFormula=user_id='${req.user.email}'&sort[0][field]=date_submitted&sort[0][direction]=desc&maxRecords=${limit}`;
-      console.log('🔍 Querying Airtable with URL:', airtableUrl);
-      console.log('🆔 Looking for user email:', req.user.email);
       
       const response = await fetch(airtableUrl, {
         headers: {
@@ -2512,7 +2482,6 @@ app.get('/api/checkins', authenticateToken, async (req, res) => {
       }));
     }
 
-    console.log(`✅ Retrieved ${checkins.length} check-ins for user: ${req.user.email}`);
 
     res.json({
       success: true,
@@ -2703,7 +2672,6 @@ app.get('/api/v2/status', authenticateToken, async (req, res) => {
 // Get Daily Insights (Protected Route)
 app.get('/api/insights/daily', authenticateToken, async (req, res) => {
   try {
-    console.log(`🧠 Generating daily insights for user: ${req.user.email}`);
 
     // Find user
     const user = await findUserByEmail(req.user.email);
@@ -2724,20 +2692,8 @@ app.get('/api/insights/daily', authenticateToken, async (req, res) => {
                                   (user.confidence_meds && user.confidence_costs && user.confidence_overall && 
                                    user.primary_need && user.cycle_stage);
     
-    console.log('🔍 Onboarding completion check:', {
-      user_email: user.email,
-      onboarding_path: user.onboarding_path,
-      baseline_completed: user.baseline_completed,
-      primary_need: user.primary_need,
-      cycle_stage: user.cycle_stage,
-      confidence_meds: user.confidence_meds,
-      confidence_costs: user.confidence_costs,
-      confidence_overall: user.confidence_overall,
-      hasCompletedOnboarding
-    });
 
     if (!hasCompletedOnboarding) {
-      console.log('⚠️ User has not completed onboarding, blocking insights');
       return res.status(403).json({
         success: false,
         error: 'Complete your profile to unlock personalized insights',
@@ -2780,7 +2736,6 @@ app.get('/api/insights/daily', authenticateToken, async (req, res) => {
       userRecords = result.records || [];
     }
 
-    console.log(`📊 Insights: Found ${userRecords.length} check-ins for user ${user.id}`);
 
     const checkins = userRecords.map(record => ({
       id: record.id,
@@ -2795,7 +2750,6 @@ app.get('/api/insights/daily', authenticateToken, async (req, res) => {
     // Generate insights using the new engine
     const insight = generateDailyInsights(checkins, user);
     
-    console.log(`✅ Generated insight type: ${insight.type} for user: ${req.user.email}`);
 
     // Store daily insight in database
     const insightId = `daily_${Date.now()}`;
@@ -2812,13 +2766,11 @@ app.get('/api/insights/daily', authenticateToken, async (req, res) => {
         status: 'active'
       };
 
-      console.log('💾 Saving daily insight to database:', insightData);
       
       const result = await airtableRequest('Insights', 'POST', {
         fields: insightData
       });
       
-      console.log('✅ Daily insight saved to database:', result.id);
 
       res.json({
         success: true,
@@ -2868,7 +2820,6 @@ app.get('/api/insights/daily', authenticateToken, async (req, res) => {
 // Get User Metrics (Protected Route)
 app.get('/api/users/metrics', authenticateToken, async (req, res) => {
   try {
-    console.log(`📊 Fetching metrics for user: ${req.user.email}`);
 
     // Find user
     const user = await findUserByEmail(req.user.email);
@@ -2908,7 +2859,6 @@ app.get('/api/users/metrics', authenticateToken, async (req, res) => {
       userRecords = result.records || [];
     }
 
-    console.log(`📊 Found ${userRecords.length} check-ins for metrics`);
 
     const checkins = userRecords.map(record => ({
       id: record.id,
@@ -3026,11 +2976,7 @@ app.get('/api/users/metrics', authenticateToken, async (req, res) => {
       ? Math.round((scheduledCheckInsCompleted / daysRegistered) * 100)
       : 0;
     
-    console.log(`📊 Check-in completion: ${scheduledCheckInsCompleted} of ${daysRegistered} days (${insightEngagementRate}%)`)
     
-    // Debug data availability
-    console.log(`📊 Trend data: medicationData=${medicationData.length}, prevMedicationData=${prevMedicationData.length}, ` +
-                `lastWeekCheckins=${lastWeekCheckins.length}, previousWeekCheckins=${previousWeekCheckins.length}`)
 
     // Calculate checklist completion rate (placeholder - would need checklist data)
     const checklistCompletionRate = 82; // Would calculate from actual checklist data
@@ -3229,7 +3175,6 @@ app.get('/api/users/metrics', authenticateToken, async (req, res) => {
       }
     };
 
-    console.log(`✅ Generated metrics for user: ${req.user.email}`);
     
     res.json({ 
       success: true, 
@@ -3282,7 +3227,6 @@ app.post('/api/insights/engagement', authenticateToken, async (req, res) => {
   try {
     const { insight_type, action, insight_id } = req.body;
     
-    console.log(`📊 Tracking engagement: ${action} for insight type: ${insight_type}`);
 
     // Find user
     const user = await findUserByEmail(req.user.email);
@@ -3303,14 +3247,12 @@ app.post('/api/insights/engagement', authenticateToken, async (req, res) => {
       date_submitted: new Date().toISOString().split('T')[0]
     };
 
-    console.log('📈 Insight engagement tracked:', engagementData);
 
     try {
       // Try to save to InsightEngagement table (if it exists)
       const result = await airtableRequest('InsightEngagement', 'POST', {
         fields: engagementData
       });
-      console.log('✅ Engagement saved to InsightEngagement table:', result.id);
       
       res.json({
         success: true,
@@ -3325,7 +3267,6 @@ app.post('/api/insights/engagement', authenticateToken, async (req, res) => {
       });
     } catch (tableError) {
       // If InsightEngagement table doesn't exist, just log for now
-      console.log('⚠️ InsightEngagement table not found, logging only:', tableError.message);
       
       res.json({
         success: true,
@@ -3355,14 +3296,6 @@ app.post('/api/analytics/events', authenticateToken, async (req, res) => {
     
     // CRITICAL: Comprehensive validation to prevent undefined event_type
     if (!event_type || typeof event_type !== 'string' || event_type.trim() === '') {
-      console.warn('🚨 Analytics validation failed: Invalid event_type:', { 
-        event_type, 
-        type: typeof event_type,
-        isUndefined: event_type === undefined,
-        isNull: event_type === null,
-        isEmpty: event_type === '',
-        trimmed: event_type?.trim?.() === ''
-      });
       
       return res.status(400).json({
         success: false,
@@ -3375,7 +3308,6 @@ app.post('/api/analytics/events', authenticateToken, async (req, res) => {
       });
     }
     
-    console.log(`📈 FVM Event tracked: ${event_type}`, event_data);
 
     // Find user
     const user = await findUserByEmail(req.user.email);
@@ -3395,7 +3327,6 @@ app.post('/api/analytics/events', authenticateToken, async (req, res) => {
       event_data: JSON.stringify(event_data)
     };
 
-    console.log('🎯 FVM Analytics event tracked:', analyticsEvent);
 
     // Save to database
     const result = await airtableRequest('FMVAnalytics', 'POST', {
@@ -3403,7 +3334,6 @@ app.post('/api/analytics/events', authenticateToken, async (req, res) => {
     });
     
     if (result.success || result.id) {
-      console.log('✅ Analytics event saved to Airtable:', result.id);
       res.json({
         success: true,
         message: 'Analytics event tracked successfully',
@@ -3488,15 +3418,11 @@ app.get('/api/checkins-test', (req, res) => {
 
 // Update app.listen to bind to '0.0.0.0' explicitly (required for container networking) with full startup logs
 app.listen(port, '0.0.0.0', () => {
-  console.log(`🚀 Novara API running on port ${port}`);
-  console.log(`📊 Health check: http://0.0.0.0:${port}/api/health`);
-  console.log(`🔍 Environment: ${process.env.NODE_ENV || 'not set'}`);
-  console.log(`🔌 Bound to host: 0.0.0.0 (required for Railway container networking)`);
+  console.log(`Novara API running on port ${port}`);
   
   // Mark application as ready for health checks
   setTimeout(() => {
     markAppReady();
-    console.log(`✅ Application marked as ready for health checks`);
   }, 2000); // Give 2 seconds for everything to initialize
 });
 
@@ -3507,7 +3433,6 @@ app.listen(port, '0.0.0.0', () => {
 // Get Personalized Check-in Questions (Protected Route)
 app.get('/api/checkins/questions', authenticateToken, async (req, res) => {
   try {
-    console.log(`🎯 Generating personalized questions for user: ${req.user.email}`);
 
     // Find user to get their onboarding data
     const user = await findUserByEmail(req.user.email);
@@ -3522,8 +3447,6 @@ app.get('/api/checkins/questions', authenticateToken, async (req, res) => {
     // Generate personalized questions based on their concerns
     const questions = generatePersonalizedCheckInQuestions(user);
     
-    console.log(`✅ Generated ${questions.length} personalized questions for ${req.user.email}`);
-    console.log('📝 Question contexts:', questions.map(q => q.context || 'baseline').join(', '));
 
     res.json({
       success: true,
@@ -3548,13 +3471,10 @@ app.get('/api/checkins/questions', authenticateToken, async (req, res) => {
 // Enhanced check-in endpoint - DEVELOPMENT ONLY
 app.post('/api/daily-checkin-enhanced', authenticateToken, async (req, res) => {
   try {
-    console.log('📝 Enhanced daily check-in submission received:', req.body);
     const checkinData = req.body;
-    console.log('Received checkinData:', checkinData);
 
     // Validation - ensure required fields are present
     if (!checkinData.mood_today || !checkinData.confidence_today) {
-      console.error('❌ Missing required fields');
       return res.status(400).json({ 
         success: false, 
         error: 'Missing required fields: mood_today and confidence_today are required' 
@@ -3563,7 +3483,6 @@ app.post('/api/daily-checkin-enhanced', authenticateToken, async (req, res) => {
 
     // Validate confidence_today is between 1-10
     if (checkinData.confidence_today < 1 || checkinData.confidence_today > 10) {
-      console.error('❌ Invalid confidence rating');
       return res.status(400).json({ 
         success: false, 
         error: 'confidence_today must be between 1 and 10' 
@@ -3574,14 +3493,12 @@ app.post('/api/daily-checkin-enhanced', authenticateToken, async (req, res) => {
     const user = await findUserByEmail(req.user.email);
     
     if (!user) {
-      console.error('❌ User not found:', req.user.email);
       return res.status(404).json({ 
         success: false, 
         error: 'User not found' 
       });
     }
 
-    console.log('✅ Found user record:', user.id);
 
     // Prepare enhanced data for Airtable DailyCheckins table
     const enhancedCheckinData = {
@@ -3620,19 +3537,16 @@ app.post('/api/daily-checkin-enhanced', authenticateToken, async (req, res) => {
       enhancedCheckinData.top_concern_today = checkinData.top_concern_today.trim();
     }
 
-    console.log('📊 Sending enhanced check-in to Airtable:', enhancedCheckinData);
 
     // Save to Airtable
     const result = await airtableRequest('DailyCheckins', 'POST', {
       fields: enhancedCheckinData
     });
 
-    console.log('✅ Enhanced daily check-in saved successfully:', result.id);
 
     // Generate enhanced micro-insight
     const enhancedInsight = generateEnhancedMicroInsight(checkinData, user);
     
-    console.log('🎯 Generated enhanced micro-insight:', enhancedInsight.title);
 
     // Track enhanced analytics
     const enhancedAnalytics = {
@@ -3648,7 +3562,6 @@ app.post('/api/daily-checkin-enhanced', authenticateToken, async (req, res) => {
 
     try {
       await trackFVMAnalytics(enhancedAnalytics);
-      console.log('📈 Enhanced check-in analytics tracked successfully');
     } catch (analyticsError) {
       console.error('❌ Error tracking enhanced analytics:', analyticsError);
     }
@@ -3698,7 +3611,6 @@ async function trackFVMAnalytics(analyticsData) {
     const result = await airtableRequest('FMVAnalytics', 'POST', { fields: analyticsData });
     return result;
   } catch (error) {
-    console.error('Analytics tracking error:', error);
     throw error;
   }
 }
@@ -3800,7 +3712,6 @@ app.patch('/api/users/cycle-stage', authenticateToken, async (req, res) => {
       }
     }
 
-    console.log(`✅ Updated cycle stage for ${req.user.email}: ${cycle_stage}`);
 
     // Calculate derived medication status for response
     const derivedMedicationStatus = getMedicationStatusFromCycleStage(cycle_stage);
@@ -3877,7 +3788,6 @@ app.patch('/api/users/medication-status', authenticateToken, async (req, res) =>
       }
     }
 
-    console.log(`✅ Updated medication status for ${req.user.email}: ${medication_status}`);
 
     res.json({
       success: true,
@@ -3964,8 +3874,6 @@ app.patch('/api/users/baseline', authenticateToken, async (req, res) => {
       }
     }
 
-    console.log(`✅ ON-01: Updated baseline data for ${req.user.email}, baseline_completed: ${baseline_completed}`);
-    console.log('📊 ON-01: Full update data:', updateData);
 
     res.json({
       success: true,
@@ -4085,11 +3993,9 @@ function filterForProductionSchema(tableName, data) {
     if (allowedFields.includes(key)) {
       filteredData[key] = value;
     } else {
-      console.log(`🚫 Filtered out field '${key}' (not in production schema)`);
     }
   });
   
-  console.log(`✅ Filtered data for ${tableName}:`, Object.keys(filteredData));
   return filteredData;
 }
 

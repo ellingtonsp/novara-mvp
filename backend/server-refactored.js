@@ -151,6 +151,134 @@ app.use('/api/insights', insightRoutes);
 app.use('/api/health', healthRoutes);
 app.use('/api/v2', v2Routes);
 
+// Enhanced check-in endpoint - DEVELOPMENT ONLY
+const { authenticateToken } = require('./middleware/auth');
+const { asyncHandler, AppError } = require('./middleware/error-handler');
+
+app.post('/api/daily-checkin-enhanced', authenticateToken, asyncHandler(async (req, res) => {
+  console.log('📝 Enhanced daily check-in submission received:', req.body);
+  const checkinData = req.body;
+  console.log('Received checkinData:', checkinData);
+
+  // Validation - ensure required fields are present
+  if (!checkinData.mood_today || !checkinData.confidence_today) {
+    console.error('❌ Missing required fields');
+    throw new AppError('Missing required fields: mood_today and confidence_today are required', 400);
+  }
+
+  // Validate confidence_today is between 1-10
+  if (checkinData.confidence_today < 1 || checkinData.confidence_today > 10) {
+    console.error('❌ Invalid confidence rating');
+    throw new AppError('confidence_today must be between 1 and 10', 400);
+  }
+
+  // Find user
+  const user = await userService.findByEmail(req.user.email);
+  if (!user) {
+    throw new AppError('User not found', 404);
+  }
+
+  console.log('✅ Found user record:', user.id);
+
+  // Check for existing check-in today
+  const existingCheckin = await checkinService.findByUserAndDate(
+    user.id, 
+    checkinData.date_submitted || new Date().toISOString().split('T')[0]
+  );
+
+  if (existingCheckin) {
+    console.log('⚠️ Check-in already exists for today');
+    return res.status(409).json({
+      success: false,
+      error: 'You have already submitted a check-in for today. Please try again tomorrow.',
+      existing_checkin: {
+        id: existingCheckin.id,
+        mood_today: existingCheckin.mood_today,
+        confidence_today: existingCheckin.confidence_today,
+        date_submitted: existingCheckin.date_submitted
+      }
+    });
+  }
+
+  // Process any cycle stage update if provided
+  if (checkinData.cycle_stage_update && checkinData.cycle_stage_update !== 'no_change') {
+    console.log('🔄 Updating user cycle stage:', checkinData.cycle_stage_update);
+    await userService.update(user.id, {
+      cycle_stage: checkinData.cycle_stage_update,
+      cycle_stage_updated: new Date().toISOString()
+    });
+  }
+
+  // Prepare enhanced check-in data with all fields
+  const enhancedCheckinData = {
+    user_id: user.id,
+    mood_today: checkinData.mood_today,
+    confidence_today: parseInt(checkinData.confidence_today),
+    date_submitted: checkinData.date_submitted || new Date().toISOString().split('T')[0],
+    user_note: checkinData.user_note,
+    primary_concern_today: checkinData.primary_concern_today,
+    medication_taken: checkinData.medication_taken,
+    
+    // Enhanced fields
+    journey_reflection_today: checkinData.journey_reflection_today,
+    medication_confidence_today: checkinData.medication_confidence_today,
+    medication_readiness_today: checkinData.medication_readiness_today,
+    financial_confidence_today: checkinData.financial_confidence_today,
+    journey_confidence_today: checkinData.journey_confidence_today,
+    medication_concern_today: checkinData.medication_concern_today,
+    medication_momentum: checkinData.medication_momentum,
+    medication_preparation_concern: checkinData.medication_preparation_concern,
+    financial_concern_today: checkinData.financial_concern_today,
+    financial_momentum: checkinData.financial_momentum,
+    journey_readiness_today: checkinData.journey_readiness_today,
+    journey_momentum: checkinData.journey_momentum,
+    
+    // PHQ-4 fields if provided
+    phq4_feeling_nervous: checkinData.phq4_feeling_nervous,
+    phq4_stop_worrying: checkinData.phq4_stop_worrying,
+    phq4_little_interest: checkinData.phq4_little_interest,
+    phq4_feeling_down: checkinData.phq4_feeling_down,
+    
+    // Additional tracking fields
+    symptom_tracking: checkinData.symptom_tracking,
+    cycle_day: checkinData.cycle_day,
+    
+    // Metadata
+    checkin_type: 'enhanced',
+    dimension_focus: checkinData.dimension_focus
+  };
+
+  // Remove undefined fields
+  Object.keys(enhancedCheckinData).forEach(key => {
+    if (enhancedCheckinData[key] === undefined) {
+      delete enhancedCheckinData[key];
+    }
+  });
+
+  // Create the enhanced check-in
+  const result = await checkinService.create(enhancedCheckinData);
+  console.log('✅ Enhanced daily check-in saved successfully:', result.id);
+
+  // Build response
+  const responseData = {
+    success: true,
+    checkin: {
+      id: result.id,
+      ...result.fields || result,
+      checkin_type: 'enhanced',
+      created_at: result.created_at || new Date().toISOString()
+    },
+    message: 'Enhanced check-in completed successfully! 🌟'
+  };
+
+  // Add sentiment analysis if provided
+  if (checkinData.sentiment_analysis) {
+    responseData.sentiment_analysis = checkinData.sentiment_analysis;
+  }
+
+  res.status(201).json(responseData);
+}));
+
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({

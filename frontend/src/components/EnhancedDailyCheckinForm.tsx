@@ -14,13 +14,14 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { trackCheckinSubmitted } from '../lib/analytics';
 import { API_BASE_URL } from '../lib/environment';
-import { PHQ4Assessment, PHQ4Result } from './PHQ4Assessment';
-import { CenteredSlider } from './CenteredSlider';
+// PHQ-4 import removed - should be a separate flow
+import { UnifiedSlider } from './UnifiedSlider';
 import { MetricTooltip } from './MetricTooltip';
 import { getLocalDateString } from '../lib/dateUtils';
 
 interface EnhancedDailyCheckinFormProps {
   onComplete?: () => void;
+  existingCheckin?: any;
 }
 
 // Enhanced checkin data interface - not used directly but shows the data structure
@@ -114,11 +115,23 @@ const INFO_NEEDS = [
   'When to consider stopping'
 ];
 
-export const EnhancedDailyCheckinForm: React.FC<EnhancedDailyCheckinFormProps> = ({ onComplete }) => {
+export const EnhancedDailyCheckinForm: React.FC<EnhancedDailyCheckinFormProps> = ({ onComplete, existingCheckin }) => {
   const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
+  
+  // Function to scroll to top with smooth animation
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+  
+  // Custom setCurrentStep that includes scroll-to-top
+  const handleStepChange = (newStep: number) => {
+    setCurrentStep(newStep);
+    // Use setTimeout to ensure DOM has updated before scrolling
+    setTimeout(() => scrollToTop(), 50);
+  };
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showPHQ4, setShowPHQ4] = useState(false);
+  // Removed PHQ-4 from Enhanced Daily Check-in - it should be a separate flow
   const [showResults, setShowResults] = useState(false);
   
   // Form state
@@ -130,40 +143,37 @@ export const EnhancedDailyCheckinForm: React.FC<EnhancedDailyCheckinFormProps> =
   const [hasInteractedWithInjection, setHasInteractedWithInjection] = useState(false);
   const [hasInteractedWithAppointment, setHasInteractedWithAppointment] = useState(false);
   const [tookMedications, setTookMedications] = useState<boolean | null>(null);
-  const [missedDoses, setMissedDoses] = useState<number | ''>(1);
+  const [missedDoses, setMissedDoses] = useState<number | ''>('');
   const [injectionConfidence, setInjectionConfidence] = useState<number>(7);
   const [sideEffects, setSideEffects] = useState<string[]>([]);
   const [hasAppointment, setHasAppointment] = useState<boolean | null>(null);
   const [appointmentAnxiety, setAppointmentAnxiety] = useState<number>(5);
   const [copingStrategies, setCopingStrategies] = useState<string[]>([]);
-  const [partnerInvolved, setPartnerInvolved] = useState<boolean>(false);
+  const [partnerInvolved, setPartnerInvolved] = useState<boolean | null>(null);
   const [infoNeeds, setInfoNeeds] = useState<string[]>([]);
   const [userNote, setUserNote] = useState('');
-  const [phq4Result, setPHQ4Result] = useState<PHQ4Result | null>(null);
+  // PHQ-4 result state removed
   
   // Outcome predictions based on current data
   const [outcomePredictions, setOutcomePredictions] = useState<any>(null);
   
-  // Check if PHQ-4 is due (weekly/biweekly based on risk)
+  // PHQ-4 check removed - should be handled separately from daily check-ins
+  
+  // Initialize form with existing check-in data if updating
   useEffect(() => {
-    const checkPHQ4Due = async () => {
-      // TODO: Check last PHQ-4 date from API
-      const lastAssessment = localStorage.getItem(`phq4_last_${user?.email}`);
-      if (!lastAssessment) {
-        setShowPHQ4(true);
-        return;
-      }
-      
-      const daysSince = Math.floor((Date.now() - new Date(lastAssessment).getTime()) / (1000 * 60 * 60 * 24));
-      const frequency = phq4Result?.riskLevel === 'moderate' || phq4Result?.riskLevel === 'severe' ? 7 : 14;
-      
-      if (daysSince >= frequency) {
-        setShowPHQ4(true);
-      }
-    };
-    
-    checkPHQ4Due();
-  }, [user, phq4Result]);
+    if (existingCheckin) {
+      setSelectedMood(existingCheckin.mood_today || '');
+      setConfidence(existingCheckin.confidence_today || 5);
+      setAnxietyLevel(existingCheckin.anxiety_level || 5);
+      setTookMedications(existingCheckin.medication_taken || false);
+      setUserNote(existingCheckin.user_note || '');
+      // Set other fields as needed
+      setSideEffects(existingCheckin.side_effects || []);
+      setInjectionConfidence(existingCheckin.injection_confidence || 7);
+      setCopingStrategies(existingCheckin.coping_strategies_used || []);
+      setInfoNeeds(existingCheckin.information_needs || []);
+    }
+  }, [existingCheckin]);
   
   // Calculate outcome predictions based on inputs
   useEffect(() => {
@@ -204,11 +214,7 @@ export const EnhancedDailyCheckinForm: React.FC<EnhancedDailyCheckinFormProps> =
     return needs;
   };
   
-  const handlePHQ4Complete = (result: PHQ4Result) => {
-    setPHQ4Result(result);
-    localStorage.setItem(`phq4_last_${user?.email}`, new Date().toISOString());
-    setShowPHQ4(false);
-  };
+  // PHQ-4 complete handler removed
   
   const handleSubmit = async () => {
     setIsSubmitting(true);
@@ -227,9 +233,7 @@ export const EnhancedDailyCheckinForm: React.FC<EnhancedDailyCheckinFormProps> =
         coping_strategies_used: copingStrategies,
         partner_involved_today: partnerInvolved,
         wish_knew_more_about: infoNeeds,
-        phq4_score: phq4Result?.totalScore,
-        phq4_anxiety: phq4Result?.anxietyScore,
-        phq4_depression: phq4Result?.depressionScore
+        // PHQ-4 scores removed from enhanced check-in
       };
       
       // Get today's date in user's local timezone
@@ -262,13 +266,16 @@ export const EnhancedDailyCheckinForm: React.FC<EnhancedDailyCheckinFormProps> =
         wish_knew_more_about: infoNeeds.length > 0 ? infoNeeds : null,
         
         // PHQ-4 Assessment data
-        phq4_score: phq4Result?.totalScore || null,
-        phq4_anxiety: phq4Result?.anxietyScore || null,
-        phq4_depression: phq4Result?.depressionScore || null
+        // PHQ-4 scores removed from enhanced check-in
       };
       
-      const response = await fetch(`${API_BASE_URL}/api/checkins`, {
-        method: 'POST',
+      const isUpdate = !!existingCheckin;
+      const url = isUpdate 
+        ? `${API_BASE_URL}/api/checkins/${existingCheckin.id}`
+        : `${API_BASE_URL}/api/checkins`;
+      
+      const response = await fetch(url, {
+        method: isUpdate ? 'PUT' : 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -278,6 +285,13 @@ export const EnhancedDailyCheckinForm: React.FC<EnhancedDailyCheckinFormProps> =
       
       if (response.ok) {
         setShowResults(true);
+        
+        // Call onComplete immediately after successful submission
+        // This ensures the parent component knows the checkin is complete
+        if (onComplete) {
+          onComplete();
+        }
+        
         trackCheckinSubmitted({
           user_id: user?.id || '',
           mood_score: ENHANCED_MOOD_OPTIONS.findIndex(m => m.mood === selectedMood) + 1,
@@ -300,25 +314,10 @@ export const EnhancedDailyCheckinForm: React.FC<EnhancedDailyCheckinFormProps> =
   
   const [startTime] = useState(Date.now());
   
-  const totalSteps = showPHQ4 ? 5 : 4;
+  const totalSteps = 4; // Enhanced check-in has 4 steps
   const progressPercentage = (currentStep / totalSteps) * 100;
   
-  if (showPHQ4 && currentStep === 1) {
-    return (
-      <div className="space-y-4">
-        <PHQ4Assessment 
-          onComplete={handlePHQ4Complete}
-          showOutcomeContext={true}
-        />
-        <Button 
-          onClick={() => setCurrentStep(2)}
-          className="w-full bg-[#FF6F61] hover:bg-[#FF6F61]/90"
-        >
-          Continue to Daily Check-in
-        </Button>
-      </div>
-    );
-  }
+  // PHQ-4 removed from Enhanced Daily Check-in flow
   
   if (showResults) {
     return (
@@ -377,18 +376,14 @@ export const EnhancedDailyCheckinForm: React.FC<EnhancedDailyCheckinFormProps> =
           
           <Button 
             onClick={() => {
-              if (onComplete) {
-                onComplete();
-              } else {
-                // Reset to allow another check-in if no onComplete handler
-                setShowResults(false);
-                setCurrentStep(1);
-                setSelectedMood('');
-                setAnxietyLevel(5);
-                setConfidence(5);
-                setHasInteractedWithConfidence(false);
-                setHasInteractedWithAnxiety(false);
-              }
+              // Just close the results view - onComplete was already called
+              setShowResults(false);
+              handleStepChange(1);
+              setSelectedMood('');
+              setAnxietyLevel(5);
+              setConfidence(5);
+              setHasInteractedWithConfidence(false);
+              setHasInteractedWithAnxiety(false);
             }}
             className="w-full bg-[#FF6F61] hover:bg-[#FF6F61]/90 mt-4"
           >
@@ -452,14 +447,11 @@ export const EnhancedDailyCheckinForm: React.FC<EnhancedDailyCheckinFormProps> =
                 </Label>
               </MetricTooltip>
               <div className="space-y-2">
-                <div className="flex justify-between items-center text-sm text-gray-600 relative">
+                <div className="flex justify-between text-sm text-gray-600">
                   <span>Calm</span>
-                  <span className={`font-bold absolute left-1/2 -translate-x-1/2 ${hasInteractedWithAnxiety ? 'text-purple-600' : 'text-gray-400'}`}>
-                    {hasInteractedWithAnxiety ? anxietyLevel : '—'}
-                  </span>
                   <span>Very anxious</span>
                 </div>
-                <CenteredSlider
+                <UnifiedSlider
                   value={anxietyLevel}
                   onChange={(value) => {
                     setAnxietyLevel(value);
@@ -467,6 +459,8 @@ export const EnhancedDailyCheckinForm: React.FC<EnhancedDailyCheckinFormProps> =
                   }}
                   hasInteracted={hasInteractedWithAnxiety}
                   className="mt-2"
+                  variant="centered"
+                  showValue={true}
                 />
                 {hasInteractedWithAnxiety && anxietyLevel > 7 && (
                   <p className="text-sm text-purple-600 mt-2 italic">
@@ -477,7 +471,7 @@ export const EnhancedDailyCheckinForm: React.FC<EnhancedDailyCheckinFormProps> =
             </div>
             
             <Button 
-              onClick={() => setCurrentStep(2)}
+              onClick={() => handleStepChange(2)}
               disabled={!selectedMood}
               className="w-full bg-[#FF6F61] hover:bg-[#FF6F61]/90"
             >
@@ -505,17 +499,19 @@ export const EnhancedDailyCheckinForm: React.FC<EnhancedDailyCheckinFormProps> =
                       variant={tookMedications === true ? 'default' : 'outline'}
                       onClick={() => {
                         setTookMedications(true);
-                        setMissedDoses(0);
+                        setMissedDoses('');
                       }}
-                      className="flex-1"
+                      className="flex-1 h-auto py-3"
                     >
+                      <span className="text-lg mr-2">✅</span>
                       Yes, all doses
                     </Button>
                     <Button
                       variant={tookMedications === false ? 'default' : 'outline'}
                       onClick={() => setTookMedications(false)}
-                      className="flex-1"
+                      className="flex-1 h-auto py-3"
                     >
+                      <span className="text-lg mr-2">⚠️</span>
                       Missed some
                     </Button>
                   </div>
@@ -540,14 +536,11 @@ export const EnhancedDailyCheckinForm: React.FC<EnhancedDailyCheckinFormProps> =
                   <div>
                     <Label className="mb-2 block">Injection confidence level</Label>
                     <div className="space-y-2">
-                      <div className="flex justify-between items-center text-sm text-gray-600 relative">
+                      <div className="flex justify-between items-center text-sm text-gray-600">
                         <span>Low</span>
-                        <span className={`font-bold absolute left-1/2 -translate-x-1/2 ${hasInteractedWithInjection ? 'text-purple-600' : 'text-gray-400'}`}>
-                          {hasInteractedWithInjection ? injectionConfidence : '—'}
-                        </span>
                         <span>High</span>
                       </div>
-                      <CenteredSlider
+                      <UnifiedSlider
                         value={injectionConfidence}
                         onChange={(value) => {
                           setInjectionConfidence(value);
@@ -555,6 +548,8 @@ export const EnhancedDailyCheckinForm: React.FC<EnhancedDailyCheckinFormProps> =
                         }}
                         hasInteracted={hasInteractedWithInjection}
                         className="mt-2"
+                        variant="centered"
+                        showValue={true}
                       />
                     </div>
                   </div>
@@ -593,7 +588,7 @@ export const EnhancedDailyCheckinForm: React.FC<EnhancedDailyCheckinFormProps> =
             </div>
             
             <Button 
-              onClick={() => setCurrentStep(3)}
+              onClick={() => handleStepChange(3)}
               disabled={tookMedications === null}
               className="w-full bg-[#FF6F61] hover:bg-[#FF6F61]/90"
             >
@@ -635,14 +630,11 @@ export const EnhancedDailyCheckinForm: React.FC<EnhancedDailyCheckinFormProps> =
                     <div className="mt-3">
                       <Label className="mb-2 block">Pre-appointment anxiety level</Label>
                       <div className="space-y-2">
-                        <div className="flex justify-between items-center text-sm text-gray-600 relative">
+                        <div className="flex justify-between items-center text-sm text-gray-600">
                           <span>Calm</span>
-                          <span className={`font-bold absolute left-1/2 -translate-x-1/2 ${hasInteractedWithAppointment ? 'text-purple-600' : 'text-gray-400'}`}>
-                            {hasInteractedWithAppointment ? appointmentAnxiety : '—'}
-                          </span>
                           <span>Anxious</span>
                         </div>
-                        <CenteredSlider
+                        <UnifiedSlider
                           value={appointmentAnxiety}
                           onChange={(value) => {
                             setAppointmentAnxiety(value);
@@ -650,6 +642,8 @@ export const EnhancedDailyCheckinForm: React.FC<EnhancedDailyCheckinFormProps> =
                           }}
                           hasInteracted={hasInteractedWithAppointment}
                           className="mt-2"
+                          variant="centered"
+                          showValue={true}
                         />
                       </div>
                     </div>
@@ -709,7 +703,7 @@ export const EnhancedDailyCheckinForm: React.FC<EnhancedDailyCheckinFormProps> =
             </div>
             
             <Button 
-              onClick={() => setCurrentStep(4)}
+              onClick={() => handleStepChange(4)}
               className="w-full bg-[#FF6F61] hover:bg-[#FF6F61]/90"
             >
               Continue
@@ -759,14 +753,11 @@ export const EnhancedDailyCheckinForm: React.FC<EnhancedDailyCheckinFormProps> =
                 </Label>
               </MetricTooltip>
               <div className="space-y-2">
-                <div className="flex justify-between items-center text-sm text-gray-600 relative">
+                <div className="flex justify-between items-center text-sm text-gray-600">
                   <span>Low</span>
-                  <span className={`font-bold absolute left-1/2 -translate-x-1/2 ${hasInteractedWithConfidence ? 'text-purple-600' : 'text-gray-400'}`}>
-                    {hasInteractedWithConfidence ? confidence : '—'}
-                  </span>
                   <span>High</span>
                 </div>
-                <CenteredSlider
+                <UnifiedSlider
                   value={confidence}
                   onChange={(value) => {
                     setConfidence(value);
@@ -774,6 +765,8 @@ export const EnhancedDailyCheckinForm: React.FC<EnhancedDailyCheckinFormProps> =
                   }}
                   hasInteracted={hasInteractedWithConfidence}
                   className="mt-2"
+                  variant="centered"
+                  showValue={true}
                 />
               </div>
             </div>
@@ -801,6 +794,8 @@ export const EnhancedDailyCheckinForm: React.FC<EnhancedDailyCheckinFormProps> =
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Submitting...
                 </>
+              ) : existingCheckin ? (
+                'Update Check-in'
               ) : (
                 'Complete Check-in'
               )}

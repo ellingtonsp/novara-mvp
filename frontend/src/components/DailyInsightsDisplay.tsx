@@ -2,10 +2,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Lightbulb, Heart, TrendingUp, Brain, X, RefreshCw, ThumbsUp, Bookmark, Share } from 'lucide-react';
+import { Lightbulb, Heart, TrendingUp, Brain, X, RefreshCw } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { API_BASE_URL } from '../lib/environment';
-import { trackInsightViewed, trackShareAction } from '../lib/analytics';
+import { trackInsightViewed } from '../lib/analytics';
+import { InsightFeedback } from './InsightFeedback';
 
 
 
@@ -184,73 +185,6 @@ const DailyInsightsDisplay: React.FC = () => {
     trackEngagement('clicked');
   };
 
-  const handleLike = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    trackEngagement('liked');
-  };
-
-  const handleSave = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    trackEngagement('saved');
-  };
-
-  const handleShare = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    if (!insight || !user) return;
-
-    try {
-      // Prepare share data
-      const shareData = {
-        title: insight.title,
-        text: insight.message,
-        url: window.location.href
-      };
-
-      // Try native sharing first (mobile)
-      if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
-        await navigator.share(shareData);
-        
-        // Track share action with native share
-        trackShareAction({
-          user_id: user.id,
-          share_surface: 'insight',
-          destination: 'native_share',
-          content_id: `insight_${insight.type}`
-        });
-        
-        console.log('✅ Shared via native share API');
-      } else {
-        // Fallback to clipboard copy
-        const shareText = `${insight.title}\n\n${insight.message}\n\n${window.location.href}`;
-        await navigator.clipboard.writeText(shareText);
-        
-        // Track share action with clipboard
-        trackShareAction({
-          user_id: user.id,
-          share_surface: 'insight',
-          destination: 'clipboard',
-          content_id: `insight_${insight.type}`
-        });
-        
-        // Show success message
-        alert('Insight copied to clipboard! 📋');
-      }
-    } catch (error) {
-      console.error('Share failed:', error);
-      
-      // Track failed share attempt
-      trackShareAction({
-        user_id: user.id,
-        share_surface: 'insight',
-        destination: 'failed',
-        content_id: `insight_${insight.type}`
-      });
-      
-      alert('Share failed. Please try again.');
-    }
-  };
 
   // Get icon based on insight type
   const getInsightIcon = (type: string) => {
@@ -449,35 +383,26 @@ const DailyInsightsDisplay: React.FC = () => {
             </div>
           )}
 
-          {/* Mobile Action Buttons */}
-          <div className="flex flex-wrap gap-2 pt-2">
-            <button
-              onClick={handleLike}
-              className="flex-1 min-w-[80px] bg-white/80 hover:bg-white text-gray-700 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors active:scale-95 flex items-center justify-center gap-1"
-            >
-              <ThumbsUp className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Helpful</span>
-            </button>
-            <button
-              onClick={handleSave}
-              className="flex-1 min-w-[80px] bg-white/80 hover:bg-white text-gray-700 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors active:scale-95 flex items-center justify-center gap-1"
-            >
-              <Bookmark className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Save</span>
-            </button>
-            <button
-              onClick={handleShare}
-              className="flex-1 min-w-[80px] bg-white/80 hover:bg-white text-gray-700 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors active:scale-95 flex items-center justify-center gap-1"
-            >
-              <Share className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Share</span>
-            </button>
+          {/* Insight Feedback Component */}
+          <InsightFeedback 
+            insightId={insight.id || `i_${insight.type}_${Date.now()}`}
+            insightContext={{
+              sentiment: 'neutral', // Default for now, will be enhanced later
+              copy_variant_used: insight.type,
+              confidence_factors: { confidence: insight.confidence }
+            }}
+            userId={user?.id || ''}
+          />
+          
+          {/* Refresh Button */}
+          <div className="flex justify-center pt-2">
             <button
               onClick={handleRefresh}
               disabled={isRefreshing}
-              className="min-w-[44px] px-3 py-2.5 bg-white/80 hover:bg-white text-gray-700 rounded-lg text-sm font-medium transition-colors active:scale-95 disabled:opacity-50"
+              className="px-4 py-2 bg-white/80 hover:bg-white text-gray-700 rounded-lg text-sm font-medium transition-colors active:scale-95 disabled:opacity-50 flex items-center gap-2"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <span>Get New Insight</span>
             </button>
           </div>
         </div>

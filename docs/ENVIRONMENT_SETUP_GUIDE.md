@@ -59,9 +59,9 @@ JWT_SECRET=development-secret-change-in-production
 # CORS
 ALLOWED_ORIGINS=http://localhost:4200,http://localhost:3000
 
-# Optional Services
-AIRTABLE_API_KEY=
-AIRTABLE_BASE_ID=
+# External Services (Legacy - No longer used)
+# AIRTABLE_API_KEY=[removed - migrated to PostgreSQL]
+# AIRTABLE_BASE_ID=[removed - migrated to PostgreSQL]
 ```
 
 ### Running Locally
@@ -127,9 +127,9 @@ JWT_SECRET=[Generate 64+ character secret]
 # CORS - CRITICAL: Include all allowed origins
 CORS_ORIGIN=https://novara-mvp.vercel.app,https://novarafertility.com,https://www.novarafertility.com
 
-# External Services (if using Airtable)
-AIRTABLE_API_KEY=[your-api-key]
-AIRTABLE_BASE_ID=[your-base-id]
+# External Services (Legacy - No longer used)
+# AIRTABLE_API_KEY=[removed - migrated to PostgreSQL]
+# AIRTABLE_BASE_ID=[removed - migrated to PostgreSQL]
 
 # Logging
 LOG_LEVEL=info
@@ -169,9 +169,10 @@ ENABLE_DEBUG_LOGGING=true
 - Backend also has hardcoded origins as fallback
 
 ### 4. Database Configuration
-- Production uses PostgreSQL (not Airtable anymore)
-- `DATABASE_TYPE=postgresql` for refactored server
-- `USE_SCHEMA_V2=true` for new schema
+- **All environments use PostgreSQL**
+- `DATABASE_TYPE=postgresql` for all environments
+- `USE_SCHEMA_V2=true` for current schema version
+- Local development requires PostgreSQL installation
 
 ## Environment Variable Priority
 
@@ -256,11 +257,11 @@ cd frontend && npm run build
 
 ## Migration Guide
 
-### Moving from Airtable to PostgreSQL
-1. Set `DATABASE_TYPE=postgresql`
-2. Set `USE_SCHEMA_V2=true`
-3. Provide PostgreSQL `DATABASE_URL`
-4. Remove or keep Airtable vars (unused)
+### PostgreSQL Configuration
+1. **Local Development**: Install PostgreSQL 14+ and set `DATABASE_URL=postgresql://postgres:password@localhost:5432/novara_local`
+2. **Staging/Production**: Use Railway-provided PostgreSQL instance via `DATABASE_URL=${{Postgres.DATABASE_URL}}`
+3. Always set `DATABASE_TYPE=postgresql` and `USE_SCHEMA_V2=true`
+4. **Database connection is managed via DATABASE_URL environment variable**
 
 ### Adding Custom Domain
 1. Update `CORS_ORIGIN` to include new domain

@@ -144,6 +144,37 @@ router.get('/me', authenticateToken, asyncHandler(async (req, res) => {
 }));
 
 /**
+ * GET /api/users/profile
+ * Alias for /api/users/me (for API consistency)
+ */
+router.get('/profile', authenticateToken, asyncHandler(async (req, res) => {
+  const user = await userService.findByEmail(req.user.email);
+  
+  if (!user) {
+    throw new AppError('User not found', 404);
+  }
+
+  res.json({ 
+    success: true,
+    email: user.email,
+    nickname: user.nickname,
+    confidence_meds: user.confidence_meds,
+    confidence_costs: user.confidence_costs,
+    confidence_overall: user.confidence_overall,
+    medication_status: user.medication_status,
+    medication_status_updated: user.medication_status_updated,
+    primary_need: user.primary_need,
+    cycle_stage: user.cycle_stage,
+    cycle_stage_updated: user.cycle_stage_updated,
+    timezone: user.timezone,
+    email_opt_in: user.email_opt_in,
+    onboarding_path: user.onboarding_path,
+    baseline_completed: user.baseline_completed,
+    created_at: user.created_at
+  });
+}));
+
+/**
  * PUT /api/users/me
  * Update current user profile
  */
@@ -490,6 +521,91 @@ router.patch('/baseline', authenticateToken, asyncHandler(async (req, res) => {
       nickname: updates.nickname || user.nickname,
       baseline_completed: true
     }
+  });
+}));
+
+/**
+ * PATCH /api/users/cycle-stage
+ * Update user cycle stage
+ */
+router.patch('/cycle-stage', authenticateToken, asyncHandler(async (req, res) => {
+  const { cycle_stage } = req.body;
+  
+  if (!cycle_stage) {
+    throw new AppError('cycle_stage is required', 400);
+  }
+
+  // Validate cycle stage value
+  const validStages = ['considering', 'ivf_prep', 'stimulation', 'retrieval', 'transfer', 'tww', 'pregnant', 'between_cycles'];
+  if (!validStages.includes(cycle_stage)) {
+    throw new AppError('Invalid cycle stage', 400);
+  }
+
+  const user = await userService.findByEmail(req.user.email);
+  if (!user) {
+    throw new AppError('User not found', 404);
+  }
+
+  // Update user's cycle stage
+  const updateData = {
+    cycle_stage,
+    cycle_stage_updated: new Date().toISOString()
+  };
+
+  await userService.update(user.id, updateData);
+  console.log(`✅ Updated cycle stage for ${req.user.email}: ${cycle_stage}`);
+
+  // Import helper function
+  const { getMedicationStatusFromCycleStage } = require('../utils/question-generator');
+  
+  // Calculate derived medication status for response
+  const derivedMedicationStatus = getMedicationStatusFromCycleStage(cycle_stage);
+
+  res.json({
+    success: true,
+    message: 'Cycle stage updated successfully',
+    cycle_stage,
+    derived_medication_status: derivedMedicationStatus,
+    cycle_stage_updated: updateData.cycle_stage_updated
+  });
+}));
+
+/**
+ * PATCH /api/users/medication-status
+ * Update user medication status
+ */
+router.patch('/medication-status', authenticateToken, asyncHandler(async (req, res) => {
+  const { medication_status } = req.body;
+  
+  if (!medication_status) {
+    throw new AppError('medication_status is required', 400);
+  }
+
+  // Validate medication status value
+  const validStatuses = ['taking', 'starting_soon', 'not_taking', 'between_cycles', 'finished_treatment', 'pregnancy_support'];
+  if (!validStatuses.includes(medication_status)) {
+    throw new AppError('Invalid medication status', 400);
+  }
+
+  const user = await userService.findByEmail(req.user.email);
+  if (!user) {
+    throw new AppError('User not found', 404);
+  }
+
+  // Update user's medication status
+  const updateData = {
+    medication_status,
+    medication_status_updated: new Date().toISOString()
+  };
+
+  await userService.update(user.id, updateData);
+  console.log(`✅ Updated medication status for ${req.user.email}: ${medication_status}`);
+
+  res.json({
+    success: true,
+    message: 'Medication status updated successfully',
+    medication_status,
+    medication_status_updated: updateData.medication_status_updated
   });
 }));
 
